@@ -33,6 +33,7 @@ export interface Interaction {
   source_role: string
   target_role: string
   description: string
+  mcq_ref: string
   status: 'pending' | 'resolved'
   created: string
 }
