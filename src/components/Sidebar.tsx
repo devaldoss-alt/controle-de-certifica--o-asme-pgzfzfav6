@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
-import { LayoutDashboard, CheckSquare, Users, LogOut } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, Users, LogOut, ClipboardCheck, Award } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function Sidebar() {
@@ -10,9 +10,11 @@ export default function Sidebar() {
   const links = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Checklists', path: '/checklists', icon: CheckSquare },
+    { name: 'Qualificações', path: '/qualifications', icon: Award },
   ]
 
   if (user?.role === 'Manager') {
+    links.push({ name: 'Aprovações', path: '/approvals', icon: ClipboardCheck })
     links.push({ name: 'Equipe', path: '/team', icon: Users })
   }
 

@@ -1,6 +1,7 @@
-import { Bell, Search, Menu } from 'lucide-react'
+import { Search, Menu } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { NotificationBell } from '@/components/NotificationBell'
 
 export default function Header() {
   const { user } = useAuth()
@@ -22,10 +23,7 @@ export default function Header() {
       </div>
 
       <div className="flex items-center gap-4 md:gap-6">
-        <button className="relative text-muted-foreground hover:text-primary transition-colors">
-          <Bell className="w-5 h-5" />
-          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-destructive rounded-full border-2 border-background"></span>
-        </button>
+        <NotificationBell />
 
         <div className="flex items-center gap-3 pl-4 border-l border-white/10">
           <div className="text-right hidden sm:block">
