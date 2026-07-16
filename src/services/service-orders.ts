@@ -1,4 +1,5 @@
 import pb from '@/lib/pocketbase/client'
+import { safeArray } from '@/lib/safe-data'
 
 export interface ServiceOrder {
   id: string
@@ -17,7 +18,13 @@ export const getServiceOrders = async (status?: string) => {
   if (status && status !== 'all') {
     opts.filter = `status = "${status}"`
   }
-  return pb.collection('service_orders').getFullList<ServiceOrder>(opts)
+  try {
+    const result = await pb.collection('service_orders').getFullList<ServiceOrder>(opts)
+    return safeArray<ServiceOrder>(result)
+  } catch (e) {
+    console.error('getServiceOrders failed:', e)
+    return []
+  }
 }
 
 export const createServiceOrder = async (data: {

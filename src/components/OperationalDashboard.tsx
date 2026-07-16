@@ -10,7 +10,7 @@ import {
 import { roleData } from '@/lib/role-data'
 import useRealtime from '@/hooks/use-realtime'
 import { ErrorBoundary, WidgetErrorFallback } from '@/components/ErrorBoundary'
-import { LoadingState } from '@/components/LoadingState'
+import { OperationalDashboardSkeleton } from '@/components/OperationalDashboardSkeleton'
 import {
   safeArray,
   safeDifferenceInDays,
@@ -94,7 +94,7 @@ export function OperationalDashboard() {
   }
 
   if (loading) {
-    return <LoadingState message="Carregando dashboard..." />
+    return <OperationalDashboardSkeleton />
   }
 
   return (

@@ -1,4 +1,5 @@
 import pb from '@/lib/pocketbase/client'
+import { safeArray } from '@/lib/safe-data'
 import type { ServiceOrder } from '@/services/service-orders'
 
 export interface DocumentRecord {
@@ -21,7 +22,13 @@ export const getDocuments = async (category?: string) => {
   if (category && category !== 'all') {
     opts.filter = `category = "${category}"`
   }
-  return pb.collection('documents').getFullList<DocumentRecord>(opts)
+  try {
+    const result = await pb.collection('documents').getFullList<DocumentRecord>(opts)
+    return safeArray<DocumentRecord>(result)
+  } catch (e) {
+    console.error('getDocuments failed:', e)
+    return []
+  }
 }
 
 export const getDocument = async (id: string) => {

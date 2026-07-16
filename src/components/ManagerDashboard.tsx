@@ -5,7 +5,7 @@ import { getChecklists, getUsers, type Checklist, type User } from '@/services/a
 import { generateComplianceReport } from '@/services/reports'
 import useRealtime from '@/hooks/use-realtime'
 import { ErrorBoundary, WidgetErrorFallback } from '@/components/ErrorBoundary'
-import { LoadingState } from '@/components/LoadingState'
+import { ManagerDashboardSkeleton } from '@/components/ManagerDashboardSkeleton'
 import {
   safeArray,
   safeDifferenceInDays,
@@ -78,7 +78,7 @@ export function ManagerDashboard() {
     .slice(0, 5)
 
   if (loading) {
-    return <LoadingState message="Carregando dashboard..." />
+    return <ManagerDashboardSkeleton />
   }
 
   return (
