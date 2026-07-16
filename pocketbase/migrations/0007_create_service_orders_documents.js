@@ -32,8 +32,8 @@ migrate(
       checkCol.fields.add(
         new FileField({
           name: 'evidence_file',
-          maxSelect: 1,
-          maxSize: 5242880,
+          maxSelect: 5,
+          maxSize: 52428800,
           mimeTypes: ['image/jpeg', 'image/png', 'application/pdf'],
         }),
       )
@@ -65,6 +65,13 @@ migrate(
         { name: 'content', type: 'text' },
         { name: 'file_path', type: 'text' },
         { name: 'os_id', type: 'relation', collectionId: soId, maxSelect: 1 },
+        {
+          name: 'file',
+          type: 'file',
+          maxSelect: 10,
+          maxSize: 52428800,
+          mimeTypes: ['image/jpeg', 'image/png', 'application/pdf'],
+        },
         { name: 'category', type: 'select', values: ['ISO', 'ASME'], maxSelect: 1 },
         { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
         { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true },

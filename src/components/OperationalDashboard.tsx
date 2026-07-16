@@ -21,6 +21,7 @@ import {
   Target,
   FileText,
   AlertCircle,
+  Paperclip,
 } from 'lucide-react'
 import { differenceInDays, differenceInHours, format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -219,6 +220,15 @@ export function OperationalDashboard() {
                       <Badge variant="outline" className="border-rose-500/30 text-rose-500 text-xs">
                         <AlertCircle className="w-3 h-3 mr-1" />
                         Crítico
+                      </Badge>
+                    )}
+                    {item.evidence_file && (
+                      <Badge
+                        variant="outline"
+                        className="border-emerald-500/20 text-emerald-500 text-xs"
+                      >
+                        <Paperclip className="w-3 h-3 mr-1" />
+                        Evidência
                       </Badge>
                     )}
                     {(() => {

@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, useI18n } from '@/hooks/use-i18n'
-import { getChecklists, updateChecklistStatus, type Checklist } from '@/services/api'
+import {
+  getChecklists,
+  updateChecklistStatus,
+  parseEvidenceFiles,
+  type Checklist,
+} from '@/services/api'
 import { getServiceOrders, type ServiceOrder } from '@/services/service-orders'
 import useRealtime from '@/hooks/use-realtime'
 import { EvidenceDialog } from '@/components/EvidenceDialog'
@@ -73,6 +78,18 @@ export default function Checklists() {
           {t('status.approved')}
         </Badge>
       )
+    if (
+      item.is_critical &&
+      item.status === 'pending' &&
+      item.evidence_file &&
+      item.approval_status === 'pending'
+    )
+      return (
+        <Badge variant="outline" className="border-amber-500/30 text-amber-500">
+          <AlertCircle className="w-3 h-3 mr-1" />
+          Análise Pendente
+        </Badge>
+      )
     if (item.status === 'completed' && item.approval_status === 'pending')
       return (
         <Badge variant="outline" className="border-blue-500/30 text-blue-500">
@@ -107,6 +124,13 @@ export default function Checklists() {
 
   const getCardStyle = (item: Checklist) => {
     if (item.locked) return 'border-emerald-500/20 bg-emerald-500/5'
+    if (
+      item.is_critical &&
+      item.status === 'pending' &&
+      item.evidence_file &&
+      item.approval_status === 'pending'
+    )
+      return 'border-amber-500/20 bg-amber-500/5'
     if (item.status === 'completed') return 'border-blue-500/20 bg-blue-500/5'
     if (item.approval_status === 'rejected') return 'border-rose-500/30 bg-rose-500/5'
     const hours = differenceInHours(new Date(item.due_date), new Date())
@@ -247,7 +271,13 @@ export default function Checklists() {
                           </Badge>
                         )}
                         {item.evidence_file && (
-                          <Paperclip className="w-3.5 h-3.5 text-emerald-500" />
+                          <Badge
+                            variant="outline"
+                            className="border-emerald-500/20 text-emerald-500 text-xs"
+                          >
+                            <Paperclip className="w-3 h-3 mr-1" />
+                            {parseEvidenceFiles(item.evidence_file).length}
+                          </Badge>
                         )}
                         {getDeadlineBadge(item)}
                       </div>

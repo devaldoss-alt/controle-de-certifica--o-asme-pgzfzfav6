@@ -221,5 +221,3 @@ export default function Approvals() {
     </div>
   )
 }
-
-import { cn } from '@/lib/utils'

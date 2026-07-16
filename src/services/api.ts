@@ -65,20 +65,43 @@ export const getChecklists = async (role?: string, category?: string, osId?: str
 
 export const getPendingApprovals = async () => {
   return pb.collection('checklists').getFullList<Checklist>({
-    filter: 'status = "completed" && approval_status = "pending"',
+    filter:
+      'approval_status = "pending" && (status = "completed" || (is_critical = true && evidence_file != ""))',
     sort: 'due_date',
     expand: 'last_action_by,os_id',
   })
 }
 
-export const uploadEvidence = async (id: string, file: File, notes: string) => {
+export const parseEvidenceFiles = (evidenceFile: string | undefined): string[] => {
+  if (!evidenceFile) return []
+  try {
+    const parsed = JSON.parse(evidenceFile)
+    return Array.isArray(parsed) ? parsed : [evidenceFile]
+  } catch {
+    return [evidenceFile]
+  }
+}
+
+export const uploadEvidence = async (
+  id: string,
+  files: File[],
+  notes: string,
+  isCritical?: boolean,
+) => {
   const formData = new FormData()
-  formData.append('evidence_file', file)
+  files.forEach((file) => formData.append('evidence_file', file))
   formData.append('evidence_notes', notes)
-  formData.append('status', 'completed')
   formData.append('approval_status', 'pending')
   formData.append('last_action_by', pb.authStore.record?.id || '')
+  formData.append('status', isCritical ? 'pending' : 'completed')
   return pb.collection('checklists').update(id, formData)
+}
+
+export const getServiceOrderChecklists = async (osId: string) => {
+  return pb.collection('checklists').getFullList<Checklist>({
+    filter: `os_id = "${osId}"`,
+    sort: 'due_date',
+  })
 }
 
 export const updateChecklistStatus = async (id: string, status: 'pending' | 'completed') => {
@@ -95,6 +118,7 @@ export const updateChecklistStatus = async (id: string, status: 'pending' | 'com
 export const approveChecklist = async (id: string) => {
   return pb.collection('checklists').update(id, {
     approval_status: 'approved',
+    status: 'completed',
     locked: true,
     last_action_by: pb.authStore.record?.id,
   })

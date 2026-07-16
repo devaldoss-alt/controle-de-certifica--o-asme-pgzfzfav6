@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, useI18n } from '@/hooks/use-i18n'
 import { getServiceOrders, createServiceOrder, type ServiceOrder } from '@/services/service-orders'
+import { getChecklists, type Checklist } from '@/services/api'
 import { getMaxOS } from '@/lib/plans'
 import useRealtime from '@/hooks/use-realtime'
 import { Card, CardContent } from '@/components/ui/card'
@@ -24,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Briefcase, Calendar, Factory } from 'lucide-react'
+import { Plus, Briefcase, Calendar, Factory, ClipboardCheck } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 
@@ -38,6 +39,7 @@ export default function ServiceOrders() {
   const { user } = useAuth()
   const { t } = useI18n()
   const [orders, setOrders] = useState<ServiceOrder[]>([])
+  const [checklists, setChecklists] = useState<Checklist[]>([])
   const [statusFilter, setStatusFilter] = useState('all')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState({
@@ -50,8 +52,9 @@ export default function ServiceOrders() {
 
   const loadData = async () => {
     try {
-      const data = await getServiceOrders(statusFilter)
+      const [data, clData] = await Promise.all([getServiceOrders(statusFilter), getChecklists()])
       setOrders(data)
+      setChecklists(clData)
     } catch (e) {
       console.error(e)
     }
@@ -154,6 +157,29 @@ export default function ServiceOrders() {
                   )}
                 </div>
               </div>
+              {(() => {
+                const osItems = checklists.filter((c) => c.os_id === os.id)
+                const done = osItems.filter(
+                  (c) => c.status === 'completed' || c.approval_status === 'approved',
+                ).length
+                if (osItems.length === 0) return null
+                return (
+                  <div className="flex items-center gap-2 pt-2 border-t border-white/5 text-xs">
+                    <ClipboardCheck className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="text-muted-foreground shrink-0">
+                      {done}/{osItems.length}
+                    </span>
+                    <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary/60 rounded-full transition-all"
+                        style={{
+                          width: `${osItems.length > 0 ? (done / osItems.length) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )
+              })()}
             </CardContent>
           </Card>
         ))}

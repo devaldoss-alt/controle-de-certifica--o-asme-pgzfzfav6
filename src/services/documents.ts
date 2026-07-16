@@ -6,6 +6,7 @@ export interface DocumentRecord {
   title: string
   content: string
   file_path: string
+  file?: string
   os_id: string
   category: 'ISO' | 'ASME'
   created: string

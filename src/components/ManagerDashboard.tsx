@@ -96,6 +96,14 @@ export function ManagerDashboard() {
             <div>
               <p className="text-sm text-muted-foreground mb-1">Aguard. Aprovacao</p>
               <h3 className="text-3xl font-bold text-amber-500">{awaiting}</h3>
+              {awaiting > 0 && (
+                <Link
+                  to="/approvals"
+                  className="text-xs text-amber-500 hover:underline mt-1 inline-block"
+                >
+                  Review Evidence →
+                </Link>
+              )}
             </div>
             <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
               <AlertTriangle className="w-6 h-6" />
