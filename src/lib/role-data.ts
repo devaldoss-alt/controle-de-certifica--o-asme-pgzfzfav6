@@ -165,4 +165,10 @@ export const roleData: Record<string, RoleData> = {
     observacoes:
       'Necessita visão consolidada de todas as funções para identificação proativa de lacunas.',
   },
+  Unknown: {
+    objetivo: 'Dados do perfil não disponíveis. Contate o administrador do sistema.',
+    authorities: [],
+    responsibilities: [],
+    observacoes: 'Perfil não reconhecido no sistema.',
+  },
 }

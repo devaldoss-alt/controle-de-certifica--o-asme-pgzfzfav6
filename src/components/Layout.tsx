@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import Sidebar from './Sidebar'
 import Header from './Header'
 
@@ -12,7 +13,9 @@ export default function Layout() {
 
         <Header />
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 relative z-0">
-          <Outlet />
+          <ErrorBoundary message="Erro ao carregar a página.">
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>
