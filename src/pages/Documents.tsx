@@ -23,7 +23,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { RichTextEditor } from '@/components/RichTextEditor'
-import { Plus, FileText, ArrowLeft, Trash2, FileDown, Lock } from 'lucide-react'
+import {
+  Plus,
+  FileText,
+  ArrowLeft,
+  Trash2,
+  FileDown,
+  Lock,
+  FileType,
+  FileSpreadsheet,
+} from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 
@@ -36,6 +45,7 @@ export default function Documents() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [category, setCategory] = useState('ASME')
+  const [filePath, setFilePath] = useState('')
   const [filter, setFilter] = useState('all')
 
   const canEdit = canUseDocumentEditor(user?.plan)
@@ -62,6 +72,7 @@ export default function Documents() {
     setTitle('')
     setContent('')
     setCategory('ASME')
+    setFilePath('')
   }
 
   const openEdit = (doc: DocumentRecord) => {
@@ -70,15 +81,16 @@ export default function Documents() {
     setTitle(doc.title)
     setContent(doc.content)
     setCategory(doc.category)
+    setFilePath(doc.file_path || '')
   }
 
   const handleSave = async () => {
     if (!title.trim()) return
     try {
       if (selected) {
-        await updateDocument(selected.id, { title, content, category })
+        await updateDocument(selected.id, { title, content, category, file_path: filePath })
       } else {
-        await createDocument({ title, content, category })
+        await createDocument({ title, content, category, file_path: filePath })
       }
       setEditMode(false)
       loadData()
@@ -104,6 +116,29 @@ export default function Documents() {
       win.document.close()
       win.onload = () => win.print()
     }
+  }
+
+  const exportWord = (doc: DocumentRecord) => {
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${doc.title}</title><style>body{font-family:Arial,sans-serif;line-height:1.6}h1{font-size:24px}h2{font-size:20px}</style></head><body>${doc.content}</body></html>`
+    const blob = new Blob(['\ufeff', html], { type: 'application/msword' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${doc.title}.doc`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const exportExcel = (doc: DocumentRecord) => {
+    const plainText = doc.content.replace(/<[^>]+>/g, ' ').trim()
+    const html = `<html><head><meta charset="utf-8"></head><body><table border="1"><tr><th>${doc.title}</th></tr><tr><td>${plainText}</td></tr></table></body></html>`
+    const blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${doc.title}.xls`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   if (editMode) {
@@ -147,6 +182,17 @@ export default function Documents() {
               </SelectContent>
             </Select>
           </div>
+        </div>
+        <div>
+          <Label className="text-white/80 mb-1 block">
+            <BilingualText k="doc.filePath" />
+          </Label>
+          <Input
+            value={filePath}
+            onChange={(e) => setFilePath(e.target.value)}
+            placeholder="\\rede\pasta\arquivo.pdf"
+            className="bg-black/20 border-white/10 text-white"
+          />
         </div>
         <RichTextEditor value={content} onChange={setContent} />
       </div>
@@ -208,6 +254,11 @@ export default function Documents() {
               <p className="text-xs text-muted-foreground">
                 {format(new Date(doc.updated), 'dd/MM/yyyy HH:mm')}
               </p>
+              {doc.file_path && (
+                <p className="text-xs text-primary/60 font-mono truncate" title={doc.file_path}>
+                  {doc.file_path}
+                </p>
+              )}
               <div className="flex gap-2 pt-2 border-t border-white/5">
                 <Button
                   size="sm"
@@ -226,6 +277,24 @@ export default function Documents() {
                 >
                   <FileDown className="w-3 h-3 mr-1" />
                   <BilingualText k="doc.exportPdf" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => exportWord(doc)}
+                  className="text-xs h-7"
+                >
+                  <FileType className="w-3 h-3 mr-1" />
+                  <BilingualText k="doc.exportWord" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => exportExcel(doc)}
+                  className="text-xs h-7"
+                >
+                  <FileSpreadsheet className="w-3 h-3 mr-1" />
+                  <BilingualText k="doc.exportExcel" />
                 </Button>
                 {canEdit && (
                   <Button

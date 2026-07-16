@@ -5,6 +5,7 @@ export interface DocumentRecord {
   id: string
   title: string
   content: string
+  file_path: string
   os_id: string
   category: 'ISO' | 'ASME'
   created: string
@@ -30,6 +31,7 @@ export const createDocument = async (data: {
   title: string
   content: string
   category: string
+  file_path?: string
   os_id?: string
 }) => {
   return pb.collection('documents').create(data)

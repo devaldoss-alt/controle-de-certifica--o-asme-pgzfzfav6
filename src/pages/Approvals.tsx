@@ -24,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Check, X, FileText, CheckCircle2, Clock, Paperclip } from 'lucide-react'
 import { differenceInHours, format } from 'date-fns'
+import { cn } from '@/lib/utils'
 
 export default function Approvals() {
   const { user } = useAuth()

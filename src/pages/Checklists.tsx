@@ -2,8 +2,16 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, useI18n } from '@/hooks/use-i18n'
 import { getChecklists, updateChecklistStatus, type Checklist } from '@/services/api'
+import { getServiceOrders, type ServiceOrder } from '@/services/service-orders'
 import useRealtime from '@/hooks/use-realtime'
 import { EvidenceDialog } from '@/components/EvidenceDialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -17,18 +25,23 @@ export default function Checklists() {
   const { t } = useI18n()
   const [checklists, setChecklists] = useState<Checklist[]>([])
   const [categoryFilter, setCategoryFilter] = useState('all')
-  const [osFilter, setOsFilter] = useState<'all' | 'departmental' | 'os-linked'>('all')
+  const [osFilter, setOsFilter] = useState('all')
+  const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([])
   const [evidenceItem, setEvidenceItem] = useState<Checklist | null>(null)
   const isManager = user?.role === 'Manager'
 
   const loadData = async () => {
     try {
-      const data = await getChecklists(
-        isManager ? undefined : user?.role,
-        categoryFilter,
-        osFilter === 'all' ? undefined : osFilter,
-      )
+      const [data, osData] = await Promise.all([
+        getChecklists(
+          isManager ? undefined : user?.role,
+          categoryFilter,
+          osFilter === 'all' ? undefined : osFilter,
+        ),
+        getServiceOrders(),
+      ])
       setChecklists(data)
+      setServiceOrders(osData)
     } catch (e) {
       console.error(e)
     }
@@ -131,7 +144,7 @@ export default function Checklists() {
 
       <div className="flex flex-wrap gap-4 items-center">
         <div className="flex gap-1.5">
-          {['all', 'ASME/NBIC', 'ISO9001'].map((c) => (
+          {['all', 'Departmental', 'OS', 'ISO 9001'].map((c) => (
             <Button
               key={c}
               variant={c === categoryFilter ? 'default' : 'outline'}
@@ -140,29 +153,30 @@ export default function Checklists() {
               className={filterBtn(c === categoryFilter)}
             >
               {c === 'all'
-                ? t('filter.allStandards')
-                : c === 'ASME/NBIC'
-                  ? t('filter.asmeNbic')
-                  : t('filter.iso9001')}
+                ? t('filter.allCategories')
+                : c === 'Departmental'
+                  ? t('filter.departmental')
+                  : c === 'OS'
+                    ? t('filter.osLinked')
+                    : t('filter.iso9001')}
             </Button>
           ))}
         </div>
-        <div className="flex gap-1.5">
-          {(['all', 'departmental', 'os-linked'] as const).map((o) => (
-            <Button
-              key={o}
-              variant={o === osFilter ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setOsFilter(o)}
-              className={filterBtn(o === osFilter)}
-            >
-              {o === 'all'
-                ? t('common.all')
-                : o === 'departmental'
-                  ? t('filter.departmental')
-                  : t('filter.osLinked')}
-            </Button>
-          ))}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">OS:</span>
+          <Select value={osFilter} onValueChange={setOsFilter}>
+            <SelectTrigger className="w-48 h-7 text-xs bg-black/20 border-white/10">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('common.all')}</SelectItem>
+              {serviceOrders.map((os) => (
+                <SelectItem key={os.id} value={os.id}>
+                  {os.number}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

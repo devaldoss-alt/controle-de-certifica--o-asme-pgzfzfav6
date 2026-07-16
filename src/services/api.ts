@@ -44,22 +44,15 @@ export interface Interaction {
   created: string
 }
 
-export const getChecklists = async (
-  role?: string,
-  category?: string,
-  osFilter?: 'departmental' | 'os-linked',
-) => {
+export const getChecklists = async (role?: string, category?: string, osId?: string) => {
   const filters: string[] = []
   if (role) filters.push(`role_assigned = "${role}"`)
   if (category && category !== 'all') {
-    if (category === 'ASME/NBIC') {
-      filters.push(`(category = "ASME" || category = "NBIC")`)
-    } else {
-      filters.push(`category = "${category}"`)
-    }
+    filters.push(`category = "${category}"`)
   }
-  if (osFilter === 'departmental') filters.push(`os_id = null`)
-  if (osFilter === 'os-linked') filters.push(`os_id != null`)
+  if (osId && osId !== 'all') {
+    filters.push(`os_id = "${osId}"`)
+  }
   const opts: Record<string, any> = {
     sort: '-status,due_date',
     expand: 'last_action_by,os_id',

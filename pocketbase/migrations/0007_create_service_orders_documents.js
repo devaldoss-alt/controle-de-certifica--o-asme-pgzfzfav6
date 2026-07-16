@@ -43,7 +43,11 @@ migrate(
     }
     if (!checkCol.fields.getByName('category')) {
       checkCol.fields.add(
-        new SelectField({ name: 'category', values: ['ASME', 'NBIC', 'ISO9001'], maxSelect: 1 }),
+        new SelectField({
+          name: 'category',
+          values: ['Departmental', 'OS', 'ISO 9001'],
+          maxSelect: 1,
+        }),
       )
     }
     app.save(checkCol)
@@ -59,6 +63,7 @@ migrate(
       fields: [
         { name: 'title', type: 'text', required: true },
         { name: 'content', type: 'text' },
+        { name: 'file_path', type: 'text' },
         { name: 'os_id', type: 'relation', collectionId: soId, maxSelect: 1 },
         { name: 'category', type: 'select', values: ['ISO', 'ASME'], maxSelect: 1 },
         { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
@@ -102,10 +107,12 @@ migrate(
         status: 'Paused',
       },
     ]
+    var soIds = {}
     for (var i = 0; i < seedOrders.length; i++) {
       var so = seedOrders[i]
       try {
-        app.findFirstRecordByData('service_orders', 'number', so.number)
+        var existingSO = app.findFirstRecordByData('service_orders', 'number', so.number)
+        soIds[so.number] = existingSO.id
       } catch (_) {
         var rec = new Record(soCollection)
         rec.set('number', so.number)
@@ -115,6 +122,7 @@ migrate(
         rec.set('deadline', so.deadline)
         rec.set('status', so.status)
         app.save(rec)
+        soIds[so.number] = rec.id
       }
     }
 
@@ -125,12 +133,14 @@ migrate(
         content:
           '<h1>Procedimento de Soldagem</h1><p>Este documento descreve os procedimentos de soldagem conforme ASME Section IX.</p><h2>Escopo</h2><p>Aplicavel a todas as soldagens executadas em vasos de pressao.</p>',
         category: 'ASME',
+        file_path: '\\\\rede-psc\\procedimentos\\soldagem\\WPS-001.pdf',
       },
       {
         title: 'Manual da Qualidade ISO 9001:2015',
         content:
           '<h1>Manual da Qualidade</h1><p>Sistema de Gestao da Qualidade conforme ABNT NBR ISO 9001:2015.</p><h2>Escopo</h2><p>Este manual descreve o SGQ da PSC Industria.</p>',
         category: 'ISO',
+        file_path: '\\\\rede-psc\\qualidade\\manual\\MQ-001.pdf',
       },
     ]
     for (var j = 0; j < seedDocs.length; j++) {
@@ -142,6 +152,7 @@ migrate(
         drec.set('title', d.title)
         drec.set('content', d.content)
         drec.set('category', d.category)
+        drec.set('file_path', d.file_path)
         app.save(drec)
       }
     }
@@ -150,8 +161,77 @@ migrate(
     for (var k = 0; k < existingChecklists.length; k++) {
       var cl = existingChecklists[k]
       if (!cl.getString('category')) {
-        cl.set('category', 'ASME')
+        cl.set('category', 'Departmental')
         app.save(cl)
+      }
+    }
+
+    var checkCollection = app.findCollectionByNameOrId('checklists')
+    var osChecklists = [
+      {
+        title: 'Inspecao de soldagem VP-001 conforme WPS',
+        role: 'Inspector',
+        ref: 'Seção 6.2',
+        critical: true,
+        dueDays: 15,
+        osNumber: 'OS-2024-001',
+        category: 'OS',
+      },
+      {
+        title: 'Relatorio de END - Caldeira de Recuperacao',
+        role: 'NDE',
+        ref: 'Seção 9.4',
+        critical: false,
+        dueDays: 10,
+        osNumber: 'OS-2024-002',
+        category: 'OS',
+      },
+      {
+        title: 'Auditoria interna ISO 9001 - Controle de documentos',
+        role: 'QCC',
+        ref: 'ISO 9001 Cl. 7.5',
+        critical: true,
+        dueDays: 30,
+        osNumber: null,
+        category: 'ISO 9001',
+      },
+      {
+        title: 'Revisao do Sistema de Gestao da Qualidade',
+        role: 'Director',
+        ref: 'ISO 9001 Cl. 9.3',
+        critical: true,
+        dueDays: 45,
+        osNumber: null,
+        category: 'ISO 9001',
+      },
+      {
+        title: 'Controle de registros da qualidade ISO 9001',
+        role: 'QCC',
+        ref: 'ISO 9001 Cl. 7.5.3',
+        critical: false,
+        dueDays: 20,
+        osNumber: null,
+        category: 'ISO 9001',
+      },
+    ]
+    for (var n = 0; n < osChecklists.length; n++) {
+      var item = osChecklists[n]
+      try {
+        app.findFirstRecordByData('checklists', 'title', item.title)
+      } catch (_) {
+        var dueDate = new Date(Date.now() + item.dueDays * 24 * 60 * 60 * 1000)
+        var clRec = new Record(checkCollection)
+        clRec.set('title', item.title)
+        clRec.set('role_assigned', item.role)
+        clRec.set('mcq_ref', item.ref)
+        clRec.set('status', 'pending')
+        clRec.set('is_critical', item.critical)
+        clRec.set('due_date', dueDate.toISOString().replace('T', ' '))
+        clRec.set('category', item.category)
+        if (item.osNumber && soIds[item.osNumber]) {
+          clRec.set('os_id', soIds[item.osNumber])
+        }
+        app.save(clRec)
       }
     }
 

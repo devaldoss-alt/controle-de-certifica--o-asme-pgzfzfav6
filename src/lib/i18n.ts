@@ -56,8 +56,7 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'status.rejected': { pt: 'Rejeitado', en: 'Rejected' },
   'status.expired': { pt: 'Expirado', en: 'Expired' },
 
-  'filter.allStandards': { pt: 'Todas as Normas', en: 'All Standards' },
-  'filter.asmeNbic': { pt: 'ASME/NBIC', en: 'ASME/NBIC' },
+  'filter.allCategories': { pt: 'Todas as Categorias', en: 'All Categories' },
   'filter.iso9001': { pt: 'ISO 9001', en: 'ISO 9001' },
   'filter.departmental': { pt: 'Departamental', en: 'Departmental' },
   'filter.osLinked': { pt: 'Vinculado à OS', en: 'OS-Linked' },
@@ -96,6 +95,9 @@ export const translations: Record<string, { pt: string; en: string }> = {
   },
 
   'doc.exportPdf': { pt: 'Exportar PDF', en: 'Export PDF' },
+  'doc.exportWord': { pt: 'Word', en: 'Word' },
+  'doc.exportExcel': { pt: 'Excel', en: 'Excel' },
+  'doc.filePath': { pt: 'Caminho do Arquivo (Rede)', en: 'File Path (Network)' },
   'doc.new': { pt: 'Novo Documento', en: 'New Document' },
   'doc.back': { pt: 'Voltar', en: 'Back' },
   'os.new': { pt: 'Nova OS', en: 'New OS' },
