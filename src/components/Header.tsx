@@ -1,5 +1,6 @@
 import { Search, Menu } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
+import { LanguageToggle } from '@/hooks/use-i18n'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { NotificationBell } from '@/components/NotificationBell'
 
@@ -23,6 +24,7 @@ export default function Header() {
       </div>
 
       <div className="flex items-center gap-4 md:gap-6">
+        <LanguageToggle />
         <NotificationBell />
 
         <div className="flex items-center gap-3 pl-4 border-l border-white/10">

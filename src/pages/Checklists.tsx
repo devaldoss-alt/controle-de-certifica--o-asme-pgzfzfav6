@@ -1,22 +1,33 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
+import { BilingualText, useI18n } from '@/hooks/use-i18n'
 import { getChecklists, updateChecklistStatus, type Checklist } from '@/services/api'
 import useRealtime from '@/hooks/use-realtime'
+import { EvidenceDialog } from '@/components/EvidenceDialog'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { differenceInHours, differenceInDays, format } from 'date-fns'
-import { AlertCircle, FileText, CheckCircle2, Lock, MessageSquare } from 'lucide-react'
+import { differenceInHours, format } from 'date-fns'
+import { AlertCircle, FileText, CheckCircle2, Lock, Paperclip } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function Checklists() {
   const { user } = useAuth()
+  const { t } = useI18n()
   const [checklists, setChecklists] = useState<Checklist[]>([])
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [osFilter, setOsFilter] = useState<'all' | 'departmental' | 'os-linked'>('all')
+  const [evidenceItem, setEvidenceItem] = useState<Checklist | null>(null)
   const isManager = user?.role === 'Manager'
 
   const loadData = async () => {
     try {
-      const data = await getChecklists(isManager ? undefined : user?.role)
+      const data = await getChecklists(
+        isManager ? undefined : user?.role,
+        categoryFilter,
+        osFilter === 'all' ? undefined : osFilter,
+      )
       setChecklists(data)
     } catch (e) {
       console.error(e)
@@ -25,16 +36,19 @@ export default function Checklists() {
 
   useEffect(() => {
     loadData()
-  }, [user])
+  }, [user, categoryFilter, osFilter])
   useRealtime('checklists', () => loadData())
 
   const handleToggle = async (item: Checklist) => {
     if (isManager || item.locked) return
-    try {
-      const newStatus = item.status === 'pending' ? 'completed' : 'pending'
-      await updateChecklistStatus(item.id, newStatus)
-    } catch (e) {
-      console.error('Update failed', e)
+    if (item.status === 'completed') {
+      try {
+        await updateChecklistStatus(item.id, 'pending')
+      } catch (e) {
+        console.error(e)
+      }
+    } else {
+      setEvidenceItem(item)
     }
   }
 
@@ -43,33 +57,32 @@ export default function Checklists() {
       return (
         <Badge variant="outline" className="border-emerald-500/30 text-emerald-500">
           <Lock className="w-3 h-3 mr-1" />
-          Aprovado
+          {t('status.approved')}
         </Badge>
       )
     if (item.status === 'completed' && item.approval_status === 'pending')
       return (
         <Badge variant="outline" className="border-blue-500/30 text-blue-500">
-          Aguard. Aprovacao
+          {t('os.awaiting')}
         </Badge>
       )
     if (item.approval_status === 'rejected')
       return (
         <Badge variant="destructive" className="bg-rose-500/20 text-rose-400">
-          Rejeitado
+          {t('status.rejected')}
         </Badge>
       )
-
     const hours = differenceInHours(new Date(item.due_date), new Date())
     if (hours < 0)
       return (
         <Badge variant="destructive" className="bg-rose-500/20 text-rose-400">
-          Expirado
+          {t('status.expired')}
         </Badge>
       )
     if (hours <= 48)
       return (
         <Badge variant="outline" className="border-amber-500/30 text-amber-500">
-          Vence em {Math.round(hours)}h
+          {format(new Date(item.due_date), 'dd/MM')}
         </Badge>
       )
     return (
@@ -99,19 +112,64 @@ export default function Checklists() {
     {} as Record<string, Checklist[]>,
   )
 
+  const filterBtn = (active: boolean) =>
+    cn(
+      'text-xs h-7',
+      active ? 'bg-primary text-primary-foreground' : 'border-white/10 text-muted-foreground',
+    )
+
   return (
-    <div className="space-y-8 animate-fade-in pb-12">
+    <div className="space-y-6 animate-fade-in pb-12">
       <div>
-        <h1 className="text-3xl font-heading font-bold text-white mb-2">Checklists Operacionais</h1>
+        <h1 className="text-3xl font-heading font-bold text-white mb-2">
+          <BilingualText k="page.checklists.title" />
+        </h1>
         <p className="text-muted-foreground">
-          Controle rigoroso dos procedimentos da Qualidade ASME/NBIC.
+          <BilingualText k="page.checklists.desc" />
         </p>
       </div>
 
+      <div className="flex flex-wrap gap-4 items-center">
+        <div className="flex gap-1.5">
+          {['all', 'ASME/NBIC', 'ISO9001'].map((c) => (
+            <Button
+              key={c}
+              variant={c === categoryFilter ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setCategoryFilter(c)}
+              className={filterBtn(c === categoryFilter)}
+            >
+              {c === 'all'
+                ? t('filter.allStandards')
+                : c === 'ASME/NBIC'
+                  ? t('filter.asmeNbic')
+                  : t('filter.iso9001')}
+            </Button>
+          ))}
+        </div>
+        <div className="flex gap-1.5">
+          {(['all', 'departmental', 'os-linked'] as const).map((o) => (
+            <Button
+              key={o}
+              variant={o === osFilter ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setOsFilter(o)}
+              className={filterBtn(o === osFilter)}
+            >
+              {o === 'all'
+                ? t('common.all')
+                : o === 'departmental'
+                  ? t('filter.departmental')
+                  : t('filter.osLinked')}
+            </Button>
+          ))}
+        </div>
+      </div>
+
       {Object.entries(grouped).map(([role, items]) => (
-        <div key={role} className="space-y-4">
+        <div key={role} className="space-y-3">
           {isManager && (
-            <h2 className="text-xl font-heading font-semibold text-primary mt-8 mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-heading font-semibold text-primary flex items-center gap-2">
               <div className="w-8 h-px bg-primary/30" />
               {role}
               <div className="flex-1 h-px bg-primary/10" />
@@ -127,7 +185,7 @@ export default function Checklists() {
                   item.locked && 'opacity-75',
                 )}
               >
-                <CardContent className="p-4 sm:p-5 flex items-start gap-4">
+                <CardContent className="p-4 flex items-start gap-4">
                   <div className="pt-1">
                     <Checkbox
                       checked={item.status === 'completed' || item.locked}
@@ -147,7 +205,7 @@ export default function Checklists() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                       <h3
                         className={cn(
-                          'font-medium text-base sm:text-lg',
+                          'font-medium text-base',
                           item.locked ? 'text-muted-foreground' : 'text-white',
                           item.status === 'completed' && !item.locked && 'text-muted-foreground',
                         )}
@@ -155,29 +213,42 @@ export default function Checklists() {
                         {item.title}
                       </h3>
                       <div className="shrink-0 flex items-center gap-2">
+                        {item.category && (
+                          <Badge variant="outline" className="border-white/10 text-xs">
+                            {item.category}
+                          </Badge>
+                        )}
+                        {item.expand?.os_id && (
+                          <Badge
+                            variant="outline"
+                            className="border-primary/20 text-primary text-xs"
+                          >
+                            {item.expand.os_id.number}
+                          </Badge>
+                        )}
                         {item.is_critical && !item.locked && (
                           <Badge variant="outline" className="border-rose-500/30 text-rose-500">
                             <AlertCircle className="w-3 h-3 mr-1" />
-                            Critico
+                            {t('os.critical')}
                           </Badge>
+                        )}
+                        {item.evidence_file && (
+                          <Paperclip className="w-3.5 h-3.5 text-emerald-500" />
                         )}
                         {getDeadlineBadge(item)}
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
                       <span className="flex items-center gap-1 bg-black/20 px-2 py-1 rounded border border-white/5">
                         <FileText className="w-3 h-3" />
                         {item.mcq_ref}
                       </span>
                       {item.expand?.last_action_by && (
-                        <span className="text-white/40">
-                          Por: {item.expand.last_action_by.name}
-                        </span>
+                        <span className="text-white/40">{item.expand.last_action_by.name}</span>
                       )}
                     </div>
                     {item.approval_status === 'rejected' && item.rejection_comment && (
-                      <div className="mt-2 p-2 rounded bg-rose-500/5 border border-rose-500/10 flex items-start gap-2">
-                        <MessageSquare className="w-3 h-3 text-rose-500 mt-0.5 shrink-0" />
+                      <div className="mt-2 p-2 rounded bg-rose-500/5 border border-rose-500/10">
                         <p className="text-xs text-rose-400">{item.rejection_comment}</p>
                       </div>
                     )}
@@ -192,9 +263,18 @@ export default function Checklists() {
       {checklists.length === 0 && (
         <div className="text-center py-20 text-muted-foreground">
           <CheckCircle2 className="w-12 h-12 mx-auto mb-4 opacity-20" />
-          <p>Nenhum checklist atribuido para o seu perfil no momento.</p>
+          <p>
+            <BilingualText k="msg.noChecklists" />
+          </p>
         </div>
       )}
+
+      <EvidenceDialog
+        open={!!evidenceItem}
+        onOpenChange={(v) => !v && setEvidenceItem(null)}
+        checklist={evidenceItem}
+        onSubmitted={loadData}
+      />
     </div>
   )
 }

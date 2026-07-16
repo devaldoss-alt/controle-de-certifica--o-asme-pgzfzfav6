@@ -6,6 +6,7 @@ export interface User {
   name: string
   role: string
   qualification_expiry?: string
+  plan?: string
   created: string
 }
 
@@ -23,8 +24,13 @@ export interface Checklist {
   is_critical: boolean
   last_action_by: string
   created: string
+  os_id?: string
+  evidence_file?: string
+  evidence_notes?: string
+  category?: string
   expand?: {
     last_action_by?: User | null
+    os_id?: { id: string; number: string; client: string } | null
   }
 }
 
@@ -38,13 +44,28 @@ export interface Interaction {
   created: string
 }
 
-export const getChecklists = async (role?: string) => {
-  const opts: Record<string, any> = {
-    sort: '-status, due_date',
-    expand: 'last_action_by',
+export const getChecklists = async (
+  role?: string,
+  category?: string,
+  osFilter?: 'departmental' | 'os-linked',
+) => {
+  const filters: string[] = []
+  if (role) filters.push(`role_assigned = "${role}"`)
+  if (category && category !== 'all') {
+    if (category === 'ASME/NBIC') {
+      filters.push(`(category = "ASME" || category = "NBIC")`)
+    } else {
+      filters.push(`category = "${category}"`)
+    }
   }
-  if (role) {
-    opts.filter = `role_assigned = "${role}"`
+  if (osFilter === 'departmental') filters.push(`os_id = null`)
+  if (osFilter === 'os-linked') filters.push(`os_id != null`)
+  const opts: Record<string, any> = {
+    sort: '-status,due_date',
+    expand: 'last_action_by,os_id',
+  }
+  if (filters.length > 0) {
+    opts.filter = filters.join(' && ')
   }
   return pb.collection('checklists').getFullList<Checklist>(opts)
 }
@@ -53,8 +74,18 @@ export const getPendingApprovals = async () => {
   return pb.collection('checklists').getFullList<Checklist>({
     filter: 'status = "completed" && approval_status = "pending"',
     sort: 'due_date',
-    expand: 'last_action_by',
+    expand: 'last_action_by,os_id',
   })
+}
+
+export const uploadEvidence = async (id: string, file: File, notes: string) => {
+  const formData = new FormData()
+  formData.append('evidence_file', file)
+  formData.append('evidence_notes', notes)
+  formData.append('status', 'completed')
+  formData.append('approval_status', 'pending')
+  formData.append('last_action_by', pb.authStore.record?.id || '')
+  return pb.collection('checklists').update(id, formData)
 }
 
 export const updateChecklistStatus = async (id: string, status: 'pending' | 'completed') => {

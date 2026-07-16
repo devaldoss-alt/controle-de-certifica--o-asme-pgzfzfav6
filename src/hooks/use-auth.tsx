@@ -7,6 +7,7 @@ export interface User {
   name: string
   role: string
   qualification_expiry?: string
+  plan?: string
 }
 
 interface AuthContextType {
