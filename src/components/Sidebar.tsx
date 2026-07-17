@@ -10,6 +10,7 @@ import {
   Award,
   FileText,
   Briefcase,
+  Building2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -29,6 +30,7 @@ export default function Sidebar() {
     links.push({ name: 'nav.approvals', path: '/approvals', icon: ClipboardCheck })
   }
   if (user?.role === 'Manager') {
+    links.push({ name: 'nav.companies', path: '/companies', icon: Building2 })
     links.push({ name: 'nav.team', path: '/team', icon: Users })
   }
 

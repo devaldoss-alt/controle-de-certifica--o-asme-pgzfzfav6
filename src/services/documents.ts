@@ -1,27 +1,24 @@
 import pb from '@/lib/pocketbase/client'
 import { safeArray } from '@/lib/safe-data'
-import type { ServiceOrder } from '@/services/service-orders'
 
 export interface DocumentRecord {
   id: string
   title: string
   content: string
   file_path: string
-  file?: string
-  os_id: string
-  category: 'ISO' | 'ASME'
+  os_id?: string
+  category: string
+  company_id?: string
   created: string
   updated: string
-  expand?: {
-    os_id?: ServiceOrder | null
-  }
 }
 
-export const getDocuments = async (category?: string) => {
-  const opts: Record<string, any> = { sort: '-updated', expand: 'os_id' }
-  if (category && category !== 'all') {
-    opts.filter = `category = "${category}"`
-  }
+export const getDocuments = async (filter?: string, companyId?: string) => {
+  const filters: string[] = []
+  if (filter && filter !== 'all') filters.push(`category = "${filter}"`)
+  if (companyId && companyId !== 'all') filters.push(`company_id = "${companyId}"`)
+  const opts: Record<string, any> = { sort: '-updated' }
+  if (filters.length > 0) opts.filter = filters.join(' && ')
   try {
     const result = await pb.collection('documents').getFullList<DocumentRecord>(opts)
     return safeArray<DocumentRecord>(result)
@@ -32,7 +29,7 @@ export const getDocuments = async (category?: string) => {
 }
 
 export const getDocument = async (id: string) => {
-  return pb.collection('documents').getOne<DocumentRecord>(id, { expand: 'os_id' })
+  return pb.collection('documents').getOne<DocumentRecord>(id)
 }
 
 export const createDocument = async (data: {
@@ -40,7 +37,7 @@ export const createDocument = async (data: {
   content: string
   category: string
   file_path?: string
-  os_id?: string
+  company_id?: string
 }) => {
   return pb.collection('documents').create(data)
 }

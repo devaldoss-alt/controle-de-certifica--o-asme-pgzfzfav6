@@ -10,6 +10,7 @@ import Checklists from '@/pages/Checklists'
 import ServiceOrders from '@/pages/ServiceOrders'
 import Documents from '@/pages/Documents'
 import Team from '@/pages/Team'
+import Companies from '@/pages/Companies'
 import Approvals from '@/pages/Approvals'
 import Qualifications from '@/pages/Qualifications'
 import NotFound from '@/pages/NotFound'
@@ -29,6 +30,7 @@ const App = () => (
               <Route path="/documents" element={<Documents />} />
               <Route path="/approvals" element={<Approvals />} />
               <Route path="/qualifications" element={<Qualifications />} />
+              <Route path="/companies" element={<Companies />} />
               <Route path="/team" element={<Team />} />
             </Route>
           </Route>

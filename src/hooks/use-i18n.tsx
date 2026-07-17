@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Globe } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { getTranslation, type Language } from '@/lib/i18n'
 
 interface I18nContextType {
@@ -34,37 +33,9 @@ export const I18nProvider = ({ children }: { children: ReactNode }) => {
   return <I18nContext.Provider value={{ lang, setLang, t }}>{children}</I18nContext.Provider>
 }
 
-export function BilingualText({
-  k,
-  variant = 'inline',
-  className,
-}: {
-  k: string
-  variant?: 'inline' | 'stacked'
-  className?: string
-}) {
-  const { lang, t } = useI18n()
-  const pt = t(k, 'pt')
-  const en = t(k, 'en')
-
-  if (lang === 'pt' || pt === en) {
-    return <span className={className}>{pt}</span>
-  }
-
-  if (variant === 'stacked') {
-    return (
-      <span className={cn('flex flex-col leading-tight', className)}>
-        <span>{pt}</span>
-        <span className="text-xs italic text-muted-foreground">{en}</span>
-      </span>
-    )
-  }
-
-  return (
-    <span className={className}>
-      {pt} <span className="text-xs italic text-muted-foreground">/ {en}</span>
-    </span>
-  )
+export function BilingualText({ k, className }: { k: string; className?: string }) {
+  const { t } = useI18n()
+  return <span className={className}>{t(k)}</span>
 }
 
 export function LanguageToggle() {

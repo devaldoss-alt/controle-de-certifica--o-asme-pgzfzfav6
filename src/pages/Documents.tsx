@@ -10,6 +10,7 @@ import {
 } from '@/services/documents'
 import { canUseDocumentEditor } from '@/lib/plans'
 import useRealtime from '@/hooks/use-realtime'
+import { useCompany } from '@/hooks/use-company'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -47,12 +48,13 @@ export default function Documents() {
   const [category, setCategory] = useState('ASME')
   const [filePath, setFilePath] = useState('')
   const [filter, setFilter] = useState('all')
+  const { selectedCompanyId } = useCompany()
 
   const canEdit = canUseDocumentEditor(user?.plan)
 
   const loadData = async () => {
     try {
-      const data = await getDocuments(filter)
+      const data = await getDocuments(filter, selectedCompanyId)
       setDocuments(data)
     } catch (e) {
       console.error(e)
@@ -61,7 +63,7 @@ export default function Documents() {
 
   useEffect(() => {
     loadData()
-  }, [filter])
+  }, [filter, selectedCompanyId])
   useRealtime('documents', () => {
     if (!editMode) loadData()
   })
@@ -90,7 +92,13 @@ export default function Documents() {
       if (selected) {
         await updateDocument(selected.id, { title, content, category, file_path: filePath })
       } else {
-        await createDocument({ title, content, category, file_path: filePath })
+        await createDocument({
+          title,
+          content,
+          category,
+          file_path: filePath,
+          company_id: selectedCompanyId !== 'all' ? selectedCompanyId : undefined,
+        })
       }
       setEditMode(false)
       loadData()

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useAuth } from '@/hooks/use-auth'
 import { getUsers, type User } from '@/services/api'
+import { useI18n } from '@/hooks/use-i18n'
 import useRealtime from '@/hooks/use-realtime'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -9,9 +9,8 @@ import { ShieldCheck, AlertTriangle, ShieldAlert, GraduationCap } from 'lucide-r
 import { differenceInDays, format } from 'date-fns'
 
 export default function Qualifications() {
-  const { user } = useAuth()
+  const { t } = useI18n()
   const [users, setUsers] = useState<User[]>([])
-  const isManager = user?.role === 'Manager'
 
   const loadData = async () => {
     try {
@@ -33,7 +32,7 @@ export default function Qualifications() {
         color: 'text-muted-foreground',
         bg: 'bg-white/5',
         icon: ShieldCheck,
-        label: 'Sem data',
+        label: t('qualifications.noDate'),
         days: null,
       }
     const days = differenceInDays(new Date(expiry), new Date())
@@ -42,7 +41,7 @@ export default function Qualifications() {
         color: 'text-rose-500',
         bg: 'bg-rose-500/10',
         icon: ShieldAlert,
-        label: 'Expirada',
+        label: t('qualifications.expired'),
         days,
       }
     if (days <= 30)
@@ -50,14 +49,14 @@ export default function Qualifications() {
         color: 'text-amber-500',
         bg: 'bg-amber-500/10',
         icon: AlertTriangle,
-        label: 'Expira em breve',
+        label: t('qualifications.expiringSoon'),
         days,
       }
     return {
       color: 'text-emerald-500',
       bg: 'bg-emerald-500/10',
       icon: ShieldCheck,
-      label: 'Valida',
+      label: t('qualifications.valid'),
       days,
     }
   }
@@ -66,18 +65,15 @@ export default function Qualifications() {
     <div className="space-y-8 animate-fade-in">
       <div>
         <h1 className="text-3xl font-heading font-bold text-white mb-2">
-          Qualificacoes e Treinamentos
+          {t('page.qualifications.title')}
         </h1>
-        <p className="text-muted-foreground">
-          Acompanhamento de validade de certificacoes e continuidade de soldadores.
-        </p>
+        <p className="text-muted-foreground">{t('page.qualifications.desc')}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {users.map((u) => {
           const st = getStatus(u.qualification_expiry)
           const Icon = st.icon
-          const isWelder = u.role === 'Welder'
           return (
             <Card key={u.id} className="glass border-white/5">
               <CardHeader className="pb-4">
@@ -91,10 +87,10 @@ export default function Qualifications() {
                     <CardTitle className="text-lg text-white">{u.name}</CardTitle>
                     <div className="flex items-center gap-2 mt-1">
                       <p className="text-sm text-primary">{u.role}</p>
-                      {isWelder && (
+                      {u.role === 'Welder' && (
                         <Badge variant="outline" className="border-primary/30 text-primary text-xs">
                           <GraduationCap className="w-3 h-3 mr-1" />
-                          Continuidade
+                          {t('qualifications.continuity')}
                         </Badge>
                       )}
                     </div>
@@ -109,10 +105,14 @@ export default function Qualifications() {
                     {u.qualification_expiry ? (
                       <p className="text-xs text-muted-foreground mt-1">
                         {format(new Date(u.qualification_expiry), 'dd/MM/yyyy')}
-                        {st.days !== null && st.days >= 0 && ` - ${st.days} dias`}
+                        {st.days !== null &&
+                          st.days >= 0 &&
+                          ` - ${st.days} ${t('team.daysRemaining')}`}
                       </p>
                     ) : (
-                      <p className="text-xs text-muted-foreground mt-1">Nao registrada</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t('qualifications.notRegistered')}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -125,7 +125,7 @@ export default function Qualifications() {
       {users.length === 0 && (
         <div className="text-center py-20 text-muted-foreground">
           <ShieldCheck className="w-12 h-12 mx-auto mb-4 opacity-20" />
-          <p>Nenhum usuario encontrado.</p>
+          <p>{t('msg.noUsers')}</p>
         </div>
       )}
     </div>

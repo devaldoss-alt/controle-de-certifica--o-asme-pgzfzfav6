@@ -9,6 +9,7 @@ import {
 } from '@/services/api'
 import { getServiceOrders, type ServiceOrder } from '@/services/service-orders'
 import useRealtime from '@/hooks/use-realtime'
+import { useCompany } from '@/hooks/use-company'
 import { EvidenceDialog } from '@/components/EvidenceDialog'
 import {
   Select,
@@ -34,6 +35,7 @@ export default function Checklists() {
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([])
   const [evidenceItem, setEvidenceItem] = useState<Checklist | null>(null)
   const isManager = user?.role === 'Manager'
+  const { selectedCompanyId } = useCompany()
 
   const loadData = async () => {
     try {
@@ -42,8 +44,9 @@ export default function Checklists() {
           isManager ? undefined : user?.role,
           categoryFilter,
           osFilter === 'all' ? undefined : osFilter,
+          selectedCompanyId,
         ),
-        getServiceOrders(),
+        getServiceOrders(undefined, selectedCompanyId),
       ])
       setChecklists(data)
       setServiceOrders(osData)
@@ -54,7 +57,7 @@ export default function Checklists() {
 
   useEffect(() => {
     loadData()
-  }, [user, categoryFilter, osFilter])
+  }, [user, categoryFilter, osFilter, selectedCompanyId])
   useRealtime('checklists', () => loadData())
 
   const handleToggle = async (item: Checklist) => {

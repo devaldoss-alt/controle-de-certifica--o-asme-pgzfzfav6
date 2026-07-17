@@ -9,14 +9,25 @@ export interface ServiceOrder {
   standard: string
   deadline: string
   status: 'Active' | 'Completed' | 'Paused'
+  owner_company_id?: string
+  expand?: {
+    owner_company_id?: { id: string; name: string } | null
+  }
   created: string
   updated: string
 }
 
-export const getServiceOrders = async (status?: string) => {
-  const opts: Record<string, any> = { sort: '-created' }
+export const getServiceOrders = async (status?: string, companyId?: string) => {
+  const opts: Record<string, any> = { sort: '-created', expand: 'owner_company_id' }
+  const filters: string[] = []
   if (status && status !== 'all') {
-    opts.filter = `status = "${status}"`
+    filters.push(`status = "${status}"`)
+  }
+  if (companyId && companyId !== 'all') {
+    filters.push(`owner_company_id = "${companyId}"`)
+  }
+  if (filters.length > 0) {
+    opts.filter = filters.join(' && ')
   }
   try {
     const result = await pb.collection('service_orders').getFullList<ServiceOrder>(opts)
@@ -34,6 +45,7 @@ export const createServiceOrder = async (data: {
   standard: string
   deadline?: string
   status?: string
+  owner_company_id?: string
 }) => {
   return pb.collection('service_orders').create({
     ...data,

@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { LanguageToggle } from '@/hooks/use-i18n'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { NotificationBell } from '@/components/NotificationBell'
+import { CompanySelector } from '@/components/CompanySelector'
 
 export default function Header() {
   const { user } = useAuth()
@@ -24,6 +25,7 @@ export default function Header() {
       </div>
 
       <div className="flex items-center gap-4 md:gap-6">
+        <CompanySelector />
         <LanguageToggle />
         <NotificationBell />
 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, useI18n } from '@/hooks/use-i18n'
+import { useCompany } from '@/hooks/use-company'
 import { getServiceOrders, createServiceOrder, type ServiceOrder } from '@/services/service-orders'
+import { getCompanies, type Company } from '@/services/companies'
 import { getChecklists, type Checklist } from '@/services/api'
 import { getMaxOS } from '@/lib/plans'
 import useRealtime from '@/hooks/use-realtime'
@@ -25,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Briefcase, Calendar, Factory, ClipboardCheck } from 'lucide-react'
+import { Plus, Briefcase, Calendar, Factory, ClipboardCheck, Building2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 
@@ -36,10 +37,11 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 export default function ServiceOrders() {
-  const { user } = useAuth()
   const { t } = useI18n()
+  const { selectedCompanyId } = useCompany()
   const [orders, setOrders] = useState<ServiceOrder[]>([])
   const [checklists, setChecklists] = useState<Checklist[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
   const [statusFilter, setStatusFilter] = useState('all')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState({
@@ -48,13 +50,19 @@ export default function ServiceOrders() {
     equipment: '',
     standard: 'ASME',
     deadline: '',
+    owner_company_id: '',
   })
 
   const loadData = async () => {
     try {
-      const [data, clData] = await Promise.all([getServiceOrders(statusFilter), getChecklists()])
+      const [data, clData, compData] = await Promise.all([
+        getServiceOrders(statusFilter, selectedCompanyId),
+        getChecklists(),
+        getCompanies(),
+      ])
       setOrders(data)
       setChecklists(clData)
+      setCompanies(compData)
     } catch (e) {
       console.error(e)
     }
@@ -62,17 +70,24 @@ export default function ServiceOrders() {
 
   useEffect(() => {
     loadData()
-  }, [statusFilter])
+  }, [statusFilter, selectedCompanyId])
   useRealtime('service_orders', () => loadData())
 
-  const maxOS = getMaxOS(user?.plan)
+  const maxOS = getMaxOS(undefined)
   const canCreate = orders.length < maxOS
 
   const handleCreate = async () => {
-    if (!form.number || !form.client || !form.equipment) return
+    if (!form.number || !form.client || !form.equipment || !form.owner_company_id) return
     try {
       await createServiceOrder(form)
-      setForm({ number: '', client: '', equipment: '', standard: 'ASME', deadline: '' })
+      setForm({
+        number: '',
+        client: '',
+        equipment: '',
+        standard: 'ASME',
+        deadline: '',
+        owner_company_id: '',
+      })
       setDialogOpen(false)
       loadData()
     } catch (e) {
@@ -146,9 +161,17 @@ export default function ServiceOrders() {
                   <span className="text-white/80">{os.equipment}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <Badge variant="secondary" className="text-xs">
-                    {os.standard}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {os.standard}
+                    </Badge>
+                    {os.expand?.owner_company_id && (
+                      <Badge variant="outline" className="border-primary/20 text-primary text-xs">
+                        <Building2 className="w-3 h-3 mr-1" />
+                        {os.expand.owner_company_id.name}
+                      </Badge>
+                    )}
+                  </div>
                   {os.deadline && (
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Calendar className="w-3 h-3" />
@@ -172,9 +195,7 @@ export default function ServiceOrders() {
                     <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-primary/60 rounded-full transition-all"
-                        style={{
-                          width: `${osItems.length > 0 ? (done / osItems.length) * 100 : 0}%`,
-                        }}
+                        style={{ width: `${(done / osItems.length) * 100}%` }}
                       />
                     </div>
                   </div>
@@ -265,6 +286,26 @@ export default function ServiceOrders() {
                   className="bg-black/20 border-white/10 text-white"
                 />
               </div>
+            </div>
+            <div>
+              <Label className="text-white/80 mb-1 block">
+                <BilingualText k="os.ownerCompany" />
+              </Label>
+              <Select
+                value={form.owner_company_id}
+                onValueChange={(v) => setForm({ ...form, owner_company_id: v })}
+              >
+                <SelectTrigger className="bg-black/20 border-white/10 text-white">
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>

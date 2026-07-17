@@ -26,6 +26,7 @@ export interface Checklist {
   last_action_by: string
   created: string
   os_id?: string
+  company_id?: string
   evidence_file?: string
   evidence_notes?: string
   category?: string
@@ -45,7 +46,12 @@ export interface Interaction {
   created: string
 }
 
-export const getChecklists = async (role?: string, category?: string, osId?: string) => {
+export const getChecklists = async (
+  role?: string,
+  category?: string,
+  osId?: string,
+  companyId?: string,
+) => {
   const filters: string[] = []
   if (role) filters.push(`role_assigned = "${role}"`)
   if (category && category !== 'all') {
@@ -53,6 +59,9 @@ export const getChecklists = async (role?: string, category?: string, osId?: str
   }
   if (osId && osId !== 'all') {
     filters.push(`os_id = "${osId}"`)
+  }
+  if (companyId && companyId !== 'all') {
+    filters.push(`company_id = "${companyId}"`)
   }
   const opts: Record<string, any> = {
     sort: '-status,due_date',
@@ -169,6 +178,7 @@ export const createUser = async (data: {
   name: string
   role: string
   qualification_expiry?: string
+  primary_company_id?: string
 }) => {
   return pb.collection('users').create(data)
 }

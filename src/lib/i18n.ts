@@ -7,6 +7,7 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'nav.documents': { pt: 'Documentos', en: 'Documents' },
   'nav.approvals': { pt: 'Aprovações', en: 'Approvals' },
   'nav.team': { pt: 'Equipe', en: 'Team' },
+  'nav.companies': { pt: 'Empresas', en: 'Companies' },
   'nav.qualifications': { pt: 'Qualificações', en: 'Qualifications' },
   'nav.logout': { pt: 'Sair', en: 'Logout' },
   'nav.mainMenu': { pt: 'Menu Principal', en: 'Main Menu' },
@@ -31,6 +32,24 @@ export const translations: Record<string, { pt: string; en: string }> = {
     pt: 'Revise e valide os checklists concluídos pela equipe.',
     en: 'Review and validate checklists completed by the team.',
   },
+  'page.qualifications.title': {
+    pt: 'Qualificações e Treinamentos',
+    en: 'Qualifications and Training',
+  },
+  'page.qualifications.desc': {
+    pt: 'Acompanhamento de validade de certificações e continuidade de soldadores.',
+    en: 'Monitoring of certification validity and welder continuity.',
+  },
+  'page.companies.title': { pt: 'Empresas', en: 'Companies' },
+  'page.companies.desc': {
+    pt: 'Gerencie entidades jurídicas e suas certificações.',
+    en: 'Manage legal entities and their certifications.',
+  },
+  'page.team.title': { pt: 'Visão da Equipe', en: 'Team Overview' },
+  'page.team.desc': {
+    pt: 'Monitore a conformidade de cada colaborador e cargo.',
+    en: 'Monitor compliance for each collaborator and role.',
+  },
 
   'common.create': { pt: 'Criar', en: 'Create' },
   'common.cancel': { pt: 'Cancelar', en: 'Cancel' },
@@ -48,6 +67,7 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'common.deadline': { pt: 'Prazo', en: 'Deadline' },
   'common.status': { pt: 'Status', en: 'Status' },
   'common.category': { pt: 'Categoria', en: 'Category' },
+  'common.delete': { pt: 'Excluir', en: 'Delete' },
 
   'status.active': { pt: 'Ativo', en: 'Active' },
   'status.completed': { pt: 'Concluído', en: 'Completed' },
@@ -85,6 +105,7 @@ export const translations: Record<string, { pt: string; en: string }> = {
     pt: 'Nenhuma ordem de serviço encontrada.',
     en: 'No service orders found.',
   },
+  'msg.noUsers': { pt: 'Nenhum usuário encontrado.', en: 'No users found.' },
   'msg.planRestricted': {
     pt: 'Recurso disponível apenas nos planos Pro e Gold.',
     en: 'Feature available only in Pro and Gold plans.',
@@ -92,6 +113,10 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'msg.osLimitReached': {
     pt: 'Limite de OS do plano atingido.',
     en: 'OS limit for your plan reached.',
+  },
+  'msg.accessDenied': {
+    pt: 'Acesso negado. Apenas gerentes podem visualizar esta página.',
+    en: 'Access denied. Only managers can view this page.',
   },
 
   'doc.exportPdf': { pt: 'Exportar PDF', en: 'Export PDF' },
@@ -103,6 +128,62 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'os.new': { pt: 'Nova OS', en: 'New OS' },
   'os.critical': { pt: 'Crítico', en: 'Critical' },
   'os.awaiting': { pt: 'Aguard. Aprovação', en: 'Awaiting Approval' },
+  'os.ownerCompany': { pt: 'Empresa Responsável', en: 'Owner Company' },
+
+  'company.all': { pt: 'Consolidado (Todas)', en: 'Consolidated (All)' },
+  'company.new': { pt: 'Nova Empresa', en: 'New Company' },
+  'company.name': { pt: 'Nome', en: 'Name' },
+  'company.taxId': { pt: 'CNPJ', en: 'Tax ID' },
+  'company.logo': { pt: 'Logo', en: 'Logo' },
+  'company.isoCerts': { pt: 'Certificações ISO', en: 'ISO Certifications' },
+  'company.asmeCerts': { pt: 'Certificações ASME', en: 'ASME Certifications' },
+  'company.nbicCerts': { pt: 'Certificações NBIC', en: 'NBIC Certifications' },
+  'company.noCerts': { pt: 'Sem certificações registradas', en: 'No certifications registered' },
+  'company.noCompanies': { pt: 'Nenhuma empresa encontrada.', en: 'No companies found.' },
+  'company.allocations': { pt: 'Alocações', en: 'Allocations' },
+  'company.allocationsDesc': {
+    pt: 'Atribua o usuário a uma ou mais empresas.',
+    en: 'Assign the user to one or more companies.',
+  },
+  'company.noAllocations': { pt: 'Nenhuma alocação registrada.', en: 'No allocations registered.' },
+  'company.addAllocation': { pt: 'Adicionar empresa', en: 'Add company' },
+  'company.assign': { pt: 'Alocar', en: 'Allocate' },
+
+  'qualifications.noDate': { pt: 'Sem data', en: 'No date' },
+  'qualifications.expired': { pt: 'Expirada', en: 'Expired' },
+  'qualifications.expiringSoon': { pt: 'Expira em breve', en: 'Expiring soon' },
+  'qualifications.valid': { pt: 'Válida', en: 'Valid' },
+  'qualifications.continuity': { pt: 'Continuidade', en: 'Continuity' },
+  'qualifications.notRegistered': { pt: 'Não registrada', en: 'Not registered' },
+
+  'team.exportReport': { pt: 'Exportar Relatório', en: 'Export Report' },
+  'team.newUser': { pt: 'Novo Usuário', en: 'New User' },
+  'team.compliance': { pt: 'Conformidade', en: 'Compliance' },
+  'team.completed': { pt: 'concluídas', en: 'completed' },
+  'team.qualification': { pt: 'Qualificação', en: 'Qualification' },
+  'team.daysRemaining': { pt: 'dias restantes', en: 'days remaining' },
+
+  'user.edit': { pt: 'Editar Usuário', en: 'Edit User' },
+  'user.new': { pt: 'Novo Usuário', en: 'New User' },
+  'user.editDesc': { pt: 'Atualize os dados do colaborador.', en: 'Update collaborator data.' },
+  'user.newDesc': {
+    pt: 'Cadastre um novo colaborador no sistema.',
+    en: 'Register a new collaborator in the system.',
+  },
+  'user.name': { pt: 'Nome', en: 'Name' },
+  'user.email': { pt: 'Email', en: 'Email' },
+  'user.password': { pt: 'Senha', en: 'Password' },
+  'user.role': { pt: 'Cargo', en: 'Role' },
+  'user.qualificationExpiry': { pt: 'Validade da Qualificação', en: 'Qualification Expiry' },
+  'user.primaryCompany': { pt: 'Empresa Principal', en: 'Primary Company' },
+  'user.errorRequired': {
+    pt: 'Preencha todos os campos obrigatórios.',
+    en: 'Fill in all required fields.',
+  },
+  'user.errorPassword': {
+    pt: 'A senha deve ter no mínimo 8 caracteres.',
+    en: 'Password must be at least 8 characters.',
+  },
 }
 
 export function getTranslation(key: string, lang: Language): string {
