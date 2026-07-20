@@ -27,10 +27,12 @@ export function getPrefixLabel(prefix: string, lang: string): string {
 
 export interface DocumentFormData {
   title: string
+  titleEn: string
   content: string
   category: string
   filePath: string
   prefix: string
   code: string
   revision: string
+  file: File | null
 }

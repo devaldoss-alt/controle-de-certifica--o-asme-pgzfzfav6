@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, useI18n } from '@/hooks/use-i18n'
 import useRealtime from '@/hooks/use-realtime'
 import { useCompany } from '@/hooks/use-company'
+import { useToast } from '@/hooks/use-toast'
 import {
   getDocuments,
   createDocument,
@@ -20,15 +21,18 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
 
 const EMPTY_FORM: DocumentFormData = {
   title: '',
+  titleEn: '',
   content: '',
   category: 'ASME',
   filePath: '',
   prefix: '',
   code: '',
   revision: '',
+  file: null,
 }
 
 export default function Documents() {
@@ -43,6 +47,8 @@ export default function Documents() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<DocumentFormData>(EMPTY_FORM)
   const [filter, setFilter] = useState('all')
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const { toast } = useToast()
   const canEdit = canUseDocumentEditor(user?.plan)
 
   const loadData = async () => {
@@ -72,6 +78,7 @@ export default function Documents() {
 
   const openNew = () => {
     setEditingId(null)
+    setFieldErrors({})
     setFormData({
       ...EMPTY_FORM,
       prefix: selectedPrefix && selectedPrefix !== 'ALL' ? selectedPrefix : '',
@@ -81,26 +88,39 @@ export default function Documents() {
 
   const openEdit = (doc: DocumentRecord) => {
     setEditingId(doc.id)
+    setFieldErrors({})
     setFormData({
       title: doc.title,
+      titleEn: doc.title_en || '',
       content: doc.content,
       category: doc.category,
       filePath: doc.file_path || '',
       prefix: doc.prefix || '',
       code: doc.code || '',
       revision: doc.revision || '',
+      file: null,
     })
     setEditMode(true)
   }
 
   const handleSave = async () => {
-    if (!formData.title.trim()) return
+    setFieldErrors({})
+    const errors: FieldErrors = {}
+    if (!formData.title.trim()) errors.title = t('msg.requiredField')
+    if (!formData.category) errors.category = t('msg.requiredField')
+    if (!editingId && !formData.file) errors.file = t('msg.requiredField')
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
+      return
+    }
     const prefixMeta = DMS_PREFIXES.find((p) => p.prefix === formData.prefix)
     const payload = {
       title: formData.title,
+      title_en: formData.titleEn || undefined,
       content: formData.content,
       category: formData.category,
       file_path: formData.filePath,
+      file: formData.file,
       prefix: formData.prefix,
       prefix_en: prefixMeta?.label_en || '',
       code: formData.code,
@@ -109,13 +129,24 @@ export default function Documents() {
     }
     try {
       if (editingId) {
-        await updateDocument(editingId, payload)
+        const { file: _f, ...updatePayload } = payload
+        await updateDocument(editingId, updatePayload)
+        toast({ title: t('msg.docUpdated') })
       } else {
         await createDocument(payload)
+        toast({ title: t('msg.docUploaded') })
       }
       setEditMode(false)
       loadData()
     } catch (e) {
+      const fe = extractFieldErrors(e)
+      if (Object.keys(fe).length > 0) {
+        setFieldErrors(fe)
+      }
+      toast({
+        title: t('msg.uploadFailed'),
+        variant: 'destructive',
+      })
       console.error(e)
     }
   }
@@ -142,6 +173,8 @@ export default function Documents() {
         onFieldChange={updateField}
         onSave={handleSave}
         onCancel={() => setEditMode(false)}
+        fieldErrors={fieldErrors}
+        isEditing={!!editingId}
       />
     )
   }
