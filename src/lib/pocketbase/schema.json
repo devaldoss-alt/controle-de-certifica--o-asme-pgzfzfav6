@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-20T14:14:05.416Z",
+  "generatedAt": "2026-07-20T14:36:14.255Z",
   "collections": [
     {
       "name": "users",
@@ -220,6 +220,18 @@
           "required": false,
           "system": false,
           "collectionRef": "companies"
+        },
+        {
+          "name": "title_en",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "description_en",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []
@@ -351,6 +363,12 @@
           "required": false,
           "system": false,
           "collectionRef": "companies"
+        },
+        {
+          "name": "equipment_en",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_service_orders_number ON service_orders (number)"]
@@ -424,6 +442,18 @@
           "required": false,
           "system": false,
           "collectionRef": "companies"
+        },
+        {
+          "name": "title_en",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "content_en",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []
@@ -488,6 +518,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "name_en",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []

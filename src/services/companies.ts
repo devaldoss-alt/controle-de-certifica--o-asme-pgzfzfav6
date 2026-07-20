@@ -4,6 +4,7 @@ import { safeArray } from '@/lib/safe-data'
 export interface Company {
   id: string
   name: string
+  name_en?: string
   tax_id: string
   logo?: string
   iso_certs?: string

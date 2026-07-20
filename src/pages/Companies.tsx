@@ -22,9 +22,10 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Building2, Plus, Pencil, Trash2, Award } from 'lucide-react'
+import { localizedField } from '@/lib/i18n-content'
 
 export default function Companies() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [companies, setCompanies] = useState<Company[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Company | null>(null)
@@ -139,7 +140,9 @@ export default function Companies() {
                   </Button>
                 </div>
               </div>
-              <h3 className="font-semibold text-white text-lg">{c.name}</h3>
+              <h3 className="font-semibold text-white text-lg">
+                {localizedField(c.name, c.name_en, lang)}
+              </h3>
               <p className="text-xs text-muted-foreground font-mono">{c.tax_id || '—'}</p>
               <div className="flex flex-wrap gap-1.5 pt-2 border-t border-white/5">
                 {certs(c).map((cert) => (

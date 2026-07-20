@@ -36,10 +36,11 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { localizedField } from '@/lib/i18n-content'
 
 export default function Documents() {
   const { user } = useAuth()
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [documents, setDocuments] = useState<DocumentRecord[]>([])
   const [selected, setSelected] = useState<DocumentRecord | null>(null)
   const [editMode, setEditMode] = useState(false)
@@ -117,7 +118,9 @@ export default function Documents() {
   }
 
   const exportPdf = (doc: DocumentRecord) => {
-    const html = `<!DOCTYPE html><html><head><title>${doc.title}</title><style>body{font-family:Arial,sans-serif;margin:40px;line-height:1.6;color:#222}h1{font-size:24px}h2{font-size:20px}ul,ol{margin-left:20px}@media print{body{margin:10px}}</style></head><body>${doc.content}</body></html>`
+    const lTitle = localizedField(doc.title, doc.title_en, lang)
+    const lContent = localizedField(doc.content, doc.content_en, lang)
+    const html = `<!DOCTYPE html><html><head><title>${lTitle}</title><style>body{font-family:Arial,sans-serif;margin:40px;line-height:1.6;color:#222}h1{font-size:24px}h2{font-size:20px}ul,ol{margin-left:20px}@media print{body{margin:10px}}</style></head><body>${lContent}</body></html>`
     const win = window.open('', '_blank', 'width=900,height=700')
     if (win) {
       win.document.write(html)
@@ -127,24 +130,28 @@ export default function Documents() {
   }
 
   const exportWord = (doc: DocumentRecord) => {
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${doc.title}</title><style>body{font-family:Arial,sans-serif;line-height:1.6}h1{font-size:24px}h2{font-size:20px}</style></head><body>${doc.content}</body></html>`
+    const lTitle = localizedField(doc.title, doc.title_en, lang)
+    const lContent = localizedField(doc.content, doc.content_en, lang)
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${lTitle}</title><style>body{font-family:Arial,sans-serif;line-height:1.6}h1{font-size:24px}h2{font-size:20px}</style></head><body>${lContent}</body></html>`
     const blob = new Blob(['\ufeff', html], { type: 'application/msword' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${doc.title}.doc`
+    a.download = `${lTitle}.doc`
     a.click()
     URL.revokeObjectURL(url)
   }
 
   const exportExcel = (doc: DocumentRecord) => {
-    const plainText = doc.content.replace(/<[^>]+>/g, ' ').trim()
-    const html = `<html><head><meta charset="utf-8"></head><body><table border="1"><tr><th>${doc.title}</th></tr><tr><td>${plainText}</td></tr></table></body></html>`
+    const lTitle = localizedField(doc.title, doc.title_en, lang)
+    const lContent = localizedField(doc.content, doc.content_en, lang)
+    const plainText = lContent.replace(/<[^>]+>/g, ' ').trim()
+    const html = `<html><head><meta charset="utf-8"></head><body><table border="1"><tr><th>${lTitle}</th></tr><tr><td>${plainText}</td></tr></table></body></html>`
     const blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${doc.title}.xls`
+    a.download = `${lTitle}.xls`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -258,7 +265,9 @@ export default function Documents() {
                   {doc.category}
                 </Badge>
               </div>
-              <h3 className="font-medium text-white text-base line-clamp-2">{doc.title}</h3>
+              <h3 className="font-medium text-white text-base line-clamp-2">
+                {localizedField(doc.title, doc.title_en, lang)}
+              </h3>
               <p className="text-xs text-muted-foreground">
                 {format(new Date(doc.updated), 'dd/MM/yyyy HH:mm')}
               </p>

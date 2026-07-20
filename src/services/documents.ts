@@ -4,7 +4,9 @@ import { safeArray } from '@/lib/safe-data'
 export interface DocumentRecord {
   id: string
   title: string
+  title_en?: string
   content: string
+  content_en?: string
   file_path: string
   os_id?: string
   category: string

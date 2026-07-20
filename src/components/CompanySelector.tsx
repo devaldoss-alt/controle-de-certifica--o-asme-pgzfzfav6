@@ -8,10 +8,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Building2 } from 'lucide-react'
+import { localizedField } from '@/lib/i18n-content'
 
 export function CompanySelector() {
   const { companies, selectedCompanyId, setSelectedCompanyId, availableCompanyIds } = useCompany()
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
 
   const availableCompanies = companies.filter((c) => availableCompanyIds.includes(c.id))
 
@@ -28,7 +29,7 @@ export function CompanySelector() {
           <SelectItem value="all">{t('company.all')}</SelectItem>
           {availableCompanies.map((c) => (
             <SelectItem key={c.id} value={c.id}>
-              {c.name}
+              {localizedField(c.name, c.name_en, lang)}
             </SelectItem>
           ))}
         </SelectContent>

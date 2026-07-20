@@ -35,10 +35,11 @@ import {
   Paperclip,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { localizedField } from '@/lib/i18n-content'
 
 export function OperationalDashboard() {
   const { user } = useAuth()
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [checklists, setChecklists] = useState<Checklist[]>([])
   const [interactions, setInteractions] = useState<Interaction[]>([])
   const [loading, setLoading] = useState(true)
@@ -288,7 +289,8 @@ export function OperationalDashboard() {
                             : 'text-white',
                         )}
                       >
-                        {safeString(item.title, t('dashboard.noTitle'))}
+                        {localizedField(safeString(item.title), item.title_en, lang) ||
+                          t('dashboard.noTitle')}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="flex items-center gap-1 text-xs text-muted-foreground font-mono bg-black/20 px-2 py-0.5 rounded border border-white/5">

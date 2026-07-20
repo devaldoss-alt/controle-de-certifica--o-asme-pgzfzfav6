@@ -28,7 +28,7 @@ import {
 
 export function ManagerDashboard() {
   const { user } = useAuth()
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [checklists, setChecklists] = useState<Checklist[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -194,7 +194,8 @@ export function ManagerDashboard() {
                     >
                       <div>
                         <p className="font-medium text-white mb-1 line-clamp-1">
-                          {safeString(item.title, t('dashboard.noTitle'))}
+                          {localizedField(safeString(item.title), item.title_en, lang) ||
+                            t('dashboard.noTitle')}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {safeRole(item.role_assigned)} - {t('dashboard.ref')}:{' '}

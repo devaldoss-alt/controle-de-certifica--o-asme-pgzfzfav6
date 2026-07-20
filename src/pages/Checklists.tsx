@@ -25,10 +25,11 @@ import { Badge } from '@/components/ui/badge'
 import { AlertCircle, FileText, CheckCircle2, Lock, Paperclip } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { safeDifferenceInHours, safeFormatDate, safeParseEvidenceFiles } from '@/lib/safe-data'
+import { localizedField } from '@/lib/i18n-content'
 
 export default function Checklists() {
   const { user } = useAuth()
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [checklists, setChecklists] = useState<Checklist[]>([])
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [osFilter, setOsFilter] = useState('all')
@@ -258,7 +259,7 @@ export default function Checklists() {
                           item.status === 'completed' && !item.locked && 'text-muted-foreground',
                         )}
                       >
-                        {item.title}
+                        {localizedField(item.title, item.title_en, lang)}
                       </h3>
                       <div className="shrink-0 flex items-center gap-2">
                         {item.category && (

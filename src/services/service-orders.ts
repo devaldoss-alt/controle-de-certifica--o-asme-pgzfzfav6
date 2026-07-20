@@ -6,12 +6,13 @@ export interface ServiceOrder {
   number: string
   client: string
   equipment: string
+  equipment_en?: string
   standard: string
   deadline: string
   status: 'Active' | 'Completed' | 'Paused'
   owner_company_id?: string
   expand?: {
-    owner_company_id?: { id: string; name: string } | null
+    owner_company_id?: { id: string; name: string; name_en?: string } | null
   }
   created: string
   updated: string

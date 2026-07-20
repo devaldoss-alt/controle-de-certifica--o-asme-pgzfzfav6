@@ -29,6 +29,7 @@ import {
 import { Plus, Briefcase, Calendar, Factory, ClipboardCheck, Building2 } from 'lucide-react'
 import { safeFormatDate } from '@/lib/safe-data'
 import { cn } from '@/lib/utils'
+import { localizedField } from '@/lib/i18n-content'
 
 const STATUS_STYLES: Record<string, string> = {
   Active: 'border-emerald-500/30 text-emerald-500',
@@ -37,7 +38,7 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 export default function ServiceOrders() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const { selectedCompanyId } = useCompany()
   const [orders, setOrders] = useState<ServiceOrder[]>([])
   const [checklists, setChecklists] = useState<Checklist[]>([])
@@ -158,7 +159,9 @@ export default function ServiceOrders() {
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Factory className="w-3.5 h-3.5" />
-                  <span className="text-white/80">{os.equipment || '—'}</span>
+                  <span className="text-white/80">
+                    {localizedField(os.equipment, os.equipment_en, lang) || '—'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -168,7 +171,11 @@ export default function ServiceOrders() {
                     {os.expand?.owner_company_id && (
                       <Badge variant="outline" className="border-primary/20 text-primary text-xs">
                         <Building2 className="w-3 h-3 mr-1" />
-                        {os.expand.owner_company_id.name}
+                        {localizedField(
+                          os.expand.owner_company_id.name,
+                          os.expand.owner_company_id.name_en,
+                          lang,
+                        )}
                       </Badge>
                     )}
                   </div>

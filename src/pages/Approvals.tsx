@@ -30,10 +30,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Check, X, FileText, CheckCircle2, Clock, Paperclip } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { localizedField } from '@/lib/i18n-content'
 
 export default function Approvals() {
   const { user } = useAuth()
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [checklists, setChecklists] = useState<Checklist[]>([])
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [comment, setComment] = useState('')
@@ -107,7 +108,9 @@ export default function Approvals() {
               <CardContent className="p-4 flex flex-col lg:flex-row items-start gap-4">
                 <div className="flex-1 min-w-0 w-full">
                   <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-medium text-base text-white">{item.title}</h3>
+                    <h3 className="font-medium text-base text-white">
+                      {localizedField(item.title, item.title_en, lang)}
+                    </h3>
                     {item.category && (
                       <Badge variant="outline" className="border-white/10 text-xs">
                         {item.category}

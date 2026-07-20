@@ -18,6 +18,7 @@ import {
   type UserAllocation,
 } from '@/services/allocations'
 import { useI18n } from '@/hooks/use-i18n'
+import { localizedField } from '@/lib/i18n-content'
 
 interface Props {
   open: boolean
@@ -27,7 +28,7 @@ interface Props {
 }
 
 export function AllocationDialog({ open, onOpenChange, userId, userName }: Props) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [companies, setCompanies] = useState<Company[]>([])
   const [allocations, setAllocations] = useState<UserAllocation[]>([])
 
@@ -74,7 +75,7 @@ export function AllocationDialog({ open, onOpenChange, userId, userName }: Props
                   className="border-primary/20 text-primary pl-3 pr-1 py-1"
                 >
                   <Building2 className="w-3 h-3 mr-1" />
-                  {comp?.name || '—'}
+                  {localizedField(comp?.name, comp?.name_en, lang) || '—'}
                   <Button
                     size="icon"
                     variant="ghost"
@@ -103,7 +104,7 @@ export function AllocationDialog({ open, onOpenChange, userId, userName }: Props
                     className="border-white/10 text-muted-foreground hover:text-primary h-7"
                   >
                     <Plus className="w-3 h-3 mr-1" />
-                    {c.name}
+                    {localizedField(c.name, c.name_en, lang)}
                   </Button>
                 ))}
               </div>
