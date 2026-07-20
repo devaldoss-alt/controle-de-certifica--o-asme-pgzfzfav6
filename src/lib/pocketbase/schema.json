@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-20T16:50:55.715Z",
+  "generatedAt": "2026-07-20T17:15:22.319Z",
   "collections": [
     {
       "name": "users",
@@ -29,19 +29,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "role",
@@ -72,11 +67,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "Free",
-            "Pro",
-            "Gold"
-          ]
+          "selectValues": ["Free", "Pro", "Gold"]
         },
         {
           "name": "primary_company_id",
@@ -143,10 +134,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "pending",
-            "completed"
-          ]
+          "selectValues": ["pending", "completed"]
         },
         {
           "name": "due_date",
@@ -172,30 +160,21 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "approval_status",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "pending",
-            "approved",
-            "rejected"
-          ]
+          "selectValues": ["pending", "approved", "rejected"]
         },
         {
           "name": "rejection_comment",
@@ -233,11 +212,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "Departmental",
-            "OS",
-            "ISO 9001"
-          ]
+          "selectValues": ["Departmental", "OS", "ISO 9001"]
         },
         {
           "name": "company_id",
@@ -295,29 +270,21 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "pending",
-            "resolved"
-          ]
+          "selectValues": ["pending", "resolved"]
         },
         {
           "name": "created",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "mcq_ref",
@@ -374,30 +341,21 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "Active",
-            "Completed",
-            "Paused"
-          ]
+          "selectValues": ["Active", "Completed", "Paused"]
         },
         {
           "name": "created",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "owner_company_id",
@@ -413,9 +371,7 @@
           "system": false
         }
       ],
-      "indexes": [
-        "CREATE UNIQUE INDEX idx_service_orders_number ON service_orders (number)"
-      ]
+      "indexes": ["CREATE UNIQUE INDEX idx_service_orders_number ON service_orders (number)"]
     },
     {
       "name": "documents",
@@ -464,29 +420,21 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "ISO",
-            "ASME"
-          ]
+          "selectValues": ["ISO", "ASME"]
         },
         {
           "name": "created",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "company_id",
@@ -503,6 +451,30 @@
         },
         {
           "name": "content_en",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "prefix",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "revision",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "prefix_en",
           "type": "text",
           "required": false,
           "system": false
@@ -562,19 +534,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "name_en",
@@ -615,19 +582,78 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "document_access",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && @request.auth.role = 'Manager'",
+        "update": "@request.auth.id != '' && @request.auth.role = 'Manager'",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'Manager'"
+      },
+      "fields": [
+        {
+          "name": "role",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "Director",
+            "QCC",
+            "Inspector",
+            "AI",
+            "Designer",
+            "Engineer",
+            "CertifyingEngineer",
+            "Welder",
+            "NDE",
+            "Manager"
           ]
+        },
+        {
+          "name": "document_prefix",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "can_view",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "can_edit",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": []

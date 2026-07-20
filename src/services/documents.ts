@@ -11,14 +11,27 @@ export interface DocumentRecord {
   os_id?: string
   category: string
   company_id?: string
+  prefix?: string
+  prefix_en?: string
+  code?: string
+  revision?: string
   created: string
   updated: string
 }
 
-export const getDocuments = async (filter?: string, companyId?: string) => {
+export const getDocuments = async (
+  filter?: string,
+  companyId?: string,
+  accessiblePrefixes?: string[],
+) => {
   const filters: string[] = []
   if (filter && filter !== 'all') filters.push(`category = "${filter}"`)
   if (companyId && companyId !== 'all') filters.push(`company_id = "${companyId}"`)
+  if (accessiblePrefixes && accessiblePrefixes.length === 0) return []
+  if (accessiblePrefixes && accessiblePrefixes.length > 0) {
+    const prefixFilter = accessiblePrefixes.map((p) => `prefix = "${p}"`).join(' || ')
+    filters.push(`(${prefixFilter})`)
+  }
   const opts: Record<string, any> = { sort: '-updated' }
   if (filters.length > 0) opts.filter = filters.join(' && ')
   try {
@@ -40,6 +53,10 @@ export const createDocument = async (data: {
   category: string
   file_path?: string
   company_id?: string
+  prefix?: string
+  prefix_en?: string
+  code?: string
+  revision?: string
 }) => {
   return pb.collection('documents').create(data)
 }
