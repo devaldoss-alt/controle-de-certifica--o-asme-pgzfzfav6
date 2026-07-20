@@ -154,11 +154,11 @@ export default function ServiceOrders() {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Briefcase className="w-3.5 h-3.5" />
-                  <span className="text-white/80">{os.client}</span>
+                  <span className="text-white/80">{os.client || '—'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Factory className="w-3.5 h-3.5" />
-                  <span className="text-white/80">{os.equipment}</span>
+                  <span className="text-white/80">{os.equipment || '—'}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -172,7 +172,7 @@ export default function ServiceOrders() {
                       </Badge>
                     )}
                   </div>
-                  {os.deadline && (
+                  {os.deadline && os.deadline.trim() !== '' && (
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Calendar className="w-3 h-3" />
                       {safeFormatDate(os.deadline, 'dd/MM/yyyy')}

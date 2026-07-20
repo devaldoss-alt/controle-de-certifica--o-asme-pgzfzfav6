@@ -86,3 +86,53 @@ export function safeExpandOs(
     client: safeString(e.client, 'N/A'),
   }
 }
+
+export function safeParseEvidenceFiles(value: unknown): string[] {
+  if (!value) return []
+  if (Array.isArray(value)) {
+    return value.filter((v) => typeof v === 'string' && v.trim() !== '')
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (trimmed === '') return []
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) {
+        return parsed.filter((v) => typeof v === 'string' && v.trim() !== '')
+      }
+      if (typeof parsed === 'string' && parsed.trim() !== '') {
+        return [parsed.trim()]
+      }
+    } catch {
+      // Not JSON
+    }
+    return trimmed
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s !== '')
+  }
+  return []
+}
+
+export function safeHasEvidence(value: unknown): boolean {
+  return safeParseEvidenceFiles(value).length > 0
+}
+
+export function safeEvidenceFileUrl(
+  baseURL: string,
+  collection: string,
+  recordId: string,
+  filename: string,
+): string {
+  if (!baseURL || !collection || !recordId || !filename) return ''
+  return `${baseURL}/api/files/${collection}/${recordId}/${encodeURIComponent(filename)}`
+}
+
+export function safeNumber(value: unknown, fallback: number = 0): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const n = Number(value)
+    return Number.isFinite(n) ? n : fallback
+  }
+  return fallback
+}

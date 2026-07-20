@@ -9,7 +9,12 @@ import {
 } from '@/services/api'
 import useRealtime from '@/hooks/use-realtime'
 import { EvidencePreview } from '@/components/EvidencePreview'
-import { safeDifferenceInHours, safeFormatDate } from '@/lib/safe-data'
+import {
+  safeDifferenceInHours,
+  safeFormatDate,
+  safeParseEvidenceFiles,
+  safeHasEvidence,
+} from '@/lib/safe-data'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -130,17 +135,19 @@ export default function Approvals() {
                       )}
                     >
                       <Clock className="w-3 h-3" />
-                      {safeFormatDate(item.due_date, 'dd/MM/yyyy')}
+                      {item.due_date
+                        ? safeFormatDate(item.due_date, 'dd/MM/yyyy')
+                        : t('qualifications.noDate')}
                     </span>
                   </div>
-                  {item.evidence_file && (
+                  {safeHasEvidence(item.evidence_file) && (
                     <div className="mt-2 p-3 rounded-lg bg-black/20 border border-white/5">
                       <div className="flex items-center gap-1.5 mb-2 text-xs text-emerald-500">
                         <Paperclip className="w-3 h-3" />
                         <BilingualText k="common.evidence" />
                       </div>
                       <EvidencePreview checklistId={item.id} filename={item.evidence_file} />
-                      {item.evidence_notes && (
+                      {item.evidence_notes && item.evidence_notes.trim() !== '' && (
                         <p className="text-xs text-muted-foreground mt-2 italic">
                           {item.evidence_notes}
                         </p>

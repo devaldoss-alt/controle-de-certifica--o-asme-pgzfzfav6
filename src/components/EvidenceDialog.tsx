@@ -11,9 +11,10 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
-import { Upload, FileCheck, X, FileText, AlertCircle } from 'lucide-react'
+import { Upload, X, FileText, AlertCircle } from 'lucide-react'
 import { BilingualText, useI18n } from '@/hooks/use-i18n'
 import { uploadEvidence, type Checklist } from '@/services/api'
+import { safeString } from '@/lib/safe-data'
 
 interface EvidenceDialogProps {
   open: boolean
@@ -81,8 +82,10 @@ export function EvidenceDialog({
         </DialogHeader>
         {checklist && (
           <div className="rounded-lg bg-black/20 p-3 border border-white/5 mb-2">
-            <p className="text-sm font-medium text-white">{checklist.title}</p>
-            <p className="text-xs text-muted-foreground font-mono mt-1">{checklist.mcq_ref}</p>
+            <p className="text-sm font-medium text-white">{safeString(checklist.title, '—')}</p>
+            {checklist.mcq_ref && (
+              <p className="text-xs text-muted-foreground font-mono mt-1">{checklist.mcq_ref}</p>
+            )}
             {checklist.is_critical && (
               <div className="mt-2 flex items-start gap-1.5 text-xs text-amber-500">
                 <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />

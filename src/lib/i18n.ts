@@ -298,6 +298,26 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'report.statusPending': { pt: 'Pendente', en: 'Pending' },
   'report.yes': { pt: 'Sim', en: 'Yes' },
   'report.no': { pt: 'Não', en: 'No' },
+
+  'dashboard.pendingTasks': { pt: 'Tarefas Pendentes', en: 'Pending Tasks' },
+  'dashboard.criticalAlerts': { pt: 'Alertas Críticos', en: 'Critical Alerts' },
+  'dashboard.totalTasks': { pt: 'Total de Tarefas', en: 'Total Tasks' },
+  'dashboard.complianceRate': { pt: 'Taxa de Conformidade', en: 'Compliance Rate' },
+  'dashboard.expiringSoon': { pt: 'Expirando em Breve', en: 'Expiring Soon' },
+  'dashboard.overdue': { pt: 'Em Atraso', en: 'Overdue' },
+  'dashboard.quickActions': { pt: 'Ações Rápidas', en: 'Quick Actions' },
+  'dashboard.recentActivity': { pt: 'Atividade Recente', en: 'Recent Activity' },
+  'dashboard.noRecentActivity': {
+    pt: 'Nenhuma atividade recente.',
+    en: 'No recent activity.',
+  },
+  'dashboard.viewChecklists': { pt: 'Ver Checklists', en: 'View Checklists' },
+  'dashboard.viewApprovals': { pt: 'Ver Aprovações', en: 'View Approvals' },
+  'dashboard.viewServiceOrders': { pt: 'Ver Ordens de Serviço', en: 'View Service Orders' },
+  'dashboard.evidenceMissing': { pt: 'Sem evidência anexada', en: 'No evidence attached' },
+  'common.loading': { pt: 'Carregando...', en: 'Loading...' },
+  'common.error': { pt: 'Erro', en: 'Error' },
+  'common.retry': { pt: 'Tentar novamente', en: 'Try again' },
 }
 
 export function getTranslation(key: string, lang: Language): string {

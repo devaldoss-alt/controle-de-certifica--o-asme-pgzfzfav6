@@ -22,9 +22,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { differenceInHours, format } from 'date-fns'
 import { AlertCircle, FileText, CheckCircle2, Lock, Paperclip } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { safeDifferenceInHours, safeFormatDate, safeParseEvidenceFiles } from '@/lib/safe-data'
 
 export default function Checklists() {
   const { user } = useAuth()
@@ -105,7 +105,13 @@ export default function Checklists() {
           {t('status.rejected')}
         </Badge>
       )
-    const hours = differenceInHours(new Date(item.due_date), new Date())
+    const hours = safeDifferenceInHours(item.due_date)
+    if (hours === 0 && !item.due_date)
+      return (
+        <Badge variant="outline" className="border-white/10 text-muted-foreground">
+          {t('qualifications.noDate')}
+        </Badge>
+      )
     if (hours < 0)
       return (
         <Badge variant="destructive" className="bg-rose-500/20 text-rose-400">
@@ -115,12 +121,12 @@ export default function Checklists() {
     if (hours <= 48)
       return (
         <Badge variant="outline" className="border-amber-500/30 text-amber-500">
-          {format(new Date(item.due_date), 'dd/MM')}
+          {safeFormatDate(item.due_date, 'dd/MM')}
         </Badge>
       )
     return (
       <Badge variant="outline" className="border-white/10 text-muted-foreground">
-        {format(new Date(item.due_date), 'dd/MM/yyyy')}
+        {safeFormatDate(item.due_date, 'dd/MM/yyyy')}
       </Badge>
     )
   }
@@ -136,7 +142,8 @@ export default function Checklists() {
       return 'border-amber-500/20 bg-amber-500/5'
     if (item.status === 'completed') return 'border-blue-500/20 bg-blue-500/5'
     if (item.approval_status === 'rejected') return 'border-rose-500/30 bg-rose-500/5'
-    const hours = differenceInHours(new Date(item.due_date), new Date())
+    const hours = safeDifferenceInHours(item.due_date)
+    if (!item.due_date) return 'border-white/5 bg-card/40'
     if (hours < 0) return 'border-rose-500/30 bg-rose-500/5'
     if (hours <= 48) return 'border-amber-500/30 bg-amber-500/5'
     return 'border-white/5 bg-card/40'
@@ -273,23 +280,25 @@ export default function Checklists() {
                             {t('os.critical')}
                           </Badge>
                         )}
-                        {item.evidence_file && (
+                        {safeParseEvidenceFiles(item.evidence_file).length > 0 && (
                           <Badge
                             variant="outline"
                             className="border-emerald-500/20 text-emerald-500 text-xs"
                           >
                             <Paperclip className="w-3 h-3 mr-1" />
-                            {parseEvidenceFiles(item.evidence_file).length}
+                            {safeParseEvidenceFiles(item.evidence_file).length}
                           </Badge>
                         )}
                         {getDeadlineBadge(item)}
                       </div>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
-                      <span className="flex items-center gap-1 bg-black/20 px-2 py-1 rounded border border-white/5">
-                        <FileText className="w-3 h-3" />
-                        {item.mcq_ref}
-                      </span>
+                      {item.mcq_ref && (
+                        <span className="flex items-center gap-1 bg-black/20 px-2 py-1 rounded border border-white/5">
+                          <FileText className="w-3 h-3" />
+                          {item.mcq_ref}
+                        </span>
+                      )}
                       {item.expand?.last_action_by && (
                         <span className="text-white/40">{item.expand.last_action_by.name}</span>
                       )}
