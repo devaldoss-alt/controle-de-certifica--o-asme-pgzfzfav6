@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
+import { BilingualText, useI18n } from '@/hooks/use-i18n'
 import {
   getChecklists,
   getInteractions,
@@ -37,6 +38,7 @@ import { cn } from '@/lib/utils'
 
 export function OperationalDashboard() {
   const { user } = useAuth()
+  const { t } = useI18n()
   const [checklists, setChecklists] = useState<Checklist[]>([])
   const [interactions, setInteractions] = useState<Interaction[]>([])
   const [loading, setLoading] = useState(true)
@@ -77,10 +79,10 @@ export function OperationalDashboard() {
   const userRole = safeRole(user?.role)
   const data = roleData[userRole] ??
     roleData['Unknown'] ?? {
-      objetivo: 'Sem dados disponíveis para este perfil.',
+      objetivo: '',
       authorities: [],
       responsibilities: [],
-      observacoes: 'Sem observações disponíveis.',
+      observacoes: '',
     }
 
   const handleToggle = async (item: Checklist) => {
@@ -102,10 +104,10 @@ export function OperationalDashboard() {
       <ErrorBoundary message="Erro ao carregar cabeçalho.">
         <div>
           <h1 className="text-3xl font-heading font-bold text-white mb-2">
-            Bem-vindo, {safeString(user?.name, 'Usuário')}
+            {t('dashboard.welcome')}, {safeString(user?.name, t('common.user'))}
           </h1>
           <p className="text-muted-foreground">
-            Visão geral das suas responsabilidades como{' '}
+            {t('dashboard.responsibilitiesOverview')}{' '}
             <strong className="text-primary">{userRole}</strong>.
           </p>
         </div>
@@ -116,7 +118,9 @@ export function OperationalDashboard() {
           <Card className="glass border-white/5">
             <CardContent className="p-6 flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Pendentes</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  <BilingualText k="dashboard.pending" />
+                </p>
                 <h3 className="text-3xl font-bold text-white">{pending}</h3>
               </div>
               <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
@@ -127,7 +131,9 @@ export function OperationalDashboard() {
           <Card className="glass border-white/5">
             <CardContent className="p-6 flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Concluídas</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  <BilingualText k="dashboard.completed" />
+                </p>
                 <h3 className="text-3xl font-bold text-emerald-500">{completed}</h3>
               </div>
               <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
@@ -138,7 +144,9 @@ export function OperationalDashboard() {
           <Card className="glass border-white/5">
             <CardContent className="p-6 flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Críticos</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  <BilingualText k="dashboard.critical" />
+                </p>
                 <h3 className="text-3xl font-bold text-amber-500">{critical}</h3>
               </div>
               <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
@@ -149,7 +157,9 @@ export function OperationalDashboard() {
           <Card className="glass border-white/5">
             <CardContent className="p-6 flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Expirados</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  <BilingualText k="dashboard.expired" />
+                </p>
                 <h3 className="text-3xl font-bold text-rose-500">{expired}</h3>
               </div>
               <div className="w-12 h-12 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-500">
@@ -168,19 +178,21 @@ export function OperationalDashboard() {
           <CardHeader className="border-b border-white/5">
             <CardTitle className="text-lg flex items-center gap-2">
               <Target className="w-5 h-5 text-primary" />
-              Objetivo da Função
+              <BilingualText k="dashboard.roleObjective" />
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">{safeString(data?.objetivo, 'N/A')}</p>
+            <p className="text-sm text-muted-foreground">
+              {safeString(data?.objetivo, t('common.na'))}
+            </p>
             <div className="mt-3 p-3 rounded bg-amber-500/5 border border-amber-500/10 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
               <div>
                 <p className="text-xs font-medium text-amber-500 mb-1">
-                  Observações / Lacunas Identificadas
+                  <BilingualText k="dashboard.observations" />
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {safeString(data?.observacoes, 'N/A')}
+                  {safeString(data?.observacoes, t('common.na'))}
                 </p>
               </div>
             </div>
@@ -195,17 +207,21 @@ export function OperationalDashboard() {
         >
           <Card className="glass border-white/5">
             <CardHeader className="border-b border-white/5">
-              <CardTitle className="text-lg">Responsabilidades</CardTitle>
+              <CardTitle className="text-lg">
+                <BilingualText k="dashboard.responsibilities" />
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-2">
               {safeArray(data?.responsibilities).map((r, i) => (
                 <div key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
                   <ClipboardCheck className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                  <span>{safeString(r, 'N/A')}</span>
+                  <span>{safeString(r, t('common.na'))}</span>
                 </div>
               ))}
               {safeArray(data?.responsibilities).length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-2">Sem dados.</p>
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  <BilingualText k="common.noData" />
+                </p>
               )}
             </CardContent>
           </Card>
@@ -214,17 +230,21 @@ export function OperationalDashboard() {
         <ErrorBoundary message="Erro ao carregar autoridades." fallback={<WidgetErrorFallback />}>
           <Card className="glass border-white/5">
             <CardHeader className="border-b border-white/5">
-              <CardTitle className="text-lg">Autoridades</CardTitle>
+              <CardTitle className="text-lg">
+                <BilingualText k="dashboard.authorities" />
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-2">
               {safeArray(data?.authorities).map((a, i) => (
                 <div key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
                   <ShieldCheck className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                  <span>{safeString(a, 'N/A')}</span>
+                  <span>{safeString(a, t('common.na'))}</span>
                 </div>
               ))}
               {safeArray(data?.authorities).length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-2">Sem dados.</p>
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  <BilingualText k="common.noData" />
+                </p>
               )}
             </CardContent>
           </Card>
@@ -237,7 +257,9 @@ export function OperationalDashboard() {
       >
         <Card className="glass border-white/5">
           <CardHeader className="border-b border-white/5">
-            <CardTitle className="text-lg">Checklist Prático de Execução</CardTitle>
+            <CardTitle className="text-lg">
+              <BilingualText k="dashboard.executionChecklist" />
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-white/5">
@@ -266,12 +288,12 @@ export function OperationalDashboard() {
                             : 'text-white',
                         )}
                       >
-                        {safeString(item.title, 'Sem título')}
+                        {safeString(item.title, t('dashboard.noTitle'))}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="flex items-center gap-1 text-xs text-muted-foreground font-mono bg-black/20 px-2 py-0.5 rounded border border-white/5">
                           <FileText className="w-3 h-3" />
-                          {safeString(item.mcq_ref, 'N/A')}
+                          {safeString(item.mcq_ref, t('common.na'))}
                         </span>
                         {item.is_critical && (
                           <Badge
@@ -279,7 +301,7 @@ export function OperationalDashboard() {
                             className="border-rose-500/30 text-rose-500 text-xs"
                           >
                             <AlertCircle className="w-3 h-3 mr-1" />
-                            Crítico
+                            {t('dashboard.critical')}
                           </Badge>
                         )}
                         {item.evidence_file && (
@@ -288,13 +310,17 @@ export function OperationalDashboard() {
                             className="border-emerald-500/20 text-emerald-500 text-xs"
                           >
                             <Paperclip className="w-3 h-3 mr-1" />
-                            Evidência
+                            <BilingualText k="common.evidence" />
                           </Badge>
                         )}
                         {(() => {
                           const hours = safeDifferenceInHours(item.due_date)
                           if (hours < 0 && item.status === 'pending')
-                            return <span className="text-xs text-rose-500">Expirado</span>
+                            return (
+                              <span className="text-xs text-rose-500">
+                                <BilingualText k="status.expired" />
+                              </span>
+                            )
                           if (item.status === 'pending')
                             return (
                               <span className="text-xs text-muted-foreground">
@@ -310,7 +336,7 @@ export function OperationalDashboard() {
               })}
               {safeChecklists.length === 0 && (
                 <div className="p-6 text-center text-muted-foreground text-sm">
-                  Nenhum checklist atribuído para o seu perfil.
+                  <BilingualText k="dashboard.noChecklistAssigned" />
                 </div>
               )}
             </div>
@@ -321,7 +347,9 @@ export function OperationalDashboard() {
       <ErrorBoundary message="Erro ao carregar interações." fallback={<WidgetErrorFallback />}>
         <Card className="glass border-white/5">
           <CardHeader className="border-b border-white/5">
-            <CardTitle className="text-lg">Interações com Outros Processos</CardTitle>
+            <CardTitle className="text-lg">
+              <BilingualText k="dashboard.interactions" />
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-4 space-y-3">
             {safeInteractions.map((int) => {
@@ -334,19 +362,19 @@ export function OperationalDashboard() {
                     <span className="text-primary font-medium">{safeRole(int.target_role)}</span>
                     {int.mcq_ref && (
                       <span className="text-xs text-muted-foreground font-mono">
-                        [{safeString(int.mcq_ref, 'N/A')}]
+                        [{safeString(int.mcq_ref, t('common.na'))}]
                       </span>
                     )}
                   </div>
                   <p className="text-muted-foreground text-xs">
-                    {safeString(int.description, 'N/A')}
+                    {safeString(int.description, t('common.na'))}
                   </p>
                 </div>
               )
             })}
             {safeInteractions.length === 0 && (
               <div className="text-center text-muted-foreground text-sm">
-                Sem interações registradas.
+                <BilingualText k="dashboard.noInteractions" />
               </div>
             )}
           </CardContent>

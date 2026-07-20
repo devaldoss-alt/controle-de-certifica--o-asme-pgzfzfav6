@@ -90,7 +90,7 @@ export default function Checklists() {
       return (
         <Badge variant="outline" className="border-amber-500/30 text-amber-500">
           <AlertCircle className="w-3 h-3 mr-1" />
-          Análise Pendente
+          {t('approval.pendingAnalysis')}{' '}
         </Badge>
       )
     if (item.status === 'completed' && item.approval_status === 'pending')

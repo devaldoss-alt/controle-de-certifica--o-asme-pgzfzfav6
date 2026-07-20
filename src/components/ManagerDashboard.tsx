@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
+import { BilingualText, useI18n } from '@/hooks/use-i18n'
 import { getChecklists, getUsers, type Checklist, type User } from '@/services/api'
 import { generateComplianceReport } from '@/services/reports'
 import useRealtime from '@/hooks/use-realtime'
@@ -27,6 +28,7 @@ import {
 
 export function ManagerDashboard() {
   const { user } = useAuth()
+  const { t } = useI18n()
   const [checklists, setChecklists] = useState<Checklist[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -86,16 +88,18 @@ export function ManagerDashboard() {
       <ErrorBoundary message="Erro ao carregar o cabeçalho do dashboard.">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-3xl font-heading font-bold text-white mb-2">Central de Controle</h1>
+            <h1 className="text-3xl font-heading font-bold text-white mb-2">
+              <BilingualText k="dashboard.title" />
+            </h1>
             <p className="text-muted-foreground">
-              Visao geral da conformidade ASME/NBIC - {safeString(user?.name, 'Usuário')}
+              {t('dashboard.subtitle')} - {safeString(user?.name, t('common.user'))}
             </p>
           </div>
           <Button
-            onClick={() => generateComplianceReport(safeChecklists, safeUsers)}
+            onClick={() => generateComplianceReport(safeChecklists, safeUsers, t)}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            <FileDown className="w-4 h-4 mr-2" /> Exportar Relatorio
+            <FileDown className="w-4 h-4 mr-2" /> <BilingualText k="dashboard.exportReport" />
           </Button>
         </div>
       </ErrorBoundary>
@@ -105,7 +109,9 @@ export function ManagerDashboard() {
           <Card className="glass border-white/5">
             <CardContent className="p-6 flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Pendentes</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  <BilingualText k="dashboard.pending" />
+                </p>
                 <h3 className="text-3xl font-bold text-white">{pending}</h3>
               </div>
               <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
@@ -116,14 +122,16 @@ export function ManagerDashboard() {
           <Card className="glass border-white/5">
             <CardContent className="p-6 flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Aguard. Aprovacao</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  <BilingualText k="dashboard.awaitingApprovalShort" />
+                </p>
                 <h3 className="text-3xl font-bold text-amber-500">{awaiting}</h3>
                 {awaiting > 0 && (
                   <Link
                     to="/approvals"
                     className="text-xs text-amber-500 hover:underline mt-1 inline-block"
                   >
-                    Review Evidence →
+                    <BilingualText k="dashboard.reviewEvidence" />
                   </Link>
                 )}
               </div>
@@ -135,7 +143,9 @@ export function ManagerDashboard() {
           <Card className="glass border-white/5">
             <CardContent className="p-6 flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Aprovados</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  <BilingualText k="dashboard.approved" />
+                </p>
                 <h3 className="text-3xl font-bold text-emerald-500">{approved}</h3>
               </div>
               <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
@@ -146,7 +156,9 @@ export function ManagerDashboard() {
           <Card className="glass border-white/5">
             <CardContent className="p-6 flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Expirados</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  <BilingualText k="dashboard.expired" />
+                </p>
                 <h3 className="text-3xl font-bold text-rose-500">{expired}</h3>
               </div>
               <div className="w-12 h-12 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-500">
@@ -164,9 +176,11 @@ export function ManagerDashboard() {
         >
           <Card className="glass border-white/5">
             <CardHeader className="border-b border-white/5 flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Aguardando Aprovacao</CardTitle>
+              <CardTitle className="text-lg">
+                <BilingualText k="dashboard.awaitingApprovalList" />
+              </CardTitle>
               <Link to="/approvals" className="text-xs text-primary hover:underline">
-                Ver todos
+                <BilingualText k="dashboard.viewAll" />
               </Link>
             </CardHeader>
             <CardContent className="p-0">
@@ -180,10 +194,11 @@ export function ManagerDashboard() {
                     >
                       <div>
                         <p className="font-medium text-white mb-1 line-clamp-1">
-                          {safeString(item.title, 'Sem título')}
+                          {safeString(item.title, t('dashboard.noTitle'))}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {safeRole(item.role_assigned)} - Ref: {safeString(item.mcq_ref, 'N/A')}
+                          {safeRole(item.role_assigned)} - {t('dashboard.ref')}:{' '}
+                          {safeString(item.mcq_ref, t('common.na'))}
                         </p>
                       </div>
                       <span className="text-xs text-amber-500 shrink-0">
@@ -195,7 +210,7 @@ export function ManagerDashboard() {
                 {pendingApprovals.length === 0 && (
                   <div className="p-8 text-center text-muted-foreground text-sm">
                     <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                    Nenhuma aprovacao pendente.
+                    <BilingualText k="dashboard.noPendingApprovals" />
                   </div>
                 )}
               </div>
@@ -209,7 +224,9 @@ export function ManagerDashboard() {
         >
           <Card className="glass border-white/5">
             <CardHeader className="border-b border-white/5">
-              <CardTitle className="text-lg">Conformidade por Cargo</CardTitle>
+              <CardTitle className="text-lg">
+                <BilingualText k="dashboard.complianceByRole" />
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-3 max-h-80 overflow-y-auto">
               {Object.entries(roleStats).map(([role, s]) => {
@@ -226,7 +243,7 @@ export function ManagerDashboard() {
               })}
               {Object.keys(roleStats).length === 0 && (
                 <div className="text-center text-muted-foreground text-sm py-4">
-                  Sem dados de conformidade disponíveis.
+                  <BilingualText k="dashboard.noComplianceData" />
                 </div>
               )}
             </CardContent>

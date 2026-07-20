@@ -9,6 +9,7 @@ import {
 } from '@/services/api'
 import useRealtime from '@/hooks/use-realtime'
 import { EvidencePreview } from '@/components/EvidencePreview'
+import { safeDifferenceInHours, safeFormatDate } from '@/lib/safe-data'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -23,7 +24,6 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Check, X, FileText, CheckCircle2, Clock, Paperclip } from 'lucide-react'
-import { differenceInHours, format } from 'date-fns'
 import { cn } from '@/lib/utils'
 
 export default function Approvals() {
@@ -76,7 +76,11 @@ export default function Approvals() {
   }
 
   if (user?.role !== 'Manager' && user?.role !== 'QCC') {
-    return <div className="p-8 text-center text-rose-500">Acesso negado.</div>
+    return (
+      <div className="p-8 text-center text-rose-500">
+        <BilingualText k="approval.accessDenied" />
+      </div>
+    )
   }
 
   return (
@@ -92,7 +96,7 @@ export default function Approvals() {
 
       <div className="grid gap-3">
         {checklists.map((item) => {
-          const hours = differenceInHours(new Date(item.due_date), new Date())
+          const hours = safeDifferenceInHours(item.due_date)
           return (
             <Card key={item.id} className="glass border-white/5 backdrop-blur-md">
               <CardContent className="p-4 flex flex-col lg:flex-row items-start gap-4">
@@ -116,7 +120,7 @@ export default function Approvals() {
                     </Badge>
                     <span className="flex items-center gap-1 bg-black/20 px-2 py-1 rounded border border-white/5 font-mono">
                       <FileText className="w-3 h-3" />
-                      {item.mcq_ref}
+                      {item.mcq_ref || t('common.na')}
                     </span>
                     {item.expand?.last_action_by && <span>{item.expand.last_action_by.name}</span>}
                     <span
@@ -126,7 +130,7 @@ export default function Approvals() {
                       )}
                     >
                       <Clock className="w-3 h-3" />
-                      {format(new Date(item.due_date), 'dd/MM/yyyy')}
+                      {safeFormatDate(item.due_date, 'dd/MM/yyyy')}
                     </span>
                   </div>
                   {item.evidence_file && (
@@ -189,10 +193,14 @@ export default function Approvals() {
             <DialogTitle className="text-white">
               <BilingualText k="common.reject" />
             </DialogTitle>
-            <DialogDescription>Informe o motivo da rejeição.</DialogDescription>
+            <DialogDescription>
+              <BilingualText k="approval.rejectReason" />
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
-            <Label className="text-white/80">Motivo</Label>
+            <Label className="text-white/80">
+              <BilingualText k="approval.reason" />
+            </Label>
             <Textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}

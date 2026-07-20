@@ -184,6 +184,120 @@ export const translations: Record<string, { pt: string; en: string }> = {
     pt: 'A senha deve ter no mínimo 8 caracteres.',
     en: 'Password must be at least 8 characters.',
   },
+
+  'common.noData': { pt: 'Sem dados.', en: 'No data.' },
+  'common.na': { pt: 'N/A', en: 'N/A' },
+  'common.user': { pt: 'Usuário', en: 'User' },
+  'common.dash': { pt: '—', en: '—' },
+
+  'dashboard.title': { pt: 'Central de Controle', en: 'Control Center' },
+  'dashboard.subtitle': {
+    pt: 'Visão geral da conformidade ASME/NBIC',
+    en: 'ASME/NBIC Compliance Overview',
+  },
+  'dashboard.exportReport': { pt: 'Exportar Relatório', en: 'Export Report' },
+  'dashboard.pending': { pt: 'Pendentes', en: 'Pending' },
+  'dashboard.awaitingApprovalShort': { pt: 'Aguard. Aprovação', en: 'Awaiting Approval' },
+  'dashboard.reviewEvidence': { pt: 'Revisar Evidência →', en: 'Review Evidence →' },
+  'dashboard.approved': { pt: 'Aprovados', en: 'Approved' },
+  'dashboard.expired': { pt: 'Expirados', en: 'Expired' },
+  'dashboard.awaitingApprovalList': { pt: 'Aguardando Aprovação', en: 'Awaiting Approval' },
+  'dashboard.viewAll': { pt: 'Ver todos', en: 'View all' },
+  'dashboard.noTitle': { pt: 'Sem título', en: 'No title' },
+  'dashboard.noPendingApprovals': {
+    pt: 'Nenhuma aprovação pendente.',
+    en: 'No pending approvals.',
+  },
+  'dashboard.complianceByRole': { pt: 'Conformidade por Cargo', en: 'Compliance by Role' },
+  'dashboard.noComplianceData': {
+    pt: 'Sem dados de conformidade disponíveis.',
+    en: 'No compliance data available.',
+  },
+  'dashboard.welcome': { pt: 'Bem-vindo', en: 'Welcome' },
+  'dashboard.responsibilitiesOverview': {
+    pt: 'Visão geral das suas responsabilidades como',
+    en: 'Overview of your responsibilities as',
+  },
+  'dashboard.completed': { pt: 'Concluídas', en: 'Completed' },
+  'dashboard.critical': { pt: 'Críticos', en: 'Critical' },
+  'dashboard.roleObjective': { pt: 'Objetivo da Função', en: 'Role Objective' },
+  'dashboard.observations': {
+    pt: 'Observações / Lacunas Identificadas',
+    en: 'Observations / Identified Gaps',
+  },
+  'dashboard.responsibilities': { pt: 'Responsabilidades', en: 'Responsibilities' },
+  'dashboard.authorities': { pt: 'Autoridades', en: 'Authorities' },
+  'dashboard.executionChecklist': {
+    pt: 'Checklist Prático de Execução',
+    en: 'Practical Execution Checklist',
+  },
+  'dashboard.interactions': {
+    pt: 'Interações com Outros Processos',
+    en: 'Interactions with Other Processes',
+  },
+  'dashboard.noInteractions': {
+    pt: 'Sem interações registradas.',
+    en: 'No interactions registered.',
+  },
+  'dashboard.noChecklistAssigned': {
+    pt: 'Nenhum checklist atribuído para o seu perfil.',
+    en: 'No checklist assigned to your profile.',
+  },
+  'dashboard.ref': { pt: 'Ref.', en: 'Ref.' },
+
+  'approval.accessDenied': { pt: 'Acesso negado.', en: 'Access denied.' },
+  'approval.rejectReason': {
+    pt: 'Informe o motivo da rejeição.',
+    en: 'Provide the reason for rejection.',
+  },
+  'approval.reason': { pt: 'Motivo', en: 'Reason' },
+  'approval.pendingAnalysis': { pt: 'Análise Pendente', en: 'Pending Analysis' },
+
+  'evidence.criticalWarning': {
+    pt: 'Item crítico — será enviado para análise pendente.',
+    en: 'Critical item — will be sent for pending review.',
+  },
+
+  'notification.tasksAwaiting': {
+    pt: '{n} tarefa(s) aguardando aprovação',
+    en: '{n} task(s) awaiting approval',
+  },
+  'notification.taskExpired': { pt: '"{title}" está expirado', en: '"{title}" is expired' },
+  'notification.taskDueIn': {
+    pt: '"{title}" vence em {hours}h',
+    en: '"{title}" due in {hours}h',
+  },
+  'notification.qualificationExpired': {
+    pt: 'Sua qualificação está expirada',
+    en: 'Your qualification is expired',
+  },
+  'notification.qualificationExpiring': {
+    pt: 'Sua qualificação expira em {days} dias',
+    en: 'Your qualification expires in {days} days',
+  },
+  'notification.noNotifications': {
+    pt: 'Sem notificações no momento.',
+    en: 'No notifications at the moment.',
+  },
+
+  'report.title': { pt: 'Relatório de Conformidade ASME/NBIC', en: 'ASME/NBIC Compliance Report' },
+  'report.total': { pt: 'Total', en: 'Total' },
+  'report.pending': { pt: 'Pendentes', en: 'Pending' },
+  'report.completed': { pt: 'Concluídos', en: 'Completed' },
+  'report.approved': { pt: 'Aprovados', en: 'Approved' },
+  'report.critical': { pt: 'Críticos', en: 'Critical' },
+  'report.colTitle': { pt: 'Título', en: 'Title' },
+  'report.colRole': { pt: 'Cargo', en: 'Role' },
+  'report.colRef': { pt: 'Ref.', en: 'Ref.' },
+  'report.colStatus': { pt: 'Status', en: 'Status' },
+  'report.colDeadline': { pt: 'Vencimento', en: 'Deadline' },
+  'report.colCritical': { pt: 'Crítico', en: 'Critical' },
+  'report.statusApproved': { pt: 'Aprovado', en: 'Approved' },
+  'report.statusRejected': { pt: 'Rejeitado', en: 'Rejected' },
+  'report.statusCompleted': { pt: 'Concluído', en: 'Completed' },
+  'report.statusPending': { pt: 'Pendente', en: 'Pending' },
+  'report.yes': { pt: 'Sim', en: 'Yes' },
+  'report.no': { pt: 'Não', en: 'No' },
 }
 
 export function getTranslation(key: string, lang: Language): string {

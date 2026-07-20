@@ -86,7 +86,7 @@ export function EvidenceDialog({
             {checklist.is_critical && (
               <div className="mt-2 flex items-start gap-1.5 text-xs text-amber-500">
                 <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                <span>Item crítico — será enviado para análise pendente.</span>
+                <BilingualText k="evidence.criticalWarning" />
               </div>
             )}
           </div>

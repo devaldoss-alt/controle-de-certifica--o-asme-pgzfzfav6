@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Plus, Briefcase, Calendar, Factory, ClipboardCheck, Building2 } from 'lucide-react'
-import { format } from 'date-fns'
+import { safeFormatDate } from '@/lib/safe-data'
 import { cn } from '@/lib/utils'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -175,7 +175,7 @@ export default function ServiceOrders() {
                   {os.deadline && (
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Calendar className="w-3 h-3" />
-                      {format(new Date(os.deadline), 'dd/MM/yyyy')}
+                      {safeFormatDate(os.deadline, 'dd/MM/yyyy')}
                     </span>
                   )}
                 </div>

@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
+import { useI18n } from '@/hooks/use-i18n'
 import { getChecklists } from '@/services/api'
 import useRealtime from '@/hooks/use-realtime'
+import { safeDifferenceInHours, safeDifferenceInDays } from '@/lib/safe-data'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
-import { Bell, AlertTriangle, Clock, Info, ShieldAlert } from 'lucide-react'
-import { differenceInHours, differenceInDays } from 'date-fns'
+import { Bell, AlertTriangle, Info, ShieldAlert } from 'lucide-react'
 
 interface NotificationItem {
   type: 'error' | 'warning' | 'info'
@@ -18,6 +19,7 @@ interface NotificationItem {
 
 export function NotificationBell() {
   const { user } = useAuth()
+  const { t } = useI18n()
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
 
   const loadData = async () => {
@@ -31,27 +33,41 @@ export function NotificationBell() {
           (c) => c.status === 'completed' && c.approval_status === 'pending',
         ).length
         if (pending > 0) {
-          items.push({ type: 'info', message: `${pending} tarefa(s) aguardando aprovacao` })
+          items.push({
+            type: 'info',
+            message: t('notification.tasksAwaiting').replace('{n}', String(pending)),
+          })
         }
       }
 
       checklists.forEach((c) => {
         if (c.status === 'pending' && c.due_date) {
-          const hours = differenceInHours(new Date(c.due_date), new Date())
+          const hours = safeDifferenceInHours(c.due_date)
           if (hours < 0) {
-            items.push({ type: 'error', message: `"${c.title}" esta expirado` })
+            items.push({
+              type: 'error',
+              message: t('notification.taskExpired').replace('{title}', c.title),
+            })
           } else if (hours <= 48) {
-            items.push({ type: 'warning', message: `"${c.title}" vence em ${Math.round(hours)}h` })
+            items.push({
+              type: 'warning',
+              message: t('notification.taskDueIn')
+                .replace('{title}', c.title)
+                .replace('{hours}', String(Math.round(hours))),
+            })
           }
         }
       })
 
       if (user?.qualification_expiry) {
-        const days = differenceInDays(new Date(user.qualification_expiry), new Date())
+        const days = safeDifferenceInDays(user.qualification_expiry)
         if (days < 0) {
-          items.push({ type: 'error', message: 'Sua qualificacao esta expirada' })
+          items.push({ type: 'error', message: t('notification.qualificationExpired') })
         } else if (days <= 30) {
-          items.push({ type: 'warning', message: `Sua qualificacao expira em ${days} dias` })
+          items.push({
+            type: 'warning',
+            message: t('notification.qualificationExpiring').replace('{days}', String(days)),
+          })
         }
       }
 
@@ -87,7 +103,7 @@ export function NotificationBell() {
       >
         {notifications.length === 0 ? (
           <div className="p-6 text-sm text-muted-foreground text-center">
-            Sem notificacoes no momento.
+            {t('notification.noNotifications')}
           </div>
         ) : (
           notifications.map((n, i) => {
