@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, useI18n } from '@/hooks/use-i18n'
 import useRealtime from '@/hooks/use-realtime'
 import { useCompany } from '@/hooks/use-company'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/components/ui/use-toast'
 import {
   getDocuments,
   createDocument,
@@ -15,13 +15,13 @@ import { getDocumentAccess } from '@/services/document-access'
 import { canUseDocumentEditor } from '@/lib/plans'
 import { DMS_PREFIXES, type DocumentFormData } from '@/lib/dms-codes'
 import { exportDocumentPdf, exportDocumentWord, exportDocumentExcel } from '@/lib/document-exports'
+import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
 import { DocumentFolderView } from '@/components/DocumentFolderView'
 import { DocumentEditor } from '@/components/DocumentEditor'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
 
 const EMPTY_FORM: DocumentFormData = {
   title: '',
@@ -37,8 +37,8 @@ const EMPTY_FORM: DocumentFormData = {
 
 export default function Documents() {
   const { user } = useAuth()
-  const { t } = useI18n()
-  const { lang } = useI18n()
+  const { t, lang } = useI18n()
+  const { toast } = useToast()
   const { selectedCompanyId } = useCompany()
   const [documents, setDocuments] = useState<DocumentRecord[]>([])
   const [accessiblePrefixes, setAccessiblePrefixes] = useState<string[]>([])
@@ -47,14 +47,15 @@ export default function Documents() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<DocumentFormData>(EMPTY_FORM)
   const [filter, setFilter] = useState('all')
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
-  const { toast } = useToast()
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [existingFileName, setExistingFileName] = useState<string | undefined>(undefined)
   const canEdit = canUseDocumentEditor(user?.plan)
+  const txt = (pt: string, en: string) => (lang === 'pt' ? pt : en)
 
   const loadData = async () => {
     try {
       const access = await getDocumentAccess(user?.role)
-      const prefixes = access.filter((r) => r.can_view).map((r) => r.document_prefix)
+      const prefixes = access.filter((r: any) => r.can_view).map((r: any) => r.document_prefix)
       setAccessiblePrefixes(prefixes)
       const isFullAccess = ['Manager', 'Director', 'QCC'].includes(user?.role || '')
       const effectivePrefixes = isFullAccess ? undefined : prefixes
@@ -73,11 +74,12 @@ export default function Documents() {
   })
   useRealtime('document_access', () => loadData())
 
-  const updateField = (field: keyof DocumentFormData, value: string) =>
+  const updateField = (field: keyof DocumentFormData, value: string | File | null) =>
     setFormData((prev) => ({ ...prev, [field]: value }))
 
   const openNew = () => {
     setEditingId(null)
+    setExistingFileName(undefined)
     setFieldErrors({})
     setFormData({
       ...EMPTY_FORM,
@@ -89,6 +91,9 @@ export default function Documents() {
   const openEdit = (doc: DocumentRecord) => {
     setEditingId(doc.id)
     setFieldErrors({})
+    const fileField = doc.file as string | string[] | undefined
+    const fileName = fileField ? (Array.isArray(fileField) ? fileField[0] : fileField) : undefined
+    setExistingFileName(fileName)
     setFormData({
       title: doc.title,
       titleEn: doc.title_en || '',
@@ -105,58 +110,61 @@ export default function Documents() {
 
   const handleSave = async () => {
     setFieldErrors({})
-    const errors: FieldErrors = {}
-    if (!formData.title.trim()) errors.title = t('msg.requiredField')
-    if (!formData.category) errors.category = t('msg.requiredField')
-    if (!editingId && !formData.file) errors.file = t('msg.requiredField')
+    const errors: Record<string, string> = {}
+    if (!formData.title.trim()) errors.title = txt('Título é obrigatório', 'Title is required')
+    if (!formData.category) errors.category = txt('Categoria é obrigatória', 'Category is required')
+    if (!editingId && !formData.file) errors.file = txt('Arquivo é obrigatório', 'File is required')
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors)
       return
     }
+
+    const fd = new FormData()
+    fd.append('title', formData.title)
+    fd.append('title_en', formData.titleEn)
+    fd.append('content', formData.content)
+    fd.append('category', formData.category)
+    fd.append('file_path', formData.filePath)
+    fd.append('prefix', formData.prefix)
     const prefixMeta = DMS_PREFIXES.find((p) => p.prefix === formData.prefix)
-    const payload = {
-      title: formData.title,
-      title_en: formData.titleEn || undefined,
-      content: formData.content,
-      category: formData.category,
-      file_path: formData.filePath,
-      file: formData.file,
-      prefix: formData.prefix,
-      prefix_en: prefixMeta?.label_en || '',
-      code: formData.code,
-      revision: formData.revision,
-      company_id: selectedCompanyId !== 'all' ? selectedCompanyId : undefined,
-    }
+    fd.append('prefix_en', prefixMeta?.label_en || '')
+    fd.append('code', formData.code)
+    fd.append('revision', formData.revision)
+    if (selectedCompanyId !== 'all') fd.append('company_id', selectedCompanyId)
+    if (formData.file) fd.append('file', formData.file)
+
     try {
       if (editingId) {
-        const { file: _f, ...updatePayload } = payload
-        await updateDocument(editingId, updatePayload)
-        toast({ title: t('msg.docUpdated') })
+        await updateDocument(editingId, fd)
+        toast({ title: txt('Documento atualizado com sucesso', 'Document updated successfully') })
       } else {
-        await createDocument(payload)
-        toast({ title: t('msg.docUploaded') })
+        await createDocument(fd)
+        toast({ title: txt('Documento criado com sucesso', 'Document created successfully') })
       }
       setEditMode(false)
       loadData()
     } catch (e) {
-      const fe = extractFieldErrors(e)
-      if (Object.keys(fe).length > 0) {
-        setFieldErrors(fe)
-      }
+      const errs = extractFieldErrors(e)
+      if (Object.keys(errs).length > 0) setFieldErrors(errs)
       toast({
-        title: t('msg.uploadFailed'),
+        title: txt('Erro ao salvar documento', 'Error saving document'),
+        description: getErrorMessage(e),
         variant: 'destructive',
       })
-      console.error(e)
     }
   }
 
   const handleDelete = async (id: string) => {
     try {
       await deleteDocument(id)
+      toast({ title: txt('Documento excluído', 'Document deleted') })
       loadData()
     } catch (e) {
-      console.error(e)
+      toast({
+        title: txt('Erro ao excluir', 'Error deleting'),
+        description: getErrorMessage(e),
+        variant: 'destructive',
+      })
     }
   }
 
@@ -174,7 +182,8 @@ export default function Documents() {
         onSave={handleSave}
         onCancel={() => setEditMode(false)}
         fieldErrors={fieldErrors}
-        isEditing={!!editingId}
+        existingFileName={existingFileName}
+        isEdit={!!editingId}
       />
     )
   }
