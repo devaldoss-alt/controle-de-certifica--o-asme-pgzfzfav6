@@ -14,6 +14,7 @@ import {
   safeRole,
   safeString,
 } from '@/lib/safe-data'
+import { localizedField } from '@/lib/i18n-content'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -53,30 +54,33 @@ export function ManagerDashboard() {
   const safeChecklists = safeArray(checklists)
   const safeUsers = safeArray(users)
 
-  const pending = safeChecklists.filter((c) => c?.status === 'pending').length
+  const pending = safeChecklists.filter((c) => c && c.status === 'pending').length
   const awaiting = safeChecklists.filter(
-    (c) => c?.status === 'completed' && c?.approval_status === 'pending',
+    (c) => c && c.status === 'completed' && c.approval_status === 'pending',
   ).length
-  const approved = safeChecklists.filter((c) => c?.approval_status === 'approved').length
+  const approved = safeChecklists.filter((c) => c && c.approval_status === 'approved').length
   const expired = safeChecklists.filter(
-    (c) => c?.status === 'pending' && safeDifferenceInDays(c?.due_date) < 0,
+    (c) => c && c.status === 'pending' && safeDifferenceInDays(c.due_date) < 0,
   ).length
 
-  const roleStats = safeUsers.reduce(
-    (acc, u) => {
-      const role = safeRole(u?.role)
-      const items = safeChecklists.filter((c) => c?.role_assigned === u?.role)
-      const done = items.filter(
-        (c) => c?.status === 'completed' || c?.approval_status === 'approved',
-      ).length
-      acc[role] = { total: items.length, done }
+  const roleStats = safeChecklists.reduce(
+    (acc, c) => {
+      if (!c || !c.role_assigned) return acc
+      const role = safeRole(c.role_assigned)
+      if (!acc[role]) {
+        acc[role] = { total: 0, done: 0 }
+      }
+      acc[role].total += 1
+      if (c.status === 'completed' || c.approval_status === 'approved') {
+        acc[role].done += 1
+      }
       return acc
     },
     {} as Record<string, { total: number; done: number }>,
   )
 
   const pendingApprovals = safeChecklists
-    .filter((c) => c?.status === 'completed' && c?.approval_status === 'pending')
+    .filter((c) => c && c.status === 'completed' && c.approval_status === 'pending')
     .slice(0, 5)
 
   if (loading) {

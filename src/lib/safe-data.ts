@@ -48,7 +48,7 @@ export function safeDifferenceInHours(
 
 export function safeArray<T>(data: unknown): T[] {
   if (!data) return []
-  if (Array.isArray(data)) return data
+  if (Array.isArray(data)) return data.filter((item) => item !== null && item !== undefined) as T[]
   return []
 }
 

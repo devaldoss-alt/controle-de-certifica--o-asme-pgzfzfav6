@@ -68,13 +68,13 @@ export function OperationalDashboard() {
   const safeChecklists = safeArray(checklists)
   const safeInteractions = safeArray(interactions)
 
-  const pending = safeChecklists.filter((c) => c?.status === 'pending').length
+  const pending = safeChecklists.filter((c) => c && c.status === 'pending').length
   const completed = safeChecklists.filter(
-    (c) => c?.status === 'completed' || c?.approval_status === 'approved',
+    (c) => c && (c.status === 'completed' || c.approval_status === 'approved'),
   ).length
-  const critical = safeChecklists.filter((c) => c?.is_critical && c?.status === 'pending').length
+  const critical = safeChecklists.filter((c) => c && c.is_critical && c.status === 'pending').length
   const expired = safeChecklists.filter(
-    (c) => c?.status === 'pending' && safeDifferenceInDays(c?.due_date) < 0,
+    (c) => c && c.status === 'pending' && safeDifferenceInDays(c.due_date) < 0,
   ).length
 
   const userRole = safeRole(user?.role)
