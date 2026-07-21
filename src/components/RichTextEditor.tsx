@@ -106,7 +106,11 @@ export function RichTextEditor({
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
             onMouseDown={(e) => {
               e.preventDefault()
-              tool.arg ? exec(tool.cmd, tool.arg) : exec(tool.cmd)
+              if (tool.arg) {
+                exec(tool.cmd, tool.arg)
+              } else {
+                exec(tool.cmd)
+              }
             }}
           >
             <tool.icon className="w-4 h-4" />
