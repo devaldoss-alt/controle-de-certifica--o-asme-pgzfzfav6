@@ -11,6 +11,7 @@ import { getServiceOrders, type ServiceOrder } from '@/services/service-orders'
 import useRealtime from '@/hooks/use-realtime'
 import { useCompany } from '@/hooks/use-company'
 import { EvidenceDialog } from '@/components/EvidenceDialog'
+import { HowToDialog } from '@/components/HowToDialog'
 import {
   Select,
   SelectContent,
@@ -22,7 +23,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, FileText, CheckCircle2, Lock, Paperclip } from 'lucide-react'
+import { AlertCircle, FileText, CheckCircle2, Lock, Paperclip, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { safeDifferenceInHours, safeFormatDate, safeParseEvidenceFiles } from '@/lib/safe-data'
 import { localizedField } from '@/lib/i18n-content'
@@ -35,6 +36,7 @@ export default function Checklists() {
   const [osFilter, setOsFilter] = useState('all')
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([])
   const [evidenceItem, setEvidenceItem] = useState<Checklist | null>(null)
+  const [tutorialItem, setTutorialItem] = useState<Checklist | null>(null)
   const isManager = user?.role === 'Manager'
   const { selectedCompanyId } = useCompany()
 
@@ -300,6 +302,15 @@ export default function Checklists() {
                           {item.mcq_ref}
                         </span>
                       )}
+                      {item.tutorial && (
+                        <button
+                          onClick={() => setTutorialItem(item)}
+                          className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+                        >
+                          <BookOpen className="w-3 h-3" />
+                          {lang === 'pt' ? 'Como Fazer' : 'How-To'}
+                        </button>
+                      )}
                       {item.expand?.last_action_by && (
                         <span className="text-white/40">{item.expand.last_action_by.name}</span>
                       )}
@@ -325,6 +336,13 @@ export default function Checklists() {
           </p>
         </div>
       )}
+
+      <HowToDialog
+        open={!!tutorialItem}
+        onOpenChange={(v) => !v && setTutorialItem(null)}
+        title={tutorialItem?.title || ''}
+        tutorial={tutorialItem?.tutorial || ''}
+      />
 
       <EvidenceDialog
         open={!!evidenceItem}

@@ -1,5 +1,4 @@
 import { BilingualText } from '@/hooks/use-i18n'
-import { useI18n } from '@/hooks/use-i18n'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,11 +17,13 @@ import { useRef } from 'react'
 
 interface DocumentEditorProps {
   data: DocumentFormData
-  onFieldChange: (field: keyof DocumentFormData, value: string) => void
+  onFieldChange: (field: keyof DocumentFormData, value: string | File | null) => void
   onSave: () => void
   onCancel: () => void
   fieldErrors?: FieldErrors
-  isEditing?: boolean
+  isEdit?: boolean
+  existingFileName?: string
+  canEditContent?: boolean
 }
 
 export function DocumentEditor({
@@ -31,19 +32,53 @@ export function DocumentEditor({
   onSave,
   onCancel,
   fieldErrors = {},
-  isEditing = false,
+  isEdit = false,
+  existingFileName,
+  canEditContent = true,
 }: DocumentEditorProps) {
-  const { t } = useI18n()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null
-    onFieldChange('file', file as unknown as string)
+    onFieldChange('file', e.target.files?.[0] ?? null)
   }
 
   const handleRemoveFile = () => {
-    onFieldChange('file', '' as unknown as string)
+    onFieldChange('file', null)
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const renderFileSection = () => {
+    if (data.file) {
+      return (
+        <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-md px-3 py-1.5">
+          <FileText className="w-4 h-4 text-primary" />
+          <span className="text-sm text-white truncate max-w-48">{(data.file as File).name}</span>
+          <button
+            type="button"
+            onClick={handleRemoveFile}
+            className="text-muted-foreground hover:text-rose-400 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )
+    }
+    if (isEdit && existingFileName) {
+      return (
+        <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-md px-3 py-1.5">
+          <FileText className="w-4 h-4 text-primary" />
+          <span className="text-sm text-white truncate max-w-48">{existingFileName}</span>
+          <button
+            type="button"
+            onClick={handleRemoveFile}
+            className="text-muted-foreground hover:text-rose-400 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )
+    }
+    return null
   }
 
   return (
@@ -57,53 +92,39 @@ export function DocumentEditor({
           <ArrowLeft className="w-4 h-4 mr-2" />
           <BilingualText k="doc.back" />
         </Button>
-        <Button onClick={onSave} className="bg-primary hover:bg-primary/90">
-          <BilingualText k="common.save" />
-        </Button>
+        {canEditContent && (
+          <Button onClick={onSave} className="bg-primary hover:bg-primary/90">
+            <BilingualText k="common.save" />
+          </Button>
+        )}
       </div>
 
-      {!isEditing && (
-        <div>
-          <Label className="text-white/80 mb-1 block">
-            <BilingualText k="doc.file" /> *
-          </Label>
-          <div className="flex items-center gap-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.docx,.doc,.xlsx,.xls,.png,.jpeg,.jpg"
-              onChange={handleFileChange}
-              className="hidden"
-              id="doc-file-upload"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              className="border-white/10 text-muted-foreground hover:text-primary"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              <BilingualText k="doc.selectFile" />
-            </Button>
-            {data.file && (
-              <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-md px-3 py-1.5">
-                <FileText className="w-4 h-4 text-primary" />
-                <span className="text-sm text-white truncate max-w-48">
-                  {(data.file as unknown as File).name}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleRemoveFile}
-                  className="text-muted-foreground hover:text-rose-400 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
-          {fieldErrors.file && <p className="text-sm text-rose-400 mt-1">{fieldErrors.file}</p>}
+      <div>
+        <Label className="text-white/80 mb-1 block">
+          <BilingualText k="doc.file" /> {!isEdit && '*'}
+        </Label>
+        <div className="flex items-center gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.docx,.doc,.xlsx,.xls,.png,.jpeg,.jpg"
+            onChange={handleFileChange}
+            className="hidden"
+            id="doc-file-upload"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            className="border-white/10 text-muted-foreground hover:text-primary"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            <BilingualText k="doc.selectFile" />
+          </Button>
+          {renderFileSection()}
         </div>
-      )}
+        {fieldErrors.file && <p className="text-sm text-rose-400 mt-1">{fieldErrors.file}</p>}
+      </div>
 
       <div className="flex gap-3 items-end flex-wrap">
         <div className="flex-1 min-w-48">
@@ -114,6 +135,7 @@ export function DocumentEditor({
             value={data.title}
             onChange={(e) => onFieldChange('title', e.target.value)}
             className="bg-black/20 border-white/10 text-white"
+            readOnly={!canEditContent}
           />
           {fieldErrors.title && <p className="text-sm text-rose-400 mt-1">{fieldErrors.title}</p>}
         </div>
@@ -125,6 +147,7 @@ export function DocumentEditor({
             value={data.titleEn}
             onChange={(e) => onFieldChange('titleEn', e.target.value)}
             className="bg-black/20 border-white/10 text-white"
+            readOnly={!canEditContent}
           />
         </div>
       </div>
@@ -134,7 +157,11 @@ export function DocumentEditor({
           <Label className="text-white/80 mb-1 block">
             <BilingualText k="dms.prefix" />
           </Label>
-          <Select value={data.prefix} onValueChange={(v) => onFieldChange('prefix', v)}>
+          <Select
+            value={data.prefix}
+            onValueChange={(v) => onFieldChange('prefix', v)}
+            disabled={!canEditContent}
+          >
             <SelectTrigger className="bg-black/20 border-white/10 text-white w-36">
               <SelectValue placeholder="—" />
             </SelectTrigger>
@@ -156,6 +183,7 @@ export function DocumentEditor({
             onChange={(e) => onFieldChange('code', e.target.value)}
             placeholder="PR-CQ-001"
             className="bg-black/20 border-white/10 text-white w-32 font-mono"
+            readOnly={!canEditContent}
           />
         </div>
         <div>
@@ -167,13 +195,18 @@ export function DocumentEditor({
             onChange={(e) => onFieldChange('revision', e.target.value)}
             placeholder="01"
             className="bg-black/20 border-white/10 text-white w-20 font-mono"
+            readOnly={!canEditContent}
           />
         </div>
         <div>
           <Label className="text-white/80 mb-1 block">
             <BilingualText k="common.category" /> *
           </Label>
-          <Select value={data.category} onValueChange={(v) => onFieldChange('category', v)}>
+          <Select
+            value={data.category}
+            onValueChange={(v) => onFieldChange('category', v)}
+            disabled={!canEditContent}
+          >
             <SelectTrigger className="bg-black/20 border-white/10 text-white w-32">
               <SelectValue />
             </SelectTrigger>
@@ -197,6 +230,7 @@ export function DocumentEditor({
           onChange={(e) => onFieldChange('filePath', e.target.value)}
           placeholder="\\rede\pasta\arquivo.pdf"
           className="bg-black/20 border-white/10 text-white"
+          readOnly={!canEditContent}
         />
       </div>
 
@@ -207,6 +241,7 @@ export function DocumentEditor({
         <RichTextEditor
           value={data.content}
           onChange={(v: string) => onFieldChange('content', v)}
+          readOnly={!canEditContent}
         />
       </div>
     </div>

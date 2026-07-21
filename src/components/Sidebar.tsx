@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
-import { BilingualText, LanguageToggle } from '@/hooks/use-i18n'
+import { BilingualText, LanguageToggle, useI18n } from '@/hooks/use-i18n'
 import {
   LayoutDashboard,
   CheckSquare,
@@ -11,12 +11,14 @@ import {
   FileText,
   Briefcase,
   Building2,
+  BarChart3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function Sidebar() {
   const { user, signOut } = useAuth()
   const location = useLocation()
+  const { lang } = useI18n()
 
   const links = [
     { name: 'nav.dashboard', path: '/', icon: LayoutDashboard },
@@ -24,6 +26,7 @@ export default function Sidebar() {
     { name: 'nav.serviceOrders', path: '/service-orders', icon: Briefcase },
     { name: 'nav.documents', path: '/documents', icon: FileText },
     { name: 'nav.qualifications', path: '/qualifications', icon: Award },
+    { name: 'nav.indicators', path: '/indicators', icon: BarChart3 },
   ]
 
   if (user?.role === 'Manager' || user?.role === 'QCC') {
@@ -61,7 +64,11 @@ export default function Sidebar() {
               )}
             >
               <link.icon className="w-4 h-4 shrink-0" />
-              <BilingualText k={link.name} />
+              {link.name === 'nav.indicators' ? (
+                <span>{lang === 'pt' ? 'Indicadores' : 'Indicators'}</span>
+              ) : (
+                <BilingualText k={link.name} />
+              )}
             </Link>
           )
         })}

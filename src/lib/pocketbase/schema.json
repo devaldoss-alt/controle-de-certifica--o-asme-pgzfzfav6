@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-21T20:58:04.647Z",
+  "generatedAt": "2026-07-21T21:27:35.426Z",
   "collections": [
     {
       "name": "users",
@@ -29,19 +29,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "role",
@@ -72,11 +67,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "Free",
-            "Pro",
-            "Gold"
-          ]
+          "selectValues": ["Free", "Pro", "Gold"]
         },
         {
           "name": "primary_company_id",
@@ -143,10 +134,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "pending",
-            "completed"
-          ]
+          "selectValues": ["pending", "completed"]
         },
         {
           "name": "due_date",
@@ -172,30 +160,21 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "approval_status",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "pending",
-            "approved",
-            "rejected"
-          ]
+          "selectValues": ["pending", "approved", "rejected"]
         },
         {
           "name": "rejection_comment",
@@ -233,11 +212,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "Departmental",
-            "OS",
-            "ISO 9001"
-          ]
+          "selectValues": ["Departmental", "OS", "ISO 9001"]
         },
         {
           "name": "company_id",
@@ -254,6 +229,12 @@
         },
         {
           "name": "description_en",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tutorial",
           "type": "text",
           "required": false,
           "system": false
@@ -295,29 +276,21 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "pending",
-            "resolved"
-          ]
+          "selectValues": ["pending", "resolved"]
         },
         {
           "name": "created",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "mcq_ref",
@@ -374,30 +347,21 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "Active",
-            "Completed",
-            "Paused"
-          ]
+          "selectValues": ["Active", "Completed", "Paused"]
         },
         {
           "name": "created",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "owner_company_id",
@@ -413,9 +377,7 @@
           "system": false
         }
       ],
-      "indexes": [
-        "CREATE UNIQUE INDEX idx_service_orders_number ON service_orders (number)"
-      ]
+      "indexes": ["CREATE UNIQUE INDEX idx_service_orders_number ON service_orders (number)"]
     },
     {
       "name": "documents",
@@ -424,8 +386,8 @@
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "update": "@request.auth.id != '' && (@request.auth.role = 'QCC' || @request.auth.role = 'Manager')",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'QCC' || @request.auth.role = 'Manager')"
       },
       "fields": [
         {
@@ -464,29 +426,21 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "ISO",
-            "ASME"
-          ]
+          "selectValues": ["ISO", "ASME"]
         },
         {
           "name": "created",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "company_id",
@@ -586,19 +540,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "name_en",
@@ -639,19 +588,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": []
@@ -708,19 +652,93 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "indicators",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'Manager' || @request.auth.role = 'Director' || @request.auth.role = 'QCC')",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'Manager' || @request.auth.role = 'Director' || @request.auth.role = 'QCC')",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'Manager'"
+      },
+      "fields": [
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "formula_description",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "target_value",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "current_value",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "unit",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "period",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Annual", "Semestral", "Monthly"]
+        },
+        {
+          "name": "responsible",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": []

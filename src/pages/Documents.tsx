@@ -49,7 +49,7 @@ export default function Documents() {
   const [filter, setFilter] = useState('all')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [existingFileName, setExistingFileName] = useState<string | undefined>(undefined)
-  const canEdit = canUseDocumentEditor(user?.plan)
+  const canEdit = canUseDocumentEditor(user?.plan) && ['QCC', 'Manager'].includes(user?.role || '')
   const txt = (pt: string, en: string) => (lang === 'pt' ? pt : en)
 
   const loadData = async () => {
@@ -184,6 +184,7 @@ export default function Documents() {
         fieldErrors={fieldErrors}
         existingFileName={existingFileName}
         isEdit={!!editingId}
+        canEditContent={canEdit}
       />
     )
   }

@@ -13,6 +13,7 @@ import Team from '@/pages/Team'
 import Companies from '@/pages/Companies'
 import Approvals from '@/pages/Approvals'
 import Qualifications from '@/pages/Qualifications'
+import Indicators from '@/pages/Indicators'
 import NotFound from '@/pages/NotFound'
 
 const App = () => (
@@ -30,6 +31,7 @@ const App = () => (
               <Route path="/documents" element={<Documents />} />
               <Route path="/approvals" element={<Approvals />} />
               <Route path="/qualifications" element={<Qualifications />} />
+              <Route path="/indicators" element={<Indicators />} />
               <Route path="/companies" element={<Companies />} />
               <Route path="/team" element={<Team />} />
             </Route>

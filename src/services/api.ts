@@ -30,6 +30,7 @@ export interface Checklist {
   evidence_file?: string
   evidence_notes?: string
   category?: string
+  tutorial?: string
   expand?: {
     last_action_by?: User | null
     os_id?: { id: string; number: string; client: string } | null
