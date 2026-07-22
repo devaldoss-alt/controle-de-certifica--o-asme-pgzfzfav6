@@ -181,7 +181,7 @@ export default function Checklists() {
 
       <div className="flex flex-wrap gap-4 items-center">
         <div className="flex gap-1.5">
-          {['all', 'Departmental', 'OS', 'ISO 9001'].map((c) => (
+          {['all', 'Departmental', 'ISO 9001'].map((c) => (
             <Button
               key={c}
               variant={c === categoryFilter ? 'default' : 'outline'}
@@ -193,13 +193,19 @@ export default function Checklists() {
                 ? t('filter.allCategories')
                 : c === 'Departmental'
                   ? t('filter.departmental')
-                  : c === 'OS'
-                    ? t('filter.osLinked')
-                    : t('filter.iso9001')}
+                  : t('filter.iso9001')}
             </Button>
           ))}
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant={categoryFilter === 'OS' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setCategoryFilter('OS')}
+            className={filterBtn(categoryFilter === 'OS')}
+          >
+            {t('filter.osLinked')}
+          </Button>
           <span className="text-xs text-muted-foreground">OS:</span>
           <Select value={osFilter} onValueChange={setOsFilter}>
             <SelectTrigger className="w-48 h-7 text-xs bg-black/20 border-white/10">
