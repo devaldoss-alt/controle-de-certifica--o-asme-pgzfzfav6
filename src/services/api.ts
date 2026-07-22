@@ -1,40 +1,46 @@
 import pb from '@/lib/pocketbase/client'
-import { safeArray } from '@/lib/safe-data'
+import { safeArray, safeParseEvidenceFiles } from '@/lib/safe-data'
 
 export interface User {
   id: string
-  email: string
   name: string
+  email: string
   role: string
   qualification_expiry?: string
   plan?: string
+  primary_company_id?: string
+  avatar?: string
   created: string
+  updated: string
 }
 
 export interface Checklist {
   id: string
   title: string
-  description: string
+  title_en?: string
+  description?: string
+  description_en?: string
   role_assigned: string
-  mcq_ref: string
+  mcq_ref?: string
   status: 'pending' | 'completed'
-  approval_status: 'pending' | 'approved' | 'rejected'
-  rejection_comment: string
-  locked: boolean
-  due_date: string
+  due_date?: string
   is_critical: boolean
-  last_action_by: string
-  created: string
+  last_action_by?: string
   os_id?: string
-  company_id?: string
-  evidence_file?: string
+  evidence_file?: string | string[]
   evidence_notes?: string
   category?: string
+  company_id?: string
+  approval_status?: 'pending' | 'approved' | 'rejected'
+  rejection_comment?: string
+  locked?: boolean
   tutorial?: string
   expand?: {
-    last_action_by?: User | null
-    os_id?: { id: string; number: string; client: string } | null
+    os_id?: { id: string; number: string; client: string }
+    last_action_by?: { id: string; name: string }
   }
+  created: string
+  updated: string
 }
 
 export interface Interaction {
@@ -42,9 +48,10 @@ export interface Interaction {
   source_role: string
   target_role: string
   description: string
-  mcq_ref: string
   status: 'pending' | 'resolved'
+  mcq_ref?: string
   created: string
+  updated: string
 }
 
 export const getChecklists = async (
@@ -52,27 +59,21 @@ export const getChecklists = async (
   category?: string,
   osId?: string,
   companyId?: string,
-) => {
+): Promise<Checklist[]> => {
   const filters: string[] = []
   if (role) filters.push(`role_assigned = "${role}"`)
-  if (category && category !== 'all') {
-    filters.push(`category = "${category}"`)
-  }
-  if (osId && osId !== 'all') {
-    filters.push(`os_id = "${osId}"`)
-  }
+  if (category && category !== 'all') filters.push(`category = "${category}"`)
+  if (osId) filters.push(`os_id = "${osId}"`)
   if (companyId && companyId !== 'all') {
     filters.push(`company_id = "${companyId}"`)
-  } else {
+  } else if (companyId === 'all') {
     filters.push('company_id != ""')
   }
   const opts: Record<string, any> = {
-    sort: '-status,due_date',
-    expand: 'last_action_by,os_id',
+    sort: '-created',
+    expand: 'os_id,last_action_by',
   }
-  if (filters.length > 0) {
-    opts.filter = filters.join(' && ')
-  }
+  if (filters.length > 0) opts.filter = filters.join(' && ')
   try {
     const result = await pb.collection('checklists').getFullList<Checklist>(opts)
     return safeArray<Checklist>(result)
@@ -82,17 +83,20 @@ export const getChecklists = async (
   }
 }
 
-export const getPendingApprovals = async (companyId?: string) => {
-  const baseFilter =
-    'approval_status = "pending" && (status = "completed" || (is_critical = true && evidence_file != ""))'
-  const companyFilter =
-    companyId && companyId !== 'all' ? `company_id = "${companyId}"` : 'company_id != ""'
+export const getPendingApprovals = async (companyId?: string): Promise<Checklist[]> => {
+  const filters: string[] = ['status = "completed"', 'approval_status = "pending"']
+  if (companyId && companyId !== 'all') {
+    filters.push(`company_id = "${companyId}"`)
+  } else {
+    filters.push('company_id != ""')
+  }
+  const opts: Record<string, any> = {
+    sort: '-updated',
+    expand: 'os_id,last_action_by',
+    filter: filters.join(' && '),
+  }
   try {
-    const result = await pb.collection('checklists').getFullList<Checklist>({
-      filter: `${baseFilter} && ${companyFilter}`,
-      sort: 'due_date',
-      expand: 'last_action_by,os_id',
-    })
+    const result = await pb.collection('checklists').getFullList<Checklist>(opts)
     return safeArray<Checklist>(result)
   } catch (e) {
     console.error('getPendingApprovals failed:', e)
@@ -100,36 +104,18 @@ export const getPendingApprovals = async (companyId?: string) => {
   }
 }
 
-export const parseEvidenceFiles = (evidenceFile: string | undefined): string[] => {
-  if (!evidenceFile) return []
-  try {
-    const parsed = JSON.parse(evidenceFile)
-    return Array.isArray(parsed) ? parsed : [evidenceFile]
-  } catch {
-    return [evidenceFile]
-  }
-}
+export const parseEvidenceFiles = safeParseEvidenceFiles
 
-export const uploadEvidence = async (
-  id: string,
-  files: File[],
-  notes: string,
-  isCritical?: boolean,
-) => {
-  const formData = new FormData()
-  files.forEach((file) => formData.append('evidence_file', file))
-  formData.append('evidence_notes', notes)
-  formData.append('approval_status', 'pending')
-  formData.append('last_action_by', pb.authStore.record?.id || '')
-  formData.append('status', isCritical ? 'pending' : 'completed')
+export const uploadEvidence = async (id: string, formData: FormData) => {
   return pb.collection('checklists').update(id, formData)
 }
 
-export const getServiceOrderChecklists = async (osId: string) => {
+export const getServiceOrderChecklists = async (osId: string): Promise<Checklist[]> => {
   try {
     const result = await pb.collection('checklists').getFullList<Checklist>({
       filter: `os_id = "${osId}"`,
-      sort: 'due_date',
+      sort: 'created',
+      expand: 'os_id,last_action_by',
     })
     return safeArray<Checklist>(result)
   } catch (e) {
@@ -138,56 +124,31 @@ export const getServiceOrderChecklists = async (osId: string) => {
   }
 }
 
-export const updateChecklistStatus = async (id: string, status: 'pending' | 'completed') => {
-  const data: Record<string, any> = {
+export const updateChecklistStatus = async (id: string, status: string) => {
+  return pb.collection('checklists').update(id, {
     status,
     last_action_by: pb.authStore.record?.id,
-  }
-  if (status === 'completed') {
-    data.approval_status = 'pending'
-  }
-  return pb.collection('checklists').update(id, data)
+  })
 }
 
 export const approveChecklist = async (id: string) => {
   return pb.collection('checklists').update(id, {
     approval_status: 'approved',
-    status: 'completed',
     locked: true,
-    last_action_by: pb.authStore.record?.id,
   })
 }
 
 export const rejectChecklist = async (id: string, comment: string) => {
   return pb.collection('checklists').update(id, {
-    status: 'pending',
     approval_status: 'rejected',
     rejection_comment: comment,
-    last_action_by: pb.authStore.record?.id,
+    status: 'pending',
+    locked: false,
   })
 }
 
-export const getUsers = async (companyId?: string) => {
+export const getUsers = async () => {
   try {
-    if (companyId && companyId !== 'all') {
-      const allocations = await pb.collection('user_allocations').getFullList({
-        filter: `company_id = "${companyId}"`,
-        expand: 'user_id',
-      })
-      const userMap = new Map<string, User>()
-      allocations.forEach((a: any) => {
-        if (a.expand?.user_id) {
-          userMap.set(a.expand.user_id.id, a.expand.user_id as User)
-        }
-      })
-      const primaryUsers = await pb.collection('users').getFullList<User>({
-        filter: `primary_company_id = "${companyId}"`,
-      })
-      primaryUsers.forEach((u) => {
-        if (!userMap.has(u.id)) userMap.set(u.id, u)
-      })
-      return Array.from(userMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-    }
     const result = await pb.collection('users').getFullList<User>({ sort: 'name' })
     return safeArray<User>(result)
   } catch (e) {
@@ -197,32 +158,36 @@ export const getUsers = async (companyId?: string) => {
 }
 
 export const createUser = async (data: {
+  name: string
   email: string
   password: string
   passwordConfirm: string
-  name: string
   role: string
-  qualification_expiry?: string
+  plan?: string
   primary_company_id?: string
+  qualification_expiry?: string
 }) => {
   return pb.collection('users').create(data)
 }
 
-export const updateUser = async (id: string, data: Partial<User>) => {
-  return pb.collection('users').update(id, data)
+export const updateUser = async (id: string, data: Partial<User> & { password?: string }) => {
+  const updateData: Record<string, any> = { ...data }
+  if (data.password) {
+    updateData.password = data.password
+    updateData.passwordConfirm = data.password
+  }
+  return pb.collection('users').update(id, updateData)
 }
 
 export const deleteUser = async (id: string) => {
   return pb.collection('users').delete(id)
 }
 
-export const getInteractions = async (role?: string) => {
-  const opts: Record<string, any> = { sort: '-created' }
-  if (role) {
-    opts.filter = `source_role = "${role}" || target_role = "${role}"`
-  }
+export const getInteractions = async () => {
   try {
-    const result = await pb.collection('interactions').getFullList<Interaction>(opts)
+    const result = await pb
+      .collection('interactions')
+      .getFullList<Interaction>({ sort: '-created' })
     return safeArray<Interaction>(result)
   } catch (e) {
     console.error('getInteractions failed:', e)
