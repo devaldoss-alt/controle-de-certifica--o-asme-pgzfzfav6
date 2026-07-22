@@ -6,7 +6,7 @@ import pb from '@/lib/pocketbase/client'
 type Callback<T extends RecordModel> = (data: RecordSubscription<T>) => void
 
 interface SubscriptionEntry {
-  callbacks: Set<Function>
+  callbacks: Set<Callback<RecordModel>>
   unsubscribe: (() => Promise<void>) | null
   pending: boolean
 }
