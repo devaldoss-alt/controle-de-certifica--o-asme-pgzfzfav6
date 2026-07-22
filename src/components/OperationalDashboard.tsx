@@ -3,11 +3,11 @@ import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, useI18n } from '@/hooks/use-i18n'
 import {
   getChecklists,
-  getInteractions,
   updateChecklistStatus,
   type Checklist,
   type Interaction,
 } from '@/services/api'
+import { getRoleInteractions } from '@/services/interactions'
 import { roleData } from '@/lib/role-data'
 import useRealtime from '@/hooks/use-realtime'
 import { ErrorBoundary, WidgetErrorFallback } from '@/components/ErrorBoundary'
@@ -50,7 +50,7 @@ export function OperationalDashboard() {
     try {
       const [clData, intData] = await Promise.all([
         getChecklists(user?.role, undefined, undefined, selectedCompanyId),
-        getInteractions(user?.role),
+        getRoleInteractions(user?.role),
       ])
       setChecklists(safeArray(clData))
       setInteractions(safeArray(intData))
