@@ -50,7 +50,7 @@ export default function Login() {
             <Lock className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-3xl font-heading font-bold text-white mb-2 tracking-tight">
-            QMS Proserco
+            QualiHub
           </h1>
           <p className="text-muted-foreground text-sm">Controle de Qualidade ASME / NBIC</p>
         </div>
