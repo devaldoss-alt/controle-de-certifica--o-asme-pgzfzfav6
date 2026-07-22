@@ -24,28 +24,38 @@ import { useCompany } from '@/hooks/use-company'
 import { useToast } from '@/components/ui/use-toast'
 import { Plus } from 'lucide-react'
 
-interface Props {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSaved?: () => void
-}
-
 const PERIODS = ['Annual', 'Semestral', 'Monthly'] as const
+const OPERATORS = ['≥', '>', '<', '≤', '='] as const
+const RESULT_TYPES = ['Percentual', 'Numérico'] as const
 
-export function IndicatorFormDialog({ open, onOpenChange, onSaved }: Props) {
+export function IndicatorFormDialog({
+  open,
+  onOpenChange,
+  onSaved,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  onSaved?: () => void
+}) {
   const { t } = useI18n()
+  const { lang } = useI18n()
   const { toast } = useToast()
   const { selectedCompanyId } = useCompany()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const txt = (pt: string, en: string) => (lang === 'pt' ? pt : en)
 
   const [form, setForm] = useState<IndicatorFormData>({
     title: '',
+    objective: '',
     formula_description: '',
     target_value: 0,
     unit: '%',
     period: 'Monthly',
+    result_type: 'Percentual',
+    verification_method: '',
+    target_operator: '≥',
     responsible: undefined,
   })
 
@@ -57,10 +67,14 @@ export function IndicatorFormDialog({ open, onOpenChange, onSaved }: Props) {
       setError('')
       setForm({
         title: '',
+        objective: '',
         formula_description: '',
         target_value: 0,
         unit: '%',
         period: 'Monthly',
+        result_type: 'Percentual',
+        verification_method: '',
+        target_operator: '≥',
         responsible: undefined,
       })
     }
@@ -68,26 +82,27 @@ export function IndicatorFormDialog({ open, onOpenChange, onSaved }: Props) {
 
   const handleSubmit = async () => {
     if (!form.title.trim()) {
-      setError(t('common.required') || 'Title is required')
+      setError(txt('Título é obrigatório', 'Title is required'))
+      return
+    }
+    if (!form.responsible) {
+      setError(txt('Responsável é obrigatório', 'Responsible is required'))
       return
     }
     const companyId = selectedCompanyId === 'all' ? '' : selectedCompanyId
     if (!companyId) {
-      setError('Selecione uma empresa ativa')
+      setError(txt('Selecione uma empresa ativa', 'Select an active company'))
       return
     }
     setLoading(true)
     setError('')
     try {
-      await createIndicator({
-        ...form,
-        company_id: companyId,
-      })
-      toast({ title: 'Indicador criado com sucesso' })
+      await createIndicator({ ...form, company_id: companyId })
+      toast({ title: txt('Indicador criado com sucesso', 'Indicator created successfully') })
       onOpenChange(false)
       onSaved?.()
     } catch (e: any) {
-      setError(e?.message || 'Erro ao criar indicador')
+      setError(e?.message || txt('Erro ao criar indicador', 'Error creating indicator'))
     } finally {
       setLoading(false)
     }
@@ -95,40 +110,59 @@ export function IndicatorFormDialog({ open, onOpenChange, onSaved }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 max-w-lg">
+      <DialogContent className="bg-card border-white/10 max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-white flex items-center gap-2">
             <Plus className="w-5 h-5 text-primary" />
-            Novo Indicador
+            {txt('Novo Indicador', 'New Indicator')}
           </DialogTitle>
           <DialogDescription>
-            Cadastre um novo KPI para acompanhar metas de desempenho
+            {txt('Cadastre um novo KPI para acompanhamento', 'Register a new KPI for tracking')}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <div className="space-y-3 py-2">
           <div className="space-y-2">
-            <Label className="text-white/80">Título *</Label>
+            <Label className="text-white/80">{txt('Título *', 'Title *')}</Label>
             <Input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="Ex: ISC - Índice de Satisfação do Cliente"
               className="bg-black/20 border-white/10 text-white"
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-white/80">Fórmula / Descrição</Label>
+            <Label className="text-white/80">{txt('Objetivo', 'Objective')}</Label>
+            <Input
+              value={form.objective}
+              onChange={(e) => setForm({ ...form, objective: e.target.value })}
+              className="bg-black/20 border-white/10 text-white"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-white/80">
+              {txt('Fórmula / Descrição', 'Formula / Description')}
+            </Label>
             <Input
               value={form.formula_description}
               onChange={(e) => setForm({ ...form, formula_description: e.target.value })}
-              placeholder="Ex: ISC = (Pontos Obtidos / Total Avaliados) x 100"
+              className="bg-black/20 border-white/10 text-white"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-white/80">
+              {txt('Método de Verificação', 'Verification Method')}
+            </Label>
+            <Input
+              value={form.verification_method}
+              onChange={(e) => setForm({ ...form, verification_method: e.target.value })}
               className="bg-black/20 border-white/10 text-white"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label className="text-white/80">Meta (Target)</Label>
+              <Label className="text-white/80">{txt('Meta', 'Target')}</Label>
               <Input
                 type="number"
+                step="any"
                 value={form.target_value}
                 onChange={(e) =>
                   setForm({ ...form, target_value: parseFloat(e.target.value) || 0 })
@@ -137,18 +171,55 @@ export function IndicatorFormDialog({ open, onOpenChange, onSaved }: Props) {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-white/80">Unidade</Label>
-              <Input
-                value={form.unit}
-                onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                placeholder="%, h, pts"
-                className="bg-black/20 border-white/10 text-white"
-              />
+              <Label className="text-white/80">{txt('Operador', 'Operator')}</Label>
+              <Select
+                value={form.target_operator}
+                onValueChange={(v) => setForm({ ...form, target_operator: v })}
+              >
+                <SelectTrigger className="bg-black/20 border-white/10 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-white/10">
+                  {OPERATORS.map((o) => (
+                    <SelectItem key={o} value={o}>
+                      {o}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label className="text-white/80">Período</Label>
+              <Label className="text-white/80">{txt('Unidade', 'Unit')}</Label>
+              <Input
+                value={form.unit}
+                onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                className="bg-black/20 border-white/10 text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-white/80">{txt('Tipo de Resultado', 'Result Type')}</Label>
+              <Select
+                value={form.result_type}
+                onValueChange={(v) => setForm({ ...form, result_type: v })}
+              >
+                <SelectTrigger className="bg-black/20 border-white/10 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-white/10">
+                  {RESULT_TYPES.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {r}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-white/80">{txt('Período', 'Period')}</Label>
               <Select value={form.period} onValueChange={(v) => setForm({ ...form, period: v })}>
                 <SelectTrigger className="bg-black/20 border-white/10 text-white">
                   <SelectValue />
@@ -163,7 +234,7 @@ export function IndicatorFormDialog({ open, onOpenChange, onSaved }: Props) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-white/80">Responsável</Label>
+              <Label className="text-white/80">{txt('Responsável *', 'Responsible *')}</Label>
               <Select
                 value={form.responsible || 'none'}
                 onValueChange={(v) =>

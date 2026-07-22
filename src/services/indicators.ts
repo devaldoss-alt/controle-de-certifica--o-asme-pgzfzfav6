@@ -4,11 +4,15 @@ import { safeArray } from '@/lib/safe-data'
 export interface Indicator {
   id: string
   title: string
+  objective?: string
   formula_description: string
   target_value: number
   current_value: number
   unit: string
   period: string
+  result_type?: string
+  verification_method?: string
+  target_operator?: string
   responsible?: string
   company_id?: string
   created: string
@@ -20,10 +24,14 @@ export interface Indicator {
 
 export interface IndicatorFormData {
   title: string
+  objective: string
   formula_description: string
   target_value: number
   unit: string
   period: string
+  result_type: string
+  verification_method: string
+  target_operator: string
   responsible?: string
 }
 
@@ -47,4 +55,8 @@ export const updateIndicator = async (id: string, data: Partial<Indicator>) => {
 
 export const createIndicator = async (data: IndicatorFormData & { company_id: string }) => {
   return pb.collection('indicators').create(data)
+}
+
+export const deleteIndicator = async (id: string) => {
+  return pb.collection('indicators').delete(id)
 }

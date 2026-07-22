@@ -41,9 +41,9 @@ export default function Sidebar() {
     <aside className="w-64 glass hidden md:flex flex-col h-full shrink-0 shadow-elevation relative z-10">
       <div className="p-6 border-b border-white/5 flex items-center gap-3">
         <div className="w-8 h-8 rounded bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg">
-          P
+          Q
         </div>
-        <span className="font-heading font-bold text-xl tracking-wider text-primary">PROSERCO</span>
+        <span className="font-heading font-bold text-xl tracking-wider text-primary">QualiHub</span>
       </div>
 
       <div className="p-4 flex-1 space-y-2 overflow-y-auto">

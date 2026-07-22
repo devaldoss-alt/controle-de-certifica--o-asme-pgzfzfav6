@@ -14,6 +14,7 @@ export default function Header() {
         <button className="md:hidden text-muted-foreground hover:text-foreground">
           <Menu className="w-6 h-6" />
         </button>
+        <span className="font-heading font-bold text-lg text-primary md:hidden">QualiHub</span>
         <div className="relative hidden md:block">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
