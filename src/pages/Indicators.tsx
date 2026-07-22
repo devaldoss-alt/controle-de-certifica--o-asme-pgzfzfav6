@@ -5,12 +5,13 @@ import { useCompany } from '@/hooks/use-company'
 import { useToast } from '@/components/ui/use-toast'
 import useRealtime from '@/hooks/use-realtime'
 import { getIndicators, updateIndicator, type Indicator } from '@/services/indicators'
+import { IndicatorFormDialog } from '@/components/IndicatorFormDialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
-import { TrendingUp, TrendingDown, Target, Edit3, Check, X } from 'lucide-react'
+import { TrendingUp, TrendingDown, Target, Edit3, Check, X, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function Indicators() {
@@ -21,6 +22,7 @@ export default function Indicators() {
   const [indicators, setIndicators] = useState<Indicator[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
   const txt = (pt: string, en: string) => (lang === 'pt' ? pt : en)
   const canEdit = ['Manager', 'Director', 'QCC'].includes(user?.role || '')
 
@@ -71,13 +73,24 @@ export default function Indicators() {
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
-      <div>
-        <h1 className="text-3xl font-heading font-bold text-white mb-2">
-          {txt('Indicadores de Desempenho', 'Performance Indicators')}
-        </h1>
-        <p className="text-muted-foreground">
-          {txt('Acompanhamento de metas e KPIs estratégicos', 'Strategic goals and KPI tracking')}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-white mb-2">
+            {txt('Indicadores de Desempenho', 'Performance Indicators')}
+          </h1>
+          <p className="text-muted-foreground">
+            {txt('Acompanhamento de metas e KPIs estratégicos', 'Strategic goals and KPI tracking')}
+          </p>
+        </div>
+        {canEdit && (
+          <Button
+            onClick={() => setShowCreateDialog(true)}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            {txt('Novo Indicador', 'New Indicator')}
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -208,9 +221,24 @@ export default function Indicators() {
       {indicators.length === 0 && (
         <div className="text-center py-20 text-muted-foreground">
           <Target className="w-12 h-12 mx-auto mb-4 opacity-20" />
-          <p>{txt('Nenhum indicador encontrado', 'No indicators found')}</p>
+          <p className="mb-4">{txt('Nenhum indicador encontrado', 'No indicators found')}</p>
+          {canEdit && (
+            <Button
+              onClick={() => setShowCreateDialog(true)}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              {txt('Criar Indicador', 'Create Indicator')}
+            </Button>
+          )}
         </div>
       )}
+
+      <IndicatorFormDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onSaved={loadData}
+      />
     </div>
   )
 }

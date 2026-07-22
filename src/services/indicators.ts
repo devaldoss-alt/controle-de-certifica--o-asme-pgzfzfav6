@@ -18,6 +18,15 @@ export interface Indicator {
   }
 }
 
+export interface IndicatorFormData {
+  title: string
+  formula_description: string
+  target_value: number
+  unit: string
+  period: string
+  responsible?: string
+}
+
 export const getIndicators = async (companyId?: string) => {
   const filters: string[] = []
   if (companyId && companyId !== 'all') filters.push(`company_id = "${companyId}"`)
@@ -34,4 +43,8 @@ export const getIndicators = async (companyId?: string) => {
 
 export const updateIndicator = async (id: string, data: Partial<Indicator>) => {
   return pb.collection('indicators').update(id, data)
+}
+
+export const createIndicator = async (data: IndicatorFormData & { company_id: string }) => {
+  return pb.collection('indicators').create(data)
 }
