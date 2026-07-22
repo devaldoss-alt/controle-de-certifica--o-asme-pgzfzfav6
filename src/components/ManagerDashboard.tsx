@@ -15,6 +15,7 @@ import {
   safeString,
 } from '@/lib/safe-data'
 import { localizedField } from '@/lib/i18n-content'
+import { useCompany } from '@/hooks/use-company'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -30,13 +31,17 @@ import {
 export function ManagerDashboard() {
   const { user } = useAuth()
   const { t, lang } = useI18n()
+  const { selectedCompanyId } = useCompany()
   const [checklists, setChecklists] = useState<Checklist[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
 
   const loadData = async () => {
     try {
-      const [clData, uData] = await Promise.all([getChecklists(), getUsers()])
+      const [clData, uData] = await Promise.all([
+        getChecklists(undefined, undefined, undefined, selectedCompanyId),
+        getUsers(selectedCompanyId),
+      ])
       setChecklists(safeArray(clData))
       setUsers(safeArray(uData))
     } catch (e) {
@@ -48,7 +53,7 @@ export function ManagerDashboard() {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [selectedCompanyId])
   useRealtime('checklists', () => loadData())
 
   const safeChecklists = safeArray(checklists)

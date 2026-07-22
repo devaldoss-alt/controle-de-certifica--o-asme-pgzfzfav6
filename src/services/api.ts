@@ -63,6 +63,8 @@ export const getChecklists = async (
   }
   if (companyId && companyId !== 'all') {
     filters.push(`company_id = "${companyId}"`)
+  } else {
+    filters.push('company_id != ""')
   }
   const opts: Record<string, any> = {
     sort: '-status,due_date',
@@ -80,11 +82,14 @@ export const getChecklists = async (
   }
 }
 
-export const getPendingApprovals = async () => {
+export const getPendingApprovals = async (companyId?: string) => {
+  const baseFilter =
+    'approval_status = "pending" && (status = "completed" || (is_critical = true && evidence_file != ""))'
+  const companyFilter =
+    companyId && companyId !== 'all' ? `company_id = "${companyId}"` : 'company_id != ""'
   try {
     const result = await pb.collection('checklists').getFullList<Checklist>({
-      filter:
-        'approval_status = "pending" && (status = "completed" || (is_critical = true && evidence_file != ""))',
+      filter: `${baseFilter} && ${companyFilter}`,
       sort: 'due_date',
       expand: 'last_action_by,os_id',
     })
@@ -162,8 +167,27 @@ export const rejectChecklist = async (id: string, comment: string) => {
   })
 }
 
-export const getUsers = async () => {
+export const getUsers = async (companyId?: string) => {
   try {
+    if (companyId && companyId !== 'all') {
+      const allocations = await pb.collection('user_allocations').getFullList({
+        filter: `company_id = "${companyId}"`,
+        expand: 'user_id',
+      })
+      const userMap = new Map<string, User>()
+      allocations.forEach((a: any) => {
+        if (a.expand?.user_id) {
+          userMap.set(a.expand.user_id.id, a.expand.user_id as User)
+        }
+      })
+      const primaryUsers = await pb.collection('users').getFullList<User>({
+        filter: `primary_company_id = "${companyId}"`,
+      })
+      primaryUsers.forEach((u) => {
+        if (!userMap.has(u.id)) userMap.set(u.id, u)
+      })
+      return Array.from(userMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    }
     const result = await pb.collection('users').getFullList<User>({ sort: 'name' })
     return safeArray<User>(result)
   } catch (e) {

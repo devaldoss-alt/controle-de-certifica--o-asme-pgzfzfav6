@@ -36,10 +36,12 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { localizedField } from '@/lib/i18n-content'
+import { useCompany } from '@/hooks/use-company'
 
 export function OperationalDashboard() {
   const { user } = useAuth()
   const { t, lang } = useI18n()
+  const { selectedCompanyId } = useCompany()
   const [checklists, setChecklists] = useState<Checklist[]>([])
   const [interactions, setInteractions] = useState<Interaction[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,7 +49,7 @@ export function OperationalDashboard() {
   const loadData = async () => {
     try {
       const [clData, intData] = await Promise.all([
-        getChecklists(user?.role),
+        getChecklists(user?.role, undefined, undefined, selectedCompanyId),
         getInteractions(user?.role),
       ])
       setChecklists(safeArray(clData))
@@ -61,7 +63,7 @@ export function OperationalDashboard() {
 
   useEffect(() => {
     loadData()
-  }, [user])
+  }, [user, selectedCompanyId])
   useRealtime('checklists', () => loadData())
   useRealtime('interactions', () => loadData())
 

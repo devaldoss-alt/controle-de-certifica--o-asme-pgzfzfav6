@@ -58,7 +58,7 @@ export default function ServiceOrders() {
     try {
       const [data, clData, compData] = await Promise.all([
         getServiceOrders(statusFilter, selectedCompanyId),
-        getChecklists(),
+        getChecklists(undefined, undefined, undefined, selectedCompanyId),
         getCompanies(),
       ])
       setOrders(data)

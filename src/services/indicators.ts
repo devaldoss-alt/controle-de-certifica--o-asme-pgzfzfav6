@@ -38,6 +38,7 @@ export interface IndicatorFormData {
 export const getIndicators = async (companyId?: string) => {
   const filters: string[] = []
   if (companyId && companyId !== 'all') filters.push(`company_id = "${companyId}"`)
+  else filters.push('company_id != ""')
   const opts: Record<string, any> = { sort: 'title', expand: 'responsible' }
   if (filters.length > 0) opts.filter = filters.join(' && ')
   try {

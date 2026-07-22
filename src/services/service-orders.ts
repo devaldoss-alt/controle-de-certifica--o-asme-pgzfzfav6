@@ -26,6 +26,8 @@ export const getServiceOrders = async (status?: string, companyId?: string) => {
   }
   if (companyId && companyId !== 'all') {
     filters.push(`owner_company_id = "${companyId}"`)
+  } else {
+    filters.push('owner_company_id != ""')
   }
   if (filters.length > 0) {
     opts.filter = filters.join(' && ')

@@ -28,6 +28,7 @@ export const getDocuments = async (
   const filters: string[] = []
   if (filter && filter !== 'all') filters.push(`category = "${filter}"`)
   if (companyId && companyId !== 'all') filters.push(`company_id = "${companyId}"`)
+  else filters.push('company_id != ""')
   if (accessiblePrefixes && accessiblePrefixes.length === 0) return []
   if (accessiblePrefixes && accessiblePrefixes.length > 0) {
     const prefixFilter = accessiblePrefixes.map((p) => `prefix = "${p}"`).join(' || ')

@@ -31,10 +31,12 @@ import { Label } from '@/components/ui/label'
 import { Check, X, FileText, CheckCircle2, Clock, Paperclip } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { localizedField } from '@/lib/i18n-content'
+import { useCompany } from '@/hooks/use-company'
 
 export default function Approvals() {
   const { user } = useAuth()
   const { t, lang } = useI18n()
+  const { selectedCompanyId } = useCompany()
   const [checklists, setChecklists] = useState<Checklist[]>([])
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [comment, setComment] = useState('')
@@ -42,7 +44,7 @@ export default function Approvals() {
 
   const loadData = async () => {
     try {
-      const data = await getPendingApprovals()
+      const data = await getPendingApprovals(selectedCompanyId)
       setChecklists(data)
     } catch (e) {
       console.error(e)
@@ -51,7 +53,7 @@ export default function Approvals() {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [selectedCompanyId])
   useRealtime('checklists', () => loadData())
 
   const handleApprove = async (id: string) => {

@@ -12,10 +12,12 @@ import { UserFormDialog } from '@/components/UserFormDialog'
 import { AllocationDialog } from '@/components/AllocationDialog'
 import { UserPlus, FileDown, Pencil, ShieldCheck, Building2 } from 'lucide-react'
 import { differenceInDays } from 'date-fns'
+import { useCompany } from '@/hooks/use-company'
 
 export default function Team() {
   const { user } = useAuth()
   const { t } = useI18n()
+  const { selectedCompanyId } = useCompany()
   const [users, setUsers] = useState<User[]>([])
   const [checklists, setChecklists] = useState<Checklist[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -24,7 +26,10 @@ export default function Team() {
 
   const loadData = async () => {
     try {
-      const [uData, clData] = await Promise.all([getUsers(), getChecklists()])
+      const [uData, clData] = await Promise.all([
+        getUsers(selectedCompanyId),
+        getChecklists(undefined, undefined, undefined, selectedCompanyId),
+      ])
       setUsers(uData)
       setChecklists(clData)
     } catch (e) {
@@ -34,7 +39,7 @@ export default function Team() {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [selectedCompanyId])
   useRealtime('checklists', () => loadData())
 
   if (user?.role !== 'Manager') {
