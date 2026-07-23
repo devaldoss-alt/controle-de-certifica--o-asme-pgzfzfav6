@@ -107,7 +107,22 @@ export const getPendingApprovals = async (companyId?: string): Promise<Checklist
 
 export const parseEvidenceFiles = safeParseEvidenceFiles
 
-export const uploadEvidence = async (id: string, formData: FormData) => {
+export const uploadEvidence = async (
+  id: string,
+  files: File[],
+  notes: string,
+  isCritical: boolean,
+) => {
+  const formData = new FormData()
+  files.forEach((file) => formData.append('evidence_file', file))
+  formData.append('evidence_notes', notes)
+  formData.append('last_action_by', pb.authStore.record?.id || '')
+  if (isCritical) {
+    formData.append('status', 'pending')
+    formData.append('approval_status', 'pending')
+  } else {
+    formData.append('status', 'completed')
+  }
   return pb.collection('checklists').update(id, formData)
 }
 

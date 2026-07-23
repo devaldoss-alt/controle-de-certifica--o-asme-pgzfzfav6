@@ -1,98 +1,60 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { useI18n } from '@/hooks/use-i18n'
-import { getChecklists } from '@/services/api'
 import useRealtime from '@/hooks/use-realtime'
-import { safeDifferenceInHours, safeDifferenceInDays } from '@/lib/safe-data'
+import { getNotifications, markAsRead, type Notification } from '@/services/notifications'
+import { safeFormatDate } from '@/lib/safe-data'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
-import { Bell, AlertTriangle, Info, ShieldAlert } from 'lucide-react'
-
-interface NotificationItem {
-  type: 'error' | 'warning' | 'info'
-  message: string
-}
+import { Bell } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export function NotificationBell() {
   const { user } = useAuth()
   const { t } = useI18n()
-  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const navigate = useNavigate()
+  const [notifications, setNotifications] = useState<Notification[]>([])
 
-  const loadData = async () => {
+  const loadNotifications = async () => {
+    if (!user?.id) return
     try {
-      const isManager = user?.role === 'Manager'
-      const checklists = await getChecklists(isManager ? undefined : user?.role)
-      const items: NotificationItem[] = []
-
-      if (isManager) {
-        const pending = checklists.filter(
-          (c) => c.status === 'completed' && c.approval_status === 'pending',
-        ).length
-        if (pending > 0) {
-          items.push({
-            type: 'info',
-            message: t('notification.tasksAwaiting').replace('{n}', String(pending)),
-          })
-        }
-      }
-
-      checklists.forEach((c) => {
-        if (c.status === 'pending' && c.due_date) {
-          const hours = safeDifferenceInHours(c.due_date)
-          if (hours < 0) {
-            items.push({
-              type: 'error',
-              message: t('notification.taskExpired').replace('{title}', c.title),
-            })
-          } else if (hours <= 48) {
-            items.push({
-              type: 'warning',
-              message: t('notification.taskDueIn')
-                .replace('{title}', c.title)
-                .replace('{hours}', String(Math.round(hours))),
-            })
-          }
-        }
-      })
-
-      if (user?.qualification_expiry) {
-        const days = safeDifferenceInDays(user.qualification_expiry)
-        if (days < 0) {
-          items.push({ type: 'error', message: t('notification.qualificationExpired') })
-        } else if (days <= 30) {
-          items.push({
-            type: 'warning',
-            message: t('notification.qualificationExpiring').replace('{days}', String(days)),
-          })
-        }
-      }
-
-      setNotifications(items)
+      const data = await getNotifications(user.id, 20)
+      setNotifications(data)
     } catch (e) {
       console.error(e)
     }
   }
 
   useEffect(() => {
-    loadData()
-  }, [user])
-  useRealtime('checklists', () => loadData())
+    loadNotifications()
+  }, [user?.id])
+  useRealtime('notifications', () => loadNotifications())
 
-  const iconMap = { error: ShieldAlert, warning: AlertTriangle, info: Info }
-  const colorMap = { error: 'text-rose-500', warning: 'text-amber-500', info: 'text-blue-500' }
+  const unreadCount = notifications.filter((n) => !n.read).length
+
+  const handleClick = (notification: Notification) => {
+    if (!notification.read) {
+      markAsRead(notification.id)
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
+      )
+    }
+    navigate('/approvals')
+  }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="relative text-muted-foreground hover:text-primary transition-colors">
           <Bell className="w-5 h-5" />
-          {notifications.length > 0 && (
+          {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full border-2 border-background text-[10px] flex items-center justify-center text-white font-bold">
-              {notifications.length}
+              {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </button>
@@ -106,15 +68,21 @@ export function NotificationBell() {
             {t('notification.noNotifications')}
           </div>
         ) : (
-          notifications.map((n, i) => {
-            const Icon = iconMap[n.type]
-            return (
-              <DropdownMenuItem key={i} className="gap-3 p-3 cursor-default">
-                <Icon className={`w-4 h-4 shrink-0 ${colorMap[n.type]}`} />
-                <span className="text-sm text-foreground">{n.message}</span>
-              </DropdownMenuItem>
-            )
-          })
+          notifications.map((n) => (
+            <DropdownMenuItem
+              key={n.id}
+              onSelect={() => handleClick(n)}
+              className={cn('gap-3 p-3 cursor-pointer', !n.read && 'bg-primary/5')}
+            >
+              <div className="flex-1 min-w-0">
+                <p className={cn('text-sm text-foreground', !n.read && 'font-bold')}>{n.message}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {safeFormatDate(n.created, 'dd/MM/yyyy HH:mm')}
+                </p>
+              </div>
+              {!n.read && <div className="w-2 h-2 bg-primary rounded-full shrink-0" />}
+            </DropdownMenuItem>
+          ))
         )}
       </DropdownMenuContent>
     </DropdownMenu>

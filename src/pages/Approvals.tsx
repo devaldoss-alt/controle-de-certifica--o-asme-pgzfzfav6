@@ -28,10 +28,19 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Check, X, FileText, CheckCircle2, Clock, Paperclip } from 'lucide-react'
+import { Check, X, FileText, CheckCircle2, Clock, Paperclip, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { localizedField } from '@/lib/i18n-content'
 import { useCompany } from '@/hooks/use-company'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { ROLES } from '@/lib/role-data'
 
 export default function Approvals() {
   const { user } = useAuth()
@@ -41,6 +50,9 @@ export default function Approvals() {
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [comment, setComment] = useState('')
   const [loading, setLoading] = useState(false)
+  const [searchText, setSearchText] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   const loadData = async () => {
     try {
@@ -55,6 +67,18 @@ export default function Approvals() {
     loadData()
   }, [selectedCompanyId])
   useRealtime('checklists', () => loadData())
+
+  const filteredChecklists = checklists.filter((item) => {
+    if (searchText) {
+      const search = searchText.toLowerCase()
+      const title = (item.title || '').toLowerCase()
+      const titleEn = (item.title_en || '').toLowerCase()
+      if (!title.includes(search) && !titleEn.includes(search)) return false
+    }
+    if (roleFilter !== 'all' && item.role_assigned !== roleFilter) return false
+    if (statusFilter !== 'all' && item.status !== statusFilter) return false
+    return true
+  })
 
   const handleApprove = async (id: string) => {
     setLoading(true)
@@ -102,8 +126,44 @@ export default function Approvals() {
         </p>
       </div>
 
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="text"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder={lang === 'pt' ? 'Pesquisar...' : 'Search...'}
+            className="pl-9 bg-black/20 border-white/10"
+          />
+        </div>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-full sm:w-48 bg-black/20 border-white/10">
+            <SelectValue placeholder={lang === 'pt' ? 'Função' : 'Role'} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{lang === 'pt' ? 'Todas' : 'All'}</SelectItem>
+            {ROLES.map((role) => (
+              <SelectItem key={role} value={role}>
+                {role}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-40 bg-black/20 border-white/10">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{lang === 'pt' ? 'Todos' : 'All'}</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="grid gap-3">
-        {checklists.map((item) => {
+        {filteredChecklists.map((item) => {
           const hours = safeDifferenceInHours(item.due_date)
           return (
             <Card key={item.id} className="glass border-white/5 backdrop-blur-md">
@@ -190,7 +250,7 @@ export default function Approvals() {
         })}
       </div>
 
-      {checklists.length === 0 && (
+      {filteredChecklists.length === 0 && (
         <div className="text-center py-20 text-muted-foreground">
           <CheckCircle2 className="w-12 h-12 mx-auto mb-4 opacity-20" />
           <p>
