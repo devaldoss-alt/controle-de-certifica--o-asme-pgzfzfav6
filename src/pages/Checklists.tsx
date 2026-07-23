@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, useI18n } from '@/hooks/use-i18n'
 import {
@@ -39,6 +40,8 @@ export default function Checklists() {
   const [tutorialItem, setTutorialItem] = useState<Checklist | null>(null)
   const isManager = user?.role === 'Manager'
   const { selectedCompanyId } = useCompany()
+  const [searchParams] = useSearchParams()
+  const highlightId = searchParams.get('checklistId')
 
   const loadData = async () => {
     try {
@@ -62,6 +65,17 @@ export default function Checklists() {
     loadData()
   }, [user, categoryFilter, osFilter, selectedCompanyId])
   useRealtime('checklists', () => loadData())
+
+  useEffect(() => {
+    if (highlightId && checklists.length > 0) {
+      setTimeout(() => {
+        const el = document.getElementById(`checklist-${highlightId}`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
+    }
+  }, [highlightId, checklists])
 
   const handleToggle = async (item: Checklist) => {
     if (isManager || item.locked) return
@@ -236,10 +250,13 @@ export default function Checklists() {
             {items.map((item) => (
               <Card
                 key={item.id}
+                id={`checklist-${item.id}`}
                 className={cn(
-                  'transition-all duration-300 backdrop-blur-md',
+                  'transition-all duration-500 backdrop-blur-md',
                   getCardStyle(item),
                   item.locked && 'opacity-75',
+                  highlightId === item.id &&
+                    'ring-2 ring-primary shadow-[0_0_15px_rgba(var(--primary),0.3)]',
                 )}
               >
                 <CardContent className="p-4 flex items-start gap-4">

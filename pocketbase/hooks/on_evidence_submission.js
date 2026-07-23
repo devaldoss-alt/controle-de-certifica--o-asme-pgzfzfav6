@@ -9,15 +9,12 @@ onRecordAfterUpdateSuccess((e) => {
   if (!newEvidence || newEvidence === '') return e.next()
   if (oldEvidence && oldEvidence !== '') return e.next()
 
-  const roleAssigned = record.getString('role_assigned')
-  if (!roleAssigned) return e.next()
-
   const title = record.getString('title')
   const actorId = record.getString('last_action_by')
 
   var users = []
   try {
-    users = $app.findRecordsByFilter('users', "role = '" + roleAssigned + "'", 'name', 500, 0)
+    users = $app.findRecordsByFilter('users', "role = 'Manager' || role = 'QCC'", 'name', 500, 0)
   } catch (_) {
     return e.next()
   }

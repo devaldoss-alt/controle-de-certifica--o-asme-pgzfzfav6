@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, useI18n } from '@/hooks/use-i18n'
 import {
@@ -53,6 +54,8 @@ export default function Approvals() {
   const [searchText, setSearchText] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [searchParams] = useSearchParams()
+  const highlightId = searchParams.get('checklistId')
 
   const loadData = async () => {
     try {
@@ -67,6 +70,17 @@ export default function Approvals() {
     loadData()
   }, [selectedCompanyId])
   useRealtime('checklists', () => loadData())
+
+  useEffect(() => {
+    if (highlightId && checklists.length > 0) {
+      setTimeout(() => {
+        const el = document.getElementById(`checklist-${highlightId}`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
+    }
+  }, [highlightId, checklists])
 
   const filteredChecklists = checklists.filter((item) => {
     if (searchText) {
@@ -176,7 +190,14 @@ export default function Approvals() {
         {filteredChecklists.map((item) => {
           const hours = safeDifferenceInHours(item.due_date)
           return (
-            <Card key={item.id} className="glass border-white/5 backdrop-blur-md">
+            <Card
+              key={item.id}
+              id={`checklist-${item.id}`}
+              className={cn(
+                'glass border-white/5 backdrop-blur-md transition-all duration-500',
+                highlightId === item.id && 'ring-2 ring-primary bg-primary/5',
+              )}
+            >
               <CardContent className="p-4 flex flex-col lg:flex-row items-start gap-4">
                 <div className="flex-1 min-w-0 w-full">
                   <div className="flex items-center gap-2 mb-2">

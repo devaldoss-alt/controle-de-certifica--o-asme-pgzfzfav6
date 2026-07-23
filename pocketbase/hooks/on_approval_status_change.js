@@ -7,9 +7,6 @@ onRecordAfterUpdateSuccess((e) => {
   if (newStatus !== 'approved' && newStatus !== 'rejected') return e.next()
   if (oldStatus === newStatus) return e.next()
 
-  const targetUserId = record.getString('last_action_by')
-  if (!targetUserId) return e.next()
-
   const title = record.getString('title')
   var message = ''
   if (newStatus === 'approved') {
@@ -20,17 +17,25 @@ onRecordAfterUpdateSuccess((e) => {
     if (comment) message = message + ': ' + comment
   }
 
+  const roleAssigned = record.getString('role_assigned')
+  var users = []
   try {
-    const notifCol = $app.findCollectionByNameOrId('notifications')
-    var notif = new Record(notifCol)
-    notif.set('user_id', targetUserId)
-    notif.set('type', newStatus)
-    notif.set('checklist_id', record.id)
-    notif.set('message', message)
-    notif.set('read', false)
-    $app.save(notif)
-  } catch (err) {
-    console.log('Failed to create approval notification', err.message)
+    users = $app.findRecordsByFilter('users', "role = '" + roleAssigned + "'", 'name', 500, 0)
+  } catch (_) {}
+
+  const notifCol = $app.findCollectionByNameOrId('notifications')
+  for (var i = 0; i < users.length; i++) {
+    try {
+      var notif = new Record(notifCol)
+      notif.set('user_id', users[i].id)
+      notif.set('type', newStatus)
+      notif.set('checklist_id', record.id)
+      notif.set('message', message)
+      notif.set('read', false)
+      $app.save(notif)
+    } catch (err) {
+      console.log('Failed to create approval notification for user ' + users[i].id, err.message)
+    }
   }
 
   return e.next()

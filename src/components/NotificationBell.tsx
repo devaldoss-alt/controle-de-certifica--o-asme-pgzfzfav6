@@ -44,7 +44,12 @@ export function NotificationBell() {
         prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
       )
     }
-    navigate('/approvals')
+
+    if (user?.role === 'Manager' || user?.role === 'QCC') {
+      navigate(`/approvals?checklistId=${notification.checklist_id}`)
+    } else {
+      navigate(`/checklists?checklistId=${notification.checklist_id}`)
+    }
   }
 
   return (
