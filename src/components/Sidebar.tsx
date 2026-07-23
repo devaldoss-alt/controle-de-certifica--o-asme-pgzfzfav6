@@ -1,41 +1,16 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, LanguageToggle, useI18n } from '@/hooks/use-i18n'
-import {
-  LayoutDashboard,
-  CheckSquare,
-  Users,
-  LogOut,
-  ClipboardCheck,
-  Award,
-  FileText,
-  Briefcase,
-  Building2,
-  BarChart3,
-} from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getNavLinks } from '@/lib/nav-config'
 
 export default function Sidebar() {
   const { user, signOut } = useAuth()
   const location = useLocation()
   const { lang } = useI18n()
 
-  const links = [
-    { name: 'nav.dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'nav.checklists', path: '/checklists', icon: CheckSquare },
-    { name: 'nav.serviceOrders', path: '/service-orders', icon: Briefcase },
-    { name: 'nav.documents', path: '/documents', icon: FileText },
-    { name: 'nav.qualifications', path: '/qualifications', icon: Award },
-    { name: 'nav.indicators', path: '/indicators', icon: BarChart3 },
-  ]
-
-  if (user?.role === 'Manager' || user?.role === 'QCC') {
-    links.push({ name: 'nav.approvals', path: '/approvals', icon: ClipboardCheck })
-  }
-  if (user?.role === 'Manager') {
-    links.push({ name: 'nav.companies', path: '/companies', icon: Building2 })
-    links.push({ name: 'nav.team', path: '/team', icon: Users })
-  }
+  const links = getNavLinks(user?.role)
 
   return (
     <aside className="w-64 glass hidden md:flex flex-col h-full shrink-0 shadow-elevation relative z-10">
