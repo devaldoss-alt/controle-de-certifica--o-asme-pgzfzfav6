@@ -84,16 +84,17 @@ export const getChecklists = async (
 }
 
 export const getPendingApprovals = async (companyId?: string): Promise<Checklist[]> => {
-  const filters: string[] = ['status = "completed"', 'approval_status = "pending"']
-  if (companyId && companyId !== 'all') {
-    filters.push(`company_id = "${companyId}"`)
-  } else {
-    filters.push('company_id != ""')
-  }
+  const companyFilter =
+    companyId && companyId !== 'all' ? `company_id = "${companyId}"` : 'company_id != ""'
+
+  const statusCondition =
+    '(status = "completed" || (status = "pending" && is_critical = true && evidence_file != ""))'
+
+  const filter = `approval_status = "pending" && ${statusCondition} && ${companyFilter}`
   const opts: Record<string, any> = {
     sort: '-updated',
     expand: 'os_id,last_action_by',
-    filter: filters.join(' && '),
+    filter,
   }
   try {
     const result = await pb.collection('checklists').getFullList<Checklist>(opts)
@@ -135,6 +136,7 @@ export const approveChecklist = async (id: string) => {
   return pb.collection('checklists').update(id, {
     approval_status: 'approved',
     locked: true,
+    status: 'completed',
   })
 }
 
