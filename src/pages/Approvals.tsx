@@ -73,10 +73,18 @@ export default function Approvals() {
       const search = searchText.toLowerCase()
       const title = (item.title || '').toLowerCase()
       const titleEn = (item.title_en || '').toLowerCase()
-      if (!title.includes(search) && !titleEn.includes(search)) return false
+      const mcqRef = (item.mcq_ref || '').toLowerCase()
+      if (!title.includes(search) && !titleEn.includes(search) && !mcqRef.includes(search))
+        return false
     }
     if (roleFilter !== 'all' && item.role_assigned !== roleFilter) return false
-    if (statusFilter !== 'all' && item.status !== statusFilter) return false
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'approved' || statusFilter === 'rejected') {
+        if (item.approval_status !== statusFilter) return false
+      } else {
+        if (item.status !== statusFilter) return false
+      }
+    }
     return true
   })
 
@@ -158,6 +166,8 @@ export default function Approvals() {
             <SelectItem value="all">{lang === 'pt' ? 'Todos' : 'All'}</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
           </SelectContent>
         </Select>
       </div>

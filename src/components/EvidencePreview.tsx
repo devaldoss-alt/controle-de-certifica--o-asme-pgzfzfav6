@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { FileText } from 'lucide-react'
+import { FileText, Download } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import { BilingualText } from '@/hooks/use-i18n'
 import { safeParseEvidenceFiles, safeEvidenceFileUrl } from '@/lib/safe-data'
@@ -92,11 +92,10 @@ export function EvidencePreview({ checklistId, filename }: EvidencePreviewProps)
           <a
             key={fname}
             href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-primary hover:underline text-xs p-2 rounded border border-white/5 bg-black/20"
+            download={fname}
+            className="flex items-center gap-2 text-primary hover:underline text-xs p-2 rounded border border-white/5 bg-black/20 cursor-pointer"
           >
-            <FileText className="w-4 h-4" />
+            <Download className="w-4 h-4" />
             <BilingualText k="evidence.viewPdf" />
           </a>
         )

@@ -90,7 +90,7 @@ export const getPendingApprovals = async (companyId?: string): Promise<Checklist
   const statusCondition =
     '(status = "completed" || (status = "pending" && is_critical = true && evidence_file != ""))'
 
-  const filter = `approval_status = "pending" && ${statusCondition} && ${companyFilter}`
+  const filter = `${statusCondition} && ${companyFilter}`
   const opts: Record<string, any> = {
     sort: '-updated',
     expand: 'os_id,last_action_by',
