@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-24T14:15:04.357Z",
+  "generatedAt": "2026-07-24T16:01:48.545Z",
   "collections": [
     {
       "name": "users",
@@ -29,19 +29,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "role",
@@ -72,11 +67,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "Free",
-            "Pro",
-            "Gold"
-          ]
+          "selectValues": ["Free", "Pro", "Gold"]
         },
         {
           "name": "primary_company_id",
@@ -95,11 +86,11 @@
       "name": "checklists",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
+        "view": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "update": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
+        "delete": "@request.auth.id != '' && company_id = @request.auth.primary_company_id"
       },
       "fields": [
         {
@@ -143,10 +134,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "pending",
-            "completed"
-          ]
+          "selectValues": ["pending", "completed"]
         },
         {
           "name": "due_date",
@@ -172,30 +160,21 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "approval_status",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "pending",
-            "approved",
-            "rejected"
-          ]
+          "selectValues": ["pending", "approved", "rejected"]
         },
         {
           "name": "rejection_comment",
@@ -233,11 +212,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "Departmental",
-            "OS",
-            "ISO 9001"
-          ]
+          "selectValues": ["Departmental", "OS", "ISO 9001"]
         },
         {
           "name": "company_id",
@@ -271,11 +246,11 @@
       "name": "interactions",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
+        "view": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "update": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
+        "delete": "@request.auth.id != '' && company_id = @request.auth.primary_company_id"
       },
       "fields": [
         {
@@ -301,35 +276,34 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "pending",
-            "resolved"
-          ]
+          "selectValues": ["pending", "resolved"]
         },
         {
           "name": "created",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "mcq_ref",
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "companies"
         }
       ],
       "indexes": []
@@ -338,11 +312,11 @@
       "name": "service_orders",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "@request.auth.id != '' && owner_company_id = @request.auth.primary_company_id",
+        "view": "@request.auth.id != '' && owner_company_id = @request.auth.primary_company_id",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "update": "@request.auth.id != '' && owner_company_id = @request.auth.primary_company_id",
+        "delete": "@request.auth.id != '' && owner_company_id = @request.auth.primary_company_id"
       },
       "fields": [
         {
@@ -380,30 +354,21 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "Active",
-            "Completed",
-            "Paused"
-          ]
+          "selectValues": ["Active", "Completed", "Paused"]
         },
         {
           "name": "created",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "owner_company_id",
@@ -419,19 +384,17 @@
           "system": false
         }
       ],
-      "indexes": [
-        "CREATE UNIQUE INDEX idx_service_orders_number ON service_orders (number)"
-      ]
+      "indexes": ["CREATE UNIQUE INDEX idx_service_orders_number ON service_orders (number)"]
     },
     {
       "name": "documents",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
+        "view": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != '' && (@request.auth.role = 'QCC' || @request.auth.role = 'Manager')",
-        "delete": "@request.auth.id != '' && (@request.auth.role = 'QCC' || @request.auth.role = 'Manager')"
+        "update": "@request.auth.id != '' && company_id = @request.auth.primary_company_id && (@request.auth.role = 'QCC' || @request.auth.role = 'Manager')",
+        "delete": "@request.auth.id != '' && company_id = @request.auth.primary_company_id && (@request.auth.role = 'QCC' || @request.auth.role = 'Manager')"
       },
       "fields": [
         {
@@ -470,29 +433,21 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "ISO",
-            "ASME"
-          ]
+          "selectValues": ["ISO", "ASME"]
         },
         {
           "name": "created",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "company_id",
@@ -592,19 +547,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "name_en",
@@ -619,11 +569,11 @@
       "name": "user_allocations",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
+        "view": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
         "create": "@request.auth.id != '' && @request.auth.role = 'Manager'",
-        "update": "@request.auth.id != '' && @request.auth.role = 'Manager'",
-        "delete": "@request.auth.id != '' && @request.auth.role = 'Manager'"
+        "update": "@request.auth.id != '' && company_id = @request.auth.primary_company_id && @request.auth.role = 'Manager'",
+        "delete": "@request.auth.id != '' && company_id = @request.auth.primary_company_id && @request.auth.role = 'Manager'"
       },
       "fields": [
         {
@@ -645,19 +595,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": []
@@ -714,19 +659,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": []
@@ -735,11 +675,11 @@
       "name": "indicators",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
+        "view": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
         "create": "@request.auth.id != '' && (@request.auth.role = 'Manager' || @request.auth.role = 'Director' || @request.auth.role = 'QCC')",
-        "update": "@request.auth.id != '' && (@request.auth.role = 'Manager' || @request.auth.role = 'Director' || @request.auth.role = 'QCC')",
-        "delete": "@request.auth.id != '' && @request.auth.role = 'Manager'"
+        "update": "@request.auth.id != '' && company_id = @request.auth.primary_company_id && (@request.auth.role = 'Manager' || @request.auth.role = 'Director' || @request.auth.role = 'QCC')",
+        "delete": "@request.auth.id != '' && company_id = @request.auth.primary_company_id && @request.auth.role = 'Manager'"
       },
       "fields": [
         {
@@ -777,11 +717,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "Annual",
-            "Semestral",
-            "Monthly"
-          ]
+          "selectValues": ["Annual", "Semestral", "Monthly"]
         },
         {
           "name": "company_id",
@@ -795,19 +731,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "objective",
@@ -820,10 +751,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "Percentual",
-            "Numérico"
-          ]
+          "selectValues": ["Percentual", "Numérico"]
         },
         {
           "name": "verification_method",
@@ -836,13 +764,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "≥",
-            ">",
-            "<",
-            "≤",
-            "="
-          ]
+          "selectValues": ["≥", ">", "<", "≤", "="]
         },
         {
           "name": "responsible",
@@ -858,11 +780,11 @@
       "name": "indicator_history",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
+        "view": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
         "create": "@request.auth.id != '' && (@request.auth.role = 'Manager' || @request.auth.role = 'Director' || @request.auth.role = 'QCC')",
-        "update": "@request.auth.id != '' && (@request.auth.role = 'Manager' || @request.auth.role = 'Director' || @request.auth.role = 'QCC')",
-        "delete": "@request.auth.id != '' && @request.auth.role = 'Manager'"
+        "update": "@request.auth.id != '' && company_id = @request.auth.primary_company_id && (@request.auth.role = 'Manager' || @request.auth.role = 'Director' || @request.auth.role = 'QCC')",
+        "delete": "@request.auth.id != '' && company_id = @request.auth.primary_company_id && @request.auth.role = 'Manager'"
       },
       "fields": [
         {
@@ -901,19 +823,21 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "companies"
         }
       ],
       "indexes": []
@@ -922,11 +846,11 @@
       "name": "notifications",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id = user_id",
-        "view": "@request.auth.id = user_id",
+        "list": "@request.auth.id = user_id && company_id = @request.auth.primary_company_id",
+        "view": "@request.auth.id = user_id && company_id = @request.auth.primary_company_id",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id = user_id",
-        "delete": "@request.auth.id = user_id"
+        "update": "@request.auth.id = user_id && company_id = @request.auth.primary_company_id",
+        "delete": "@request.auth.id = user_id && company_id = @request.auth.primary_company_id"
       },
       "fields": [
         {
@@ -941,11 +865,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "submission",
-            "approved",
-            "rejected"
-          ]
+          "selectValues": ["submission", "approved", "rejected"]
         },
         {
           "name": "checklist_id",
@@ -971,19 +891,21 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "companies"
         }
       ],
       "indexes": [

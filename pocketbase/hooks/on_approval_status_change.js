@@ -32,6 +32,7 @@ onRecordAfterUpdateSuccess((e) => {
       notif.set('checklist_id', record.id)
       notif.set('message', message)
       notif.set('read', false)
+      notif.set('company_id', record.getString('company_id'))
       $app.save(notif)
     } catch (err) {
       console.log('Failed to create approval notification for user ' + users[i].id, err.message)
