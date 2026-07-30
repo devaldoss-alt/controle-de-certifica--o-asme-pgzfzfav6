@@ -10,9 +10,10 @@ import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { UserFormDialog } from '@/components/UserFormDialog'
 import { AllocationDialog } from '@/components/AllocationDialog'
-import { UserPlus, FileDown, Pencil, ShieldCheck, Building2 } from 'lucide-react'
-import { differenceInDays } from 'date-fns'
+import { UserPlus, FileDown, Pencil, Building2 } from 'lucide-react'
 import { useCompany } from '@/hooks/use-company'
+import { UserCertificates } from '@/components/UserCertificates'
+import { getCertificates, type Certificate } from '@/services/certificates'
 
 export default function Team() {
   const { user } = useAuth()
@@ -20,18 +21,21 @@ export default function Team() {
   const { selectedCompanyId } = useCompany()
   const [users, setUsers] = useState<User[]>([])
   const [checklists, setChecklists] = useState<Checklist[]>([])
+  const [certificates, setCertificates] = useState<Certificate[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [allocUser, setAllocUser] = useState<User | null>(null)
 
   const loadData = async () => {
     try {
-      const [uData, clData] = await Promise.all([
+      const [uData, clData, certData] = await Promise.all([
         getUsers(selectedCompanyId),
         getChecklists(undefined, undefined, undefined, selectedCompanyId),
+        getCertificates(),
       ])
       setUsers(uData)
       setChecklists(clData)
+      setCertificates(certData)
     } catch (e) {
       console.error(e)
     }
@@ -41,6 +45,7 @@ export default function Team() {
     loadData()
   }, [selectedCompanyId])
   useRealtime('checklists', () => loadData())
+  useRealtime('user_certificates', () => loadData())
 
   if (user?.role !== 'Manager') {
     return <div className="p-8 text-center text-rose-500">{t('msg.accessDenied')}</div>
@@ -89,9 +94,6 @@ export default function Team() {
         {users.map((u) => {
           const s = roleStats(u.role)
           const pct = s.total === 0 ? 100 : Math.round((s.done / s.total) * 100)
-          const days = u.qualification_expiry
-            ? differenceInDays(new Date(u.qualification_expiry), new Date())
-            : null
           return (
             <Card key={u.id} className="glass border-white/5">
               <CardHeader className="pb-4">
@@ -142,23 +144,11 @@ export default function Team() {
                     {s.done} {t('team.completed')} {s.total}
                   </p>
                 </div>
-                {days !== null && (
-                  <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2">
-                    <ShieldCheck
-                      className={`w-4 h-4 ${days < 0 ? 'text-rose-500' : days <= 30 ? 'text-amber-500' : 'text-emerald-500'}`}
-                    />
-                    <div>
-                      <p className="text-xs text-muted-foreground">{t('team.qualification')}</p>
-                      <p
-                        className={`text-sm font-medium ${days < 0 ? 'text-rose-500' : days <= 30 ? 'text-amber-500' : 'text-emerald-500'}`}
-                      >
-                        {days < 0
-                          ? t('qualifications.expired')
-                          : `${days} ${t('team.daysRemaining')}`}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                <UserCertificates
+                  userId={u.id}
+                  certificates={certificates.filter((c) => c.user_id === u.id)}
+                  onRefresh={loadData}
+                />
               </CardContent>
             </Card>
           )

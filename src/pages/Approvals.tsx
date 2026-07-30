@@ -2,12 +2,8 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, useI18n } from '@/hooks/use-i18n'
-import {
-  getPendingApprovals,
-  approveChecklist,
-  rejectChecklist,
-  type Checklist,
-} from '@/services/api'
+import { getPendingApprovals, rejectChecklist, type Checklist } from '@/services/api'
+import pb from '@/lib/pocketbase/client'
 import useRealtime from '@/hooks/use-realtime'
 import { EvidencePreview } from '@/components/EvidencePreview'
 import {
@@ -50,6 +46,8 @@ export default function Approvals() {
   const [checklists, setChecklists] = useState<Checklist[]>([])
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [comment, setComment] = useState('')
+  const [approveId, setApproveId] = useState<string | null>(null)
+  const [approveComment, setApproveComment] = useState('')
   const [loading, setLoading] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
@@ -102,10 +100,20 @@ export default function Approvals() {
     return true
   })
 
-  const handleApprove = async (id: string) => {
+  const handleApprove = async () => {
+    if (!approveId) return
     setLoading(true)
     try {
-      await approveChecklist(id)
+      const update: Record<string, any> = {
+        approval_status: 'approved',
+        locked: true,
+      }
+      if (approveComment.trim()) {
+        update.approval_comment = approveComment.trim()
+      }
+      await pb.collection('checklists').update(approveId, update)
+      setApproveId(null)
+      setApproveComment('')
       loadData()
     } catch (e) {
       console.error(e)
@@ -254,7 +262,10 @@ export default function Approvals() {
                 <div className="flex items-center gap-2 shrink-0">
                   <Button
                     size="sm"
-                    onClick={() => handleApprove(item.id)}
+                    onClick={() => {
+                      setApproveId(item.id)
+                      setApproveComment('')
+                    }}
                     disabled={loading}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
@@ -289,6 +300,47 @@ export default function Approvals() {
           </p>
         </div>
       )}
+
+      <Dialog open={!!approveId} onOpenChange={(v) => !v && setApproveId(null)}>
+        <DialogContent className="bg-card border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              <BilingualText k="common.approve" />
+            </DialogTitle>
+            <DialogDescription>
+              {lang === 'pt' ? 'Observações (opcional)' : 'Observations (optional)'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Textarea
+              value={approveComment}
+              onChange={(e) => setApproveComment(e.target.value)}
+              placeholder={
+                lang === 'pt'
+                  ? 'Adicione observações sobre a aprovação...'
+                  : 'Add observations about the approval...'
+              }
+              className="bg-black/20 border-white/10 text-white min-h-24"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setApproveId(null)}
+              className="border-white/10 text-white hover:bg-white/5"
+            >
+              <BilingualText k="common.cancel" />
+            </Button>
+            <Button
+              onClick={handleApprove}
+              disabled={loading}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {loading ? '...' : <BilingualText k="common.approve" />}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!rejectId} onOpenChange={(v) => !v && setRejectId(null)}>
         <DialogContent className="bg-card border-white/10">

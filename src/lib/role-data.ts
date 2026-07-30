@@ -8,6 +8,7 @@ export const ROLES = [
   'CertifyingEngineer',
   'Welder',
   'NDE',
+  'Apontador',
   'Manager',
 ] as const
 
@@ -134,6 +135,21 @@ export const roleData: Record<string, RoleData> = {
       'Solicitar inspeção de soldas ao Inspector',
     ],
     observacoes: 'Risco de perda de qualificação por falta de continuidade documentada.',
+  },
+  Apontador: {
+    objetivo:
+      'Auxiliar no acompanhamento e execução de checklists designados, garantindo que as atividades atribuídas sejam concluídas dentro dos prazos estabelecidos.',
+    authorities: [
+      'Visualizar e concluir checklists designados',
+      'Reportar progresso das atividades atribuídas',
+    ],
+    responsibilities: [
+      'Acompanhar e concluir checklists onde designado como responsável',
+      'Reportar conclusão de atividades ao responsável técnico',
+      'Manter registros atualizados das atividades executadas',
+    ],
+    observacoes:
+      'O Apontador tem acesso apenas aos checklists onde foi explicitamente designado, não tendo acesso a checklists de outras funções.',
   },
   NDE: {
     objetivo:

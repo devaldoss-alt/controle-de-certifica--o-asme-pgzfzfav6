@@ -45,7 +45,9 @@ export function NotificationBell() {
       )
     }
 
-    if (user?.role === 'Manager' || user?.role === 'QCC') {
+    if (notification.type === 'deadline_alert') {
+      navigate('/service-orders')
+    } else if (user?.role === 'Manager' || user?.role === 'QCC') {
       navigate(`/approvals?checklistId=${notification.checklist_id}`)
     } else {
       navigate(`/checklists?checklistId=${notification.checklist_id}`)

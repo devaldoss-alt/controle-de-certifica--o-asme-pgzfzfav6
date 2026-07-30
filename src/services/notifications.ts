@@ -4,7 +4,7 @@ import { safeArray } from '@/lib/safe-data'
 export interface Notification {
   id: string
   user_id: string
-  type: 'submission' | 'approved' | 'rejected'
+  type: 'submission' | 'approved' | 'rejected' | 'deadline_alert'
   checklist_id: string
   message: string
   read: boolean

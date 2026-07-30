@@ -39,6 +39,7 @@ export default function Checklists() {
   const [evidenceItem, setEvidenceItem] = useState<Checklist | null>(null)
   const [tutorialItem, setTutorialItem] = useState<Checklist | null>(null)
   const isManager = user?.role === 'Manager'
+  const isApontador = user?.role === 'Apontador'
   const { selectedCompanyId } = useCompany()
   const [searchParams] = useSearchParams()
   const highlightId = searchParams.get('checklistId')
@@ -47,14 +48,14 @@ export default function Checklists() {
     try {
       const [data, osData] = await Promise.all([
         getChecklists(
-          isManager ? undefined : user?.role,
+          isManager || isApontador ? undefined : user?.role,
           categoryFilter,
           osFilter === 'all' ? undefined : osFilter,
           selectedCompanyId,
         ),
         getServiceOrders(undefined, selectedCompanyId),
       ])
-      setChecklists(data)
+      setChecklists(isApontador ? data.filter((c: any) => c.apontador_id === user?.id) : data)
       setServiceOrders(osData)
     } catch (e) {
       console.error(e)
@@ -341,6 +342,11 @@ export default function Checklists() {
                     {item.approval_status === 'rejected' && item.rejection_comment && (
                       <div className="mt-2 p-2 rounded bg-rose-500/5 border border-rose-500/10">
                         <p className="text-xs text-rose-400">{item.rejection_comment}</p>
+                      </div>
+                    )}
+                    {item.approval_status === 'approved' && item.approval_comment && (
+                      <div className="mt-2 p-2 rounded bg-emerald-500/5 border border-emerald-500/10">
+                        <p className="text-xs text-emerald-400">{item.approval_comment}</p>
                       </div>
                     )}
                   </div>
