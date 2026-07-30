@@ -15,6 +15,12 @@ export interface DocumentRecord {
   prefix_en?: string
   code?: string
   revision?: string
+  document_type?: string
+  effective_date?: string
+  next_review_date?: string
+  origin?: string
+  language?: string
+  status?: string
   created: string
   updated: string
   file?: string | string[]
@@ -26,6 +32,7 @@ export const getDocuments = async (
   accessiblePrefixes?: string[],
 ) => {
   const filters: string[] = []
+  filters.push('category != "Internal"')
   if (filter && filter !== 'all') filters.push(`category = "${filter}"`)
   if (companyId && companyId !== 'all') filters.push(`company_id = "${companyId}"`)
   else filters.push('company_id != ""')

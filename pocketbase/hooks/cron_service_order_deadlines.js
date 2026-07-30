@@ -1,100 +1,100 @@
-cronAdd('service_order_deadline_check', '0 8 * * *', () => {
-  var now = new Date()
-  var sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-
-  var serviceOrders = []
+cronAdd('service_order_deadlines', '0 7 * * *', () => {
+  var orders = []
   try {
-    serviceOrders = $app.findRecordsByFilter(
+    orders = $app.findRecordsByFilter(
       'service_orders',
-      'status = "Active" && deadline != ""',
-      'deadline',
+      "status = 'Active' && deadline != ''",
+      'created',
       500,
       0,
     )
-  } catch (_) {
+  } catch (e) {
+    $app.logger().error('cron_service_order_deadlines: failed to fetch orders', 'error', String(e))
     return
   }
 
-  var notifCol = $app.findCollectionByNameOrId('notifications')
+  var now = new Date()
+  var nowUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  var targetOffsets = [21, 14, 7]
 
-  for (var i = 0; i < serviceOrders.length; i++) {
-    var so = serviceOrders[i]
-    var deadlineStr = so.getString('deadline')
+  for (var i = 0; i < orders.length; i++) {
+    var order = orders[i]
+    var deadlineStr = order.getString('deadline')
     if (!deadlineStr) continue
 
-    var deadlineDate = new Date(deadlineStr)
-    if (isNaN(deadlineDate.getTime())) continue
-    if (deadlineDate < now || deadlineDate > sevenDaysLater) continue
+    var deadlineParts = deadlineStr.split('-')
+    if (deadlineParts.length < 3) continue
+    var deadlineUtc = Date.UTC(
+      parseInt(deadlineParts[0], 10),
+      parseInt(deadlineParts[1], 10) - 1,
+      parseInt(deadlineParts[2], 10),
+    )
+    var diffDays = Math.round((deadlineUtc - nowUtc) / (1000 * 60 * 60 * 24))
 
-    var responsibleUserId = ''
-
-    var lastChecklists = []
-    try {
-      lastChecklists = $app.findRecordsByFilter(
-        'checklists',
-        'os_id = "' + so.id + '" && last_action_by != ""',
-        '-updated',
-        1,
-        0,
-      )
-    } catch (_) {}
-
-    if (lastChecklists.length > 0) {
-      responsibleUserId = lastChecklists[0].getString('last_action_by')
-    }
-
-    if (!responsibleUserId) {
-      var companyId = so.getString('owner_company_id')
-      if (companyId) {
-        var managers = []
-        try {
-          managers = $app.findRecordsByFilter(
-            'users',
-            'role = "Manager" && primary_company_id = "' + companyId + '"',
-            'created',
-            1,
-            0,
-          )
-        } catch (_) {}
-        if (managers.length > 0) {
-          responsibleUserId = managers[0].id
-        }
+    var targetOffset = 0
+    for (var d = 0; d < targetOffsets.length; d++) {
+      if (diffDays === targetOffsets[d]) {
+        targetOffset = targetOffsets[d]
+        break
       }
     }
+    if (targetOffset === 0) continue
 
-    if (!responsibleUserId) continue
+    var soId = order.id
+    var companyId = order.getString('owner_company_id')
+    var soNumber = order.getString('number')
 
-    var osNumber = so.getString('number')
-    var existingNotifs = []
+    var managers = []
     try {
-      existingNotifs = $app.findRecordsByFilter(
-        'notifications',
-        'user_id = "' +
-          responsibleUserId +
-          '" && type = "deadline_alert" && message ~ "' +
-          osNumber +
-          '"',
-        '-created',
-        1,
+      managers = $app.findRecordsByFilter(
+        'users',
+        "primary_company_id = '" + companyId + "' && role = 'Manager'",
+        'created',
+        50,
         0,
       )
-    } catch (_) {}
+    } catch (e) {
+      $app.logger().error('cron: failed to find managers', 'soId', soId, 'error', String(e))
+      continue
+    }
 
-    if (existingNotifs.length > 0) continue
+    if (managers.length === 0) continue
 
-    var dateStr = deadlineStr.split(' ')[0].split('T')[0]
-    var message = 'Prazo da OS ' + osNumber + ' se aproxima: ' + dateStr
+    var notifCol = $app.findCollectionByNameOrId('notifications')
 
-    try {
-      var notif = new Record(notifCol)
-      notif.set('user_id', responsibleUserId)
-      notif.set('type', 'deadline_alert')
-      notif.set('message', message)
-      notif.set('read', false)
-      notif.set('company_id', so.getString('owner_company_id'))
-      $app.save(notif)
-    } catch (err) {
-      $app.logger().error('Failed to create deadline alert', 'error', String(err))
+    for (var j = 0; j < managers.length; j++) {
+      var manager = managers[j]
+
+      try {
+        $app.findFirstRecordByFilter(
+          'notifications',
+          "service_order_id = '" +
+            soId +
+            "' && day_offset = " +
+            targetOffset +
+            " && user_id = '" +
+            manager.id +
+            "'",
+        )
+        continue
+      } catch (_) {}
+
+      try {
+        var notif = new Record(notifCol)
+        notif.set('user_id', manager.id)
+        notif.set('type', 'deadline_alert')
+        notif.set(
+          'message',
+          'Prazo se aproximando: OS ' + soNumber + ' vence em ' + targetOffset + ' dias',
+        )
+        notif.set('read', false)
+        notif.set('company_id', companyId)
+        notif.set('service_order_id', soId)
+        notif.set('day_offset', targetOffset)
+        $app.save(notif)
+      } catch (e) {
+        $app.logger().error('cron: failed to create notification', 'soId', soId, 'error', String(e))
+      }
     }
   }
 })

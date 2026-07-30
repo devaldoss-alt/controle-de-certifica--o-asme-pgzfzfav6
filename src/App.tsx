@@ -14,6 +14,8 @@ import Companies from '@/pages/Companies'
 import Approvals from '@/pages/Approvals'
 import Qualifications from '@/pages/Qualifications'
 import Indicators from '@/pages/Indicators'
+import NotificationsPage from '@/pages/NotificationsPage'
+import MasterList from '@/pages/MasterList'
 import NotFound from '@/pages/NotFound'
 
 const App = () => (
@@ -29,6 +31,8 @@ const App = () => (
               <Route path="/checklists" element={<Checklists />} />
               <Route path="/service-orders" element={<ServiceOrders />} />
               <Route path="/documents" element={<Documents />} />
+              <Route path="/master-list" element={<MasterList />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/approvals" element={<Approvals />} />
               <Route path="/qualifications" element={<Qualifications />} />
               <Route path="/indicators" element={<Indicators />} />

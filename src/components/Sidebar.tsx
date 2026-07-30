@@ -5,6 +5,11 @@ import { LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getNavLinks } from '@/lib/nav-config'
 
+const navLabelMap: Record<string, { pt: string; en: string }> = {
+  'nav.masterList': { pt: 'Lista Mestra', en: 'Master List' },
+  'nav.notifications': { pt: 'Notificações', en: 'Notifications' },
+}
+
 export default function Sidebar() {
   const { user, signOut } = useAuth()
   const location = useLocation()
@@ -41,6 +46,8 @@ export default function Sidebar() {
               <link.icon className="w-4 h-4 shrink-0" />
               {link.name === 'nav.indicators' ? (
                 <span>{lang === 'pt' ? 'Indicadores' : 'Indicators'}</span>
+              ) : navLabelMap[link.name] ? (
+                <span>{lang === 'pt' ? navLabelMap[link.name].pt : navLabelMap[link.name].en}</span>
               ) : (
                 <BilingualText k={link.name} />
               )}

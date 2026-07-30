@@ -8,6 +8,8 @@ import {
   Briefcase,
   Building2,
   BarChart3,
+  ListChecks,
+  Bell,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -23,6 +25,8 @@ export function getNavLinks(role?: string): NavLinkItem[] {
     { name: 'nav.checklists', path: '/checklists', icon: CheckSquare },
     { name: 'nav.serviceOrders', path: '/service-orders', icon: Briefcase },
     { name: 'nav.documents', path: '/documents', icon: FileText },
+    { name: 'nav.masterList', path: '/master-list', icon: ListChecks },
+    { name: 'nav.notifications', path: '/notifications', icon: Bell },
     { name: 'nav.qualifications', path: '/qualifications', icon: Award },
     { name: 'nav.indicators', path: '/indicators', icon: BarChart3 },
   ]

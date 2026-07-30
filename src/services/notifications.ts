@@ -10,6 +10,8 @@ export interface Notification {
   read: boolean
   created: string
   updated: string
+  service_order_id?: string
+  day_offset?: number
 }
 
 export const getNotifications = async (userId: string, limit = 20): Promise<Notification[]> => {

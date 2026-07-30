@@ -1,17 +1,10 @@
-onRecordCreate((e) => {
-  var checklistId = e.record.getString('checklist_id')
-  if (!checklistId) {
-    e.next()
-    return
-  }
-
-  try {
-    var checklist = $app.findRecordById('checklists', checklistId)
-    var companyId = checklist.getString('company_id')
+onRecordCreateRequest((e) => {
+  var body = e.requestInfo().body || {}
+  if (!body.company_id && e.auth && e.auth.getString) {
+    var companyId = e.auth.getString('primary_company_id')
     if (companyId) {
-      e.record.set('company_id', companyId)
+      e.requestInfo().body.company_id = companyId
     }
-  } catch (_) {}
-
+  }
   e.next()
 }, 'notifications')
