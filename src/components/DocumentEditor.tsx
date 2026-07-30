@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { RichTextEditor } from '@/components/RichTextEditor'
-import { ArrowLeft, Upload, FileText, X } from 'lucide-react'
+import { ArrowLeft, Upload, FileText, X, Loader2 } from 'lucide-react'
 import { DMS_PREFIXES, type DocumentFormData } from '@/lib/dms-codes'
 import type { FieldErrors } from '@/lib/pocketbase/errors'
 import { useRef } from 'react'
@@ -24,6 +24,7 @@ interface DocumentEditorProps {
   isEdit?: boolean
   existingFileName?: string
   canEditContent?: boolean
+  isSaving?: boolean
 }
 
 export function DocumentEditor({
@@ -35,6 +36,7 @@ export function DocumentEditor({
   isEdit = false,
   existingFileName,
   canEditContent = true,
+  isSaving = false,
 }: DocumentEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -93,8 +95,13 @@ export function DocumentEditor({
           <BilingualText k="doc.back" />
         </Button>
         {canEditContent && (
-          <Button onClick={onSave} className="bg-primary hover:bg-primary/90">
-            <BilingualText k="common.save" />
+          <Button
+            onClick={onSave}
+            disabled={isSaving || !data.title.trim()}
+            className="bg-primary hover:bg-primary/90"
+          >
+            {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {isSaving ? '...' : <BilingualText k="common.save" />}
           </Button>
         )}
       </div>

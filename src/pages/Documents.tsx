@@ -49,6 +49,7 @@ export default function Documents() {
   const [filter, setFilter] = useState('all')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [existingFileName, setExistingFileName] = useState<string | undefined>(undefined)
+  const [isSaving, setIsSaving] = useState(false)
   const canEdit = canUseDocumentEditor(user?.plan) && ['QCC', 'Manager'].includes(user?.role || '')
   const txt = (pt: string, en: string) => (lang === 'pt' ? pt : en)
 
@@ -74,8 +75,10 @@ export default function Documents() {
   })
   useRealtime('document_access', () => loadData())
 
-  const updateField = (field: keyof DocumentFormData, value: string | File | null) =>
+  const updateField = (field: keyof DocumentFormData, value: string | File | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+    if (fieldErrors[field]) setFieldErrors((prev) => ({ ...prev, [field]: '' }))
+  }
 
   const openNew = () => {
     setEditingId(null)
@@ -130,9 +133,12 @@ export default function Documents() {
     fd.append('prefix_en', prefixMeta?.label_en || '')
     fd.append('code', formData.code)
     fd.append('revision', formData.revision)
-    if (selectedCompanyId !== 'all') fd.append('company_id', selectedCompanyId)
+    const effectiveCompanyId =
+      selectedCompanyId !== 'all' ? selectedCompanyId : user?.primary_company_id || ''
+    if (effectiveCompanyId) fd.append('company_id', effectiveCompanyId)
     if (formData.file) fd.append('file', formData.file)
 
+    setIsSaving(true)
     try {
       if (editingId) {
         await updateDocument(editingId, fd)
@@ -151,6 +157,8 @@ export default function Documents() {
         description: getErrorMessage(e),
         variant: 'destructive',
       })
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -185,6 +193,7 @@ export default function Documents() {
         existingFileName={existingFileName}
         isEdit={!!editingId}
         canEditContent={canEdit}
+        isSaving={isSaving}
       />
     )
   }

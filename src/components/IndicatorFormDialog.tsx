@@ -21,8 +21,9 @@ import { createIndicator, type IndicatorFormData } from '@/services/indicators'
 import { getUsers, type User } from '@/services/api'
 import { useI18n } from '@/hooks/use-i18n'
 import { useCompany } from '@/hooks/use-company'
+import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/components/ui/use-toast'
-import { Plus } from 'lucide-react'
+import { Plus, Loader2, Building2 } from 'lucide-react'
 
 const PERIODS = ['Annual', 'Semestral', 'Monthly'] as const
 const OPERATORS = ['≥', '>', '<', '≤', '='] as const
@@ -37,14 +38,22 @@ export function IndicatorFormDialog({
   onOpenChange: (v: boolean) => void
   onSaved?: () => void
 }) {
-  const { t } = useI18n()
-  const { lang } = useI18n()
+  const { t, lang } = useI18n()
   const { toast } = useToast()
-  const { selectedCompanyId } = useCompany()
+  const { selectedCompanyId, allocations, companies } = useCompany()
+  const { user } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [generalError, setGeneralError] = useState('')
   const txt = (pt: string, en: string) => (lang === 'pt' ? pt : en)
+
+  const effectiveCompanyId =
+    selectedCompanyId !== 'all'
+      ? selectedCompanyId
+      : user?.primary_company_id || (allocations.length > 0 ? allocations[0].company_id : '')
+
+  const companyName = companies.find((c) => c.id === effectiveCompanyId)?.name || ''
 
   const [form, setForm] = useState<IndicatorFormData>({
     title: '',
@@ -64,7 +73,8 @@ export function IndicatorFormDialog({
       getUsers()
         .then((data: User[]) => setUsers(data || []))
         .catch(() => {})
-      setError('')
+      setGeneralError('')
+      setFieldErrors({})
       setForm({
         title: '',
         objective: '',
@@ -80,32 +90,42 @@ export function IndicatorFormDialog({
     }
   }, [open])
 
+  const isFormValid = form.title.trim() !== '' && !!form.responsible
+
   const handleSubmit = async () => {
+    const errors: Record<string, string> = {}
     if (!form.title.trim()) {
-      setError(txt('Título é obrigatório', 'Title is required'))
-      return
+      errors.title = txt('Título é obrigatório', 'Title is required')
     }
     if (!form.responsible) {
-      setError(txt('Responsável é obrigatório', 'Responsible is required'))
+      errors.responsible = txt('Responsável é obrigatório', 'Responsible is required')
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
       return
     }
-    const companyId = selectedCompanyId === 'all' ? '' : selectedCompanyId
-    if (!companyId) {
-      setError(txt('Selecione uma empresa ativa', 'Select an active company'))
+    if (!effectiveCompanyId) {
+      setGeneralError(txt('Selecione uma empresa ativa', 'Select an active company'))
       return
     }
     setLoading(true)
-    setError('')
+    setGeneralError('')
+    setFieldErrors({})
     try {
-      await createIndicator({ ...form, company_id: companyId })
+      await createIndicator({ ...form, company_id: effectiveCompanyId })
       toast({ title: txt('Indicador criado com sucesso', 'Indicator created successfully') })
       onOpenChange(false)
       onSaved?.()
     } catch (e: any) {
-      setError(e?.message || txt('Erro ao criar indicador', 'Error creating indicator'))
+      const msg = e?.message || txt('Erro ao criar indicador', 'Error creating indicator')
+      setGeneralError(msg)
     } finally {
       setLoading(false)
     }
+  }
+
+  const clearFieldError = (field: string) => {
+    if (fieldErrors[field]) setFieldErrors((prev) => ({ ...prev, [field]: '' }))
   }
 
   return (
@@ -120,14 +140,25 @@ export function IndicatorFormDialog({
             {txt('Cadastre um novo KPI para acompanhamento', 'Register a new KPI for tracking')}
           </DialogDescription>
         </DialogHeader>
+        {companyName && (
+          <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-md px-3 py-2">
+            <Building2 className="w-4 h-4 text-primary" />
+            <span className="text-sm text-white/80">{txt('Empresa:', 'Company:')}</span>
+            <span className="text-sm text-white font-medium">{companyName}</span>
+          </div>
+        )}
         <div className="space-y-3 py-2">
           <div className="space-y-2">
             <Label className="text-white/80">{txt('Título *', 'Title *')}</Label>
             <Input
               value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              onChange={(e) => {
+                setForm({ ...form, title: e.target.value })
+                clearFieldError('title')
+              }}
               className="bg-black/20 border-white/10 text-white"
             />
+            {fieldErrors.title && <p className="text-sm text-destructive">{fieldErrors.title}</p>}
           </div>
           <div className="space-y-2">
             <Label className="text-white/80">{txt('Objetivo', 'Objective')}</Label>
@@ -237,9 +268,10 @@ export function IndicatorFormDialog({
               <Label className="text-white/80">{txt('Responsável *', 'Responsible *')}</Label>
               <Select
                 value={form.responsible || 'none'}
-                onValueChange={(v) =>
+                onValueChange={(v) => {
                   setForm({ ...form, responsible: v === 'none' ? undefined : v })
-                }
+                  clearFieldError('responsible')
+                }}
               >
                 <SelectTrigger className="bg-black/20 border-white/10 text-white">
                   <SelectValue placeholder="—" />
@@ -253,9 +285,12 @@ export function IndicatorFormDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {fieldErrors.responsible && (
+                <p className="text-sm text-destructive">{fieldErrors.responsible}</p>
+              )}
             </div>
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {generalError && <p className="text-sm text-destructive">{generalError}</p>}
         </div>
         <DialogFooter>
           <Button
@@ -267,9 +302,10 @@ export function IndicatorFormDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || !isFormValid}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
+            {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {loading ? '...' : t('common.save')}
           </Button>
         </DialogFooter>
