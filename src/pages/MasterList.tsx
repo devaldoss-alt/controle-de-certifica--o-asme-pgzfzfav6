@@ -62,6 +62,10 @@ const EMPTY_FORM: InternalDocFormData = {
   origin: '',
   language: 'Portuguese',
   docStatus: 'Active',
+  applicableDocument: '',
+  sector: '',
+  reviewDeadlineDays: '',
+  notes: '',
 }
 
 export default function MasterList() {
@@ -137,6 +141,10 @@ export default function MasterList() {
       origin: doc.origin || '',
       language: doc.language || 'Portuguese',
       docStatus: doc.status || 'Active',
+      applicableDocument: doc.applicable_document || '',
+      sector: doc.sector || '',
+      reviewDeadlineDays: doc.review_deadline_days ? String(doc.review_deadline_days) : '',
+      notes: doc.notes || '',
     })
     setFormOpen(true)
   }
@@ -158,6 +166,10 @@ export default function MasterList() {
     fd.append('origin', formData.origin)
     fd.append('language', formData.language)
     fd.append('status', formData.docStatus)
+    fd.append('applicable_document', formData.applicableDocument)
+    fd.append('sector', formData.sector)
+    fd.append('review_deadline_days', formData.reviewDeadlineDays || '')
+    fd.append('notes', formData.notes)
     const cid = selectedCompanyId !== 'all' ? selectedCompanyId : user?.primary_company_id || ''
     if (cid) fd.append('company_id', cid)
     if (formData.file) fd.append('file', formData.file)
@@ -289,15 +301,16 @@ export default function MasterList() {
             <Table>
               <TableHeader>
                 <TableRow className="border-white/10">
-                  <TableHead className="text-xs text-white/60">Código</TableHead>
-                  <TableHead className="text-xs text-white/60">Título</TableHead>
-                  <TableHead className="text-xs text-white/60">Rev.</TableHead>
-                  <TableHead className="text-xs text-white/60">Emissão</TableHead>
-                  <TableHead className="text-xs text-white/60">Próx. Rev.</TableHead>
                   <TableHead className="text-xs text-white/60">Tipo</TableHead>
-                  <TableHead className="text-xs text-white/60">Origem</TableHead>
-                  <TableHead className="text-xs text-white/60">Idioma</TableHead>
+                  <TableHead className="text-xs text-white/60">Código</TableHead>
+                  <TableHead className="text-xs text-white/60">Identificação</TableHead>
+                  <TableHead className="text-xs text-white/60">Revisão</TableHead>
                   <TableHead className="text-xs text-white/60">Status</TableHead>
+                  <TableHead className="text-xs text-white/60">Doc. que se Aplica</TableHead>
+                  <TableHead className="text-xs text-white/60">Setor</TableHead>
+                  <TableHead className="text-xs text-white/60">Dt. Aprovação/Reaprov.</TableHead>
+                  <TableHead className="text-xs text-white/60">Prazo Rev. (Dias)</TableHead>
+                  <TableHead className="text-xs text-white/60">Observação</TableHead>
                   <TableHead className="text-xs text-white/60">Arquivo</TableHead>
                 </TableRow>
               </TableHeader>
@@ -308,6 +321,9 @@ export default function MasterList() {
                     className="border-white/5 cursor-pointer hover:bg-white/5"
                     onClick={() => setDetailDoc(doc)}
                   >
+                    <TableCell className="text-xs text-white/70">
+                      {doc.document_type || '—'}
+                    </TableCell>
                     <TableCell className="text-xs font-mono text-primary">
                       {doc.code || '—'}
                     </TableCell>
@@ -315,21 +331,23 @@ export default function MasterList() {
                       {doc.title}
                     </TableCell>
                     <TableCell className="text-xs text-white/70">{doc.revision || '—'}</TableCell>
-                    <TableCell className="text-xs text-white/70">
-                      {safeFormatDate(doc.effective_date, 'dd/MM/yyyy')}
-                    </TableCell>
-                    <TableCell className="text-xs text-white/70">
-                      {safeFormatDate(doc.next_review_date, 'dd/MM/yyyy')}
-                    </TableCell>
-                    <TableCell className="text-xs text-white/70">
-                      {doc.document_type || '—'}
-                    </TableCell>
-                    <TableCell className="text-xs text-white/70">{doc.origin || '—'}</TableCell>
-                    <TableCell className="text-xs text-white/70">{doc.language || '—'}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`text-[10px] ${statusColor(doc.status)}`}>
                         {doc.status || '—'}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-white/70 max-w-32 truncate">
+                      {doc.applicable_document || '—'}
+                    </TableCell>
+                    <TableCell className="text-xs text-white/70">{doc.sector || '—'}</TableCell>
+                    <TableCell className="text-xs text-white/70">
+                      {safeFormatDate(doc.effective_date, 'dd/MM/yyyy')}
+                    </TableCell>
+                    <TableCell className="text-xs text-white/70">
+                      {doc.review_deadline_days != null ? String(doc.review_deadline_days) : '—'}
+                    </TableCell>
+                    <TableCell className="text-xs text-white/70 max-w-32 truncate">
+                      {doc.notes || '—'}
                     </TableCell>
                     <TableCell>
                       {fileUrl(doc) ? (
@@ -385,36 +403,16 @@ export default function MasterList() {
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
+                  <span className="text-muted-foreground">Tipo:</span>{' '}
+                  <span className="text-white">{detailDoc.document_type || '—'}</span>
+                </div>
+                <div>
                   <span className="text-muted-foreground">Código:</span>{' '}
                   <span className="text-white font-mono">{detailDoc.code || '—'}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Revisão:</span>{' '}
                   <span className="text-white">{detailDoc.revision || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Emissão:</span>{' '}
-                  <span className="text-white">
-                    {safeFormatDate(detailDoc.effective_date, 'dd/MM/yyyy')}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Próx. Rev.:</span>{' '}
-                  <span className="text-white">
-                    {safeFormatDate(detailDoc.next_review_date, 'dd/MM/yyyy')}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Tipo:</span>{' '}
-                  <span className="text-white">{detailDoc.document_type || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Origem:</span>{' '}
-                  <span className="text-white">{detailDoc.origin || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Idioma:</span>{' '}
-                  <span className="text-white">{detailDoc.language || '—'}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Status:</span>{' '}
@@ -424,6 +422,32 @@ export default function MasterList() {
                   >
                     {detailDoc.status || '—'}
                   </Badge>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Doc. que se Aplica:</span>{' '}
+                  <span className="text-white">{detailDoc.applicable_document || '—'}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Setor:</span>{' '}
+                  <span className="text-white">{detailDoc.sector || '—'}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Dt. Aprovação/Reaprov.:</span>{' '}
+                  <span className="text-white">
+                    {safeFormatDate(detailDoc.effective_date, 'dd/MM/yyyy')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Prazo Rev. (Dias):</span>{' '}
+                  <span className="text-white">
+                    {detailDoc.review_deadline_days != null
+                      ? String(detailDoc.review_deadline_days)
+                      : '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Observação:</span>{' '}
+                  <span className="text-white">{detailDoc.notes || '—'}</span>
                 </div>
               </div>
               {detailDoc.content && (

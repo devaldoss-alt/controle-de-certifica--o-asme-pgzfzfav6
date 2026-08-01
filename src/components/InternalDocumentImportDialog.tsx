@@ -28,28 +28,30 @@ import { parseSpreadsheet, normalizeDate } from '@/lib/spreadsheet-parser'
 import type { ImportRow, ImportResult } from '@/services/internal-documents'
 
 const FIELD_OPTIONS = [
-  { value: 'code', label: 'Código' },
-  { value: 'title', label: 'Título' },
-  { value: 'revision', label: 'Revisão' },
-  { value: 'effective_date', label: 'Data de Emissão' },
-  { value: 'next_review_date', label: 'Próxima Revisão' },
-  { value: 'document_type', label: 'Tipo' },
-  { value: 'origin', label: 'Origem' },
-  { value: 'language', label: 'Idioma' },
-  { value: 'status', label: 'Status' },
+  { value: 'document_type', label: 'TIPO' },
+  { value: 'code', label: 'CÓDIGO' },
+  { value: 'title', label: 'IDENTIFICAÇÃO' },
+  { value: 'revision', label: 'REVISÃO' },
+  { value: 'status', label: 'STATUS' },
+  { value: 'applicable_document', label: 'DOCUMENTO QUE SE APLICA' },
+  { value: 'sector', label: 'SETOR' },
+  { value: 'effective_date', label: 'DATA DE APROVAÇÃO/REAPROVAÇÃO' },
+  { value: 'review_deadline_days', label: 'PRAZO DE REVISÃO (DIAS)' },
+  { value: 'notes', label: 'OBSERVAÇÃO' },
   { value: '_skip', label: '— Ignorar —' },
 ]
 
 const DEFAULT_MAP: Record<string, string> = {
+  document_type: 'document_type',
   code: 'code',
   title: 'title',
   revision: 'revision',
-  effective_date: 'effective_date',
-  next_review_date: 'next_review_date',
-  document_type: 'document_type',
-  origin: 'origin',
-  language: 'language',
   status: 'status',
+  applicable_document: 'applicable_document',
+  sector: 'sector',
+  effective_date: 'effective_date',
+  review_deadline_days: 'review_deadline_days',
+  notes: 'notes',
 }
 
 interface Props {
@@ -72,7 +74,10 @@ export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: P
     const guess: Record<string, string> = {}
     for (const field of Object.keys(DEFAULT_MAP)) {
       const label = FIELD_OPTIONS.find((f) => f.value === field)?.label.toLowerCase() || ''
-      const idx = lower.findIndex((h) => h === label || h.includes(label) || label.includes(h))
+      let idx = lower.findIndex((h) => h === label)
+      if (idx < 0) {
+        idx = lower.findIndex((h) => h.includes(label) || label.includes(h))
+      }
       guess[field] = idx >= 0 ? String(idx) : '_skip'
     }
     return guess
@@ -107,6 +112,9 @@ export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: P
           const val = row[parseInt(colIdx, 10)] || ''
           if (field === 'effective_date' || field === 'next_review_date') {
             obj[field] = normalizeDate(val) || undefined
+          } else if (field === 'review_deadline_days') {
+            const num = parseInt(val, 10)
+            obj[field] = isNaN(num) ? undefined : num
           } else {
             obj[field] = val.trim()
           }

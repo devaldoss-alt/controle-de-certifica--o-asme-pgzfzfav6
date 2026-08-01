@@ -27,6 +27,10 @@ export interface InternalDocFormData extends DocumentFormData {
   origin: string
   language: string
   docStatus: string
+  applicableDocument: string
+  sector: string
+  reviewDeadlineDays: string
+  notes: string
 }
 
 interface Props {
@@ -234,6 +238,38 @@ export function InternalDocumentForm({
                   <SelectItem value="Spanish">Spanish</SelectItem>
                 </SelectContent>
               </Select>
+            </Field>
+          </div>
+
+          <div className="flex gap-3 flex-wrap items-end">
+            <Field label="Documento que se Aplica">
+              <Input
+                value={data.applicableDocument}
+                onChange={(e) => onChange('applicableDocument', e.target.value)}
+                className="bg-black/20 border-white/10 text-white"
+              />
+            </Field>
+            <Field label="Setor">
+              <Input
+                value={data.sector}
+                onChange={(e) => onChange('sector', e.target.value)}
+                className="bg-black/20 border-white/10 text-white"
+              />
+            </Field>
+            <Field label="Prazo de Revisão (Dias)">
+              <Input
+                type="number"
+                value={data.reviewDeadlineDays}
+                onChange={(e) => onChange('reviewDeadlineDays', e.target.value)}
+                className="bg-black/20 border-white/10 text-white w-36"
+              />
+            </Field>
+            <Field label="Observação">
+              <Input
+                value={data.notes}
+                onChange={(e) => onChange('notes', e.target.value)}
+                className="bg-black/20 border-white/10 text-white"
+              />
             </Field>
           </div>
 

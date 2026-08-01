@@ -17,6 +17,10 @@ export interface InternalDocument {
   origin?: string
   language?: string
   status?: string
+  applicable_document?: string
+  sector?: string
+  review_deadline_days?: number
+  notes?: string
   file?: string | string[]
   file_path?: string
   company_id?: string
@@ -34,6 +38,10 @@ export interface ImportRow {
   origin?: string
   language?: string
   status?: string
+  applicable_document?: string
+  sector?: string
+  review_deadline_days?: number
+  notes?: string
 }
 
 export interface ImportResult {
@@ -128,6 +136,10 @@ export async function bulkImportInternalDocuments(
         origin: row.origin || '',
         language: row.language || 'Portuguese',
         status: row.status || 'Active',
+        applicable_document: row.applicable_document || '',
+        sector: row.sector || '',
+        review_deadline_days: row.review_deadline_days ?? null,
+        notes: row.notes || '',
         company_id: companyId,
       })
       result.success++
