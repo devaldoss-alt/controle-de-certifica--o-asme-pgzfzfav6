@@ -223,7 +223,7 @@ export default function Documents() {
       </div>
 
       <div className="flex gap-2">
-        {['all', 'ASME', 'ISO'].map((c) => (
+        {['all', 'ASME', 'ISO', 'Internal'].map((c) => (
           <Button
             key={c}
             variant={c === filter ? 'default' : 'outline'}

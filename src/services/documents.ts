@@ -32,7 +32,6 @@ export const getDocuments = async (
   accessiblePrefixes?: string[],
 ) => {
   const filters: string[] = []
-  filters.push('category != "Internal"')
   if (filter && filter !== 'all') filters.push(`category = "${filter}"`)
   if (companyId && companyId !== 'all') filters.push(`company_id = "${companyId}"`)
   else filters.push('company_id != ""')
