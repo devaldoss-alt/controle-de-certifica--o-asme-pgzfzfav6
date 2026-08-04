@@ -1,6 +1,7 @@
 import pb from '@/lib/pocketbase/client'
 import { safeArray } from '@/lib/safe-data'
 import { normalizeDate } from '@/lib/spreadsheet-parser'
+import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
 
 export interface InternalDocument {
   id: string
@@ -53,6 +54,22 @@ export type ImportProgressCallback = (current: number, total: number) => void
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+const DOCUMENT_TYPE_MAP: Record<string, string> = {
+  PSGQ: 'Internal',
+  FSGQ: 'Record',
+}
+
+const VALID_DOCUMENT_TYPES = ['Internal', 'External', 'Record']
+
+export function normalizeDocumentType(raw: string | undefined): string {
+  const trimmed = (raw || '').trim()
+  if (!trimmed) return 'Internal'
+  if (VALID_DOCUMENT_TYPES.includes(trimmed)) return trimmed
+  const mapped = DOCUMENT_TYPE_MAP[trimmed.toUpperCase()]
+  if (mapped) return mapped
+  return 'Internal'
 }
 
 async function createDocumentWithRetry(
@@ -163,7 +180,7 @@ export async function bulkImportInternalDocuments(
         code,
         revision,
         category: 'Internal',
-        document_type: row.document_type || 'Internal',
+        document_type: normalizeDocumentType(row.document_type),
         effective_date: row.effective_date || null,
         next_review_date: row.next_review_date || null,
         origin: row.origin || '',
@@ -183,10 +200,14 @@ export async function bulkImportInternalDocuments(
           error: 'Limite de requisições excedido após múltiplas tentativas',
         })
       } else {
-        result.errors.push({
-          row: i + 1,
-          error: e?.message || 'Erro ao criar documento',
-        })
+        const fieldErrors = extractFieldErrors(e)
+        const fieldEntries = Object.entries(fieldErrors)
+        if (fieldEntries.length > 0) {
+          const detail = fieldEntries.map(([field, msg]) => `${field}: ${msg}`).join('; ')
+          result.errors.push({ row: i + 1, error: detail })
+        } else {
+          result.errors.push({ row: i + 1, error: getErrorMessage(e) })
+        }
       }
     }
 
