@@ -63,7 +63,12 @@ export default function Documents() {
       const docs = await getDocuments(filter, selectedCompanyId, effectivePrefixes)
       setDocuments(docs)
     } catch (e) {
-      console.error(e)
+      setDocuments([])
+      toast({
+        title: txt('Erro ao carregar documentos', 'Error loading documents'),
+        description: getErrorMessage(e),
+        variant: 'destructive',
+      })
     }
   }
 

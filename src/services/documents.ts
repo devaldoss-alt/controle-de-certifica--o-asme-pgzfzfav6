@@ -42,13 +42,8 @@ export const getDocuments = async (
   }
   const opts: Record<string, any> = { sort: '-updated' }
   if (filters.length > 0) opts.filter = filters.join(' && ')
-  try {
-    const result = await pb.collection('documents').getFullList<DocumentRecord>(opts)
-    return safeArray<DocumentRecord>(result)
-  } catch (e) {
-    console.error('getDocuments failed:', e)
-    return []
-  }
+  const result = await pb.collection('documents').getFullList<DocumentRecord>(opts)
+  return safeArray<DocumentRecord>(result)
 }
 
 export const getDocument = async (id: string) => {
