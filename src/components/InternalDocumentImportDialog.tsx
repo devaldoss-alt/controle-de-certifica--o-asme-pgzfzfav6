@@ -24,7 +24,12 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import { Upload, FileSpreadsheet, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
-import { parseSpreadsheet, normalizeDate } from '@/lib/spreadsheet-parser'
+import {
+  parseSpreadsheet,
+  normalizeDate,
+  findHeaderRow,
+  normalizeText,
+} from '@/lib/spreadsheet-parser'
 import type { ImportRow, ImportResult } from '@/services/internal-documents'
 
 const FIELD_OPTIONS = [
@@ -70,13 +75,13 @@ export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: P
   const [error, setError] = useState('')
 
   const guessMapping = useCallback((hdrs: string[]) => {
-    const lower = hdrs.map((h) => h.toLowerCase().trim())
+    const normalized = hdrs.map((h) => normalizeText(h))
     const guess: Record<string, string> = {}
     for (const field of Object.keys(DEFAULT_MAP)) {
-      const label = FIELD_OPTIONS.find((f) => f.value === field)?.label.toLowerCase() || ''
-      let idx = lower.findIndex((h) => h === label)
+      const label = normalizeText(FIELD_OPTIONS.find((f) => f.value === field)?.label || '')
+      let idx = normalized.findIndex((h) => h === label)
       if (idx < 0) {
-        idx = lower.findIndex((h) => h.includes(label) || label.includes(h))
+        idx = normalized.findIndex((h) => h.includes(label) || label.includes(h))
       }
       guess[field] = idx >= 0 ? String(idx) : '_skip'
     }
@@ -91,9 +96,10 @@ export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: P
         setError('Arquivo vazio.')
         return
       }
-      const hdrs = data[0].map((h, i) => h || `Coluna ${i + 1}`)
+      const headerIdx = findHeaderRow(data)
+      const hdrs = data[headerIdx].map((h, i) => h || `Coluna ${i + 1}`)
       setHeaders(hdrs)
-      setRows(data.slice(1))
+      setRows(data.slice(headerIdx + 1))
       setMapping(guessMapping(hdrs))
       setStep('preview')
     } catch (e: any) {

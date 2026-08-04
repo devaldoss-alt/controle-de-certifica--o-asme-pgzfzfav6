@@ -176,3 +176,35 @@ export function normalizeDate(value: string): string | null {
   }
   return null
 }
+
+export function normalizeText(s: string): string {
+  return s
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+const KNOWN_HEADER_KEYWORDS = [
+  'tipo',
+  'codigo',
+  'identificacao',
+  'revisao',
+  'status',
+  'documento que se aplica',
+  'setor',
+  'data de aprovacao',
+  'prazo de revisao',
+  'observacao',
+]
+
+export function findHeaderRow(rows: string[][], maxScan = 20): number {
+  for (let i = 0; i < Math.min(rows.length, maxScan); i++) {
+    const normalizedCells = rows[i].map(normalizeText)
+    const matchCount = normalizedCells.filter(
+      (cell) => cell.length > 0 && KNOWN_HEADER_KEYWORDS.some((h) => cell.includes(h)),
+    ).length
+    if (matchCount >= 2) return i
+  }
+  return 0
+}

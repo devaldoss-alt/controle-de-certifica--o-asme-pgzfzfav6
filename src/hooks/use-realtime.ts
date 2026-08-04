@@ -3,16 +3,26 @@ import type { RecordModel, RecordSubscription } from 'pocketbase'
 
 import pb from '@/lib/pocketbase/client'
 
-/**
- * Hook for real-time subscriptions to a PocketBase collection.
- * ALWAYS use this hook instead of subscribing inline.
- * Uses the per-listener UnsubscribeFunc so multiple components
- * can safely subscribe to the same collection without conflicts.
- *
- * Generic over the record type: pass your collection's interface as
- * `useRealtime<MyRecord>(...)` to get a typed subscription payload
- * instead of `unknown`.
- */
+let tokenRefreshSetup = false
+
+function setupPeriodicTokenRefresh() {
+  if (tokenRefreshSetup) return
+  tokenRefreshSetup = true
+
+  setInterval(
+    async () => {
+      if (pb.authStore.isValid) {
+        try {
+          await pb.collection('users').authRefresh()
+        } catch {
+          // silent — onChange listener handles re-auth elsewhere
+        }
+      }
+    },
+    30 * 60 * 1000,
+  )
+}
+
 export function useRealtime<TRecord extends RecordModel = RecordModel>(
   collectionName: string,
   callback: (data: RecordSubscription<TRecord>) => void,
@@ -24,24 +34,65 @@ export function useRealtime<TRecord extends RecordModel = RecordModel>(
   useEffect(() => {
     if (!enabled) return
 
+    setupPeriodicTokenRefresh()
+
     let unsubscribeFn: (() => Promise<void>) | undefined
     let cancelled = false
+    let subscribeId = 0
+    let authChangeUnsubscribe: (() => void) | undefined
 
-    pb.collection<TRecord>(collectionName)
-      .subscribe('*', (e) => {
-        callbackRef.current(e)
-      })
-      .then((fn) => {
-        if (cancelled) {
+    const doSubscribe = async () => {
+      if (cancelled) return
+      const currentId = ++subscribeId
+
+      if (unsubscribeFn) {
+        try {
+          await unsubscribeFn()
+        } catch {
+          /* intentionally ignored */
+        }
+        unsubscribeFn = undefined
+      }
+
+      if (cancelled || currentId !== subscribeId) return
+
+      try {
+        const fn = await pb.collection<TRecord>(collectionName).subscribe('*', (e) => {
+          callbackRef.current(e)
+        })
+        if (cancelled || currentId !== subscribeId) {
           fn().catch(() => {})
         } else {
           unsubscribeFn = fn
         }
-      })
-      .catch(() => {})
+      } catch {
+        /* intentionally ignored */
+      }
+    }
+
+    const ensureFreshTokenAndSubscribe = async () => {
+      if (!pb.authStore.isValid) {
+        try {
+          await pb.collection('users').authRefresh()
+        } catch {
+          /* intentionally ignored */
+        }
+      }
+      if (!cancelled) {
+        await doSubscribe()
+      }
+    }
+
+    ensureFreshTokenAndSubscribe()
+
+    authChangeUnsubscribe = pb.authStore.onChange((token) => {
+      if (cancelled || !token) return
+      doSubscribe()
+    })
 
     return () => {
       cancelled = true
+      if (authChangeUnsubscribe) authChangeUnsubscribe()
       if (unsubscribeFn) {
         unsubscribeFn().catch(() => {})
       }
