@@ -20,7 +20,7 @@ import { DocumentFolderView } from '@/components/DocumentFolderView'
 import { DocumentEditor } from '@/components/DocumentEditor'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Lock } from 'lucide-react'
+import { Plus, Lock, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const EMPTY_FORM: DocumentFormData = {
@@ -50,10 +50,12 @@ export default function Documents() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [existingFileName, setExistingFileName] = useState<string | undefined>(undefined)
   const [isSaving, setIsSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const canEdit = canUseDocumentEditor(user?.plan) && ['QCC', 'Manager'].includes(user?.role || '')
   const txt = (pt: string, en: string) => (lang === 'pt' ? pt : en)
 
   const loadData = async () => {
+    setLoadError(null)
     try {
       const access = await getDocumentAccess(user?.role)
       const prefixes = access.filter((r: any) => r.can_view).map((r: any) => r.document_prefix)
@@ -64,6 +66,7 @@ export default function Documents() {
       setDocuments(docs)
     } catch (e) {
       setDocuments([])
+      setLoadError(getErrorMessage(e))
       toast({
         title: txt('Erro ao carregar documentos', 'Error loading documents'),
         description: getErrorMessage(e),
@@ -241,16 +244,28 @@ export default function Documents() {
         ))}
       </div>
 
-      <DocumentFolderView
-        documents={documents}
-        accessiblePrefixes={accessiblePrefixes}
-        selectedPrefix={selectedPrefix}
-        onSelectPrefix={setSelectedPrefix}
-        onEdit={openEdit}
-        onDelete={handleDelete}
-        onExport={handleExport}
-        canEdit={canEdit}
-      />
+      {loadError ? (
+        <div className="flex items-start gap-3 p-4 rounded-lg border border-rose-500/20 bg-rose-500/5 text-rose-400">
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-medium">
+              {txt('Erro ao carregar documentos', 'Error loading documents')}
+            </p>
+            <p className="text-rose-400/70 mt-1">{loadError}</p>
+          </div>
+        </div>
+      ) : (
+        <DocumentFolderView
+          documents={documents}
+          accessiblePrefixes={accessiblePrefixes}
+          selectedPrefix={selectedPrefix}
+          onSelectPrefix={setSelectedPrefix}
+          onEdit={openEdit}
+          onDelete={handleDelete}
+          onExport={handleExport}
+          canEdit={canEdit}
+        />
+      )}
     </div>
   )
 }

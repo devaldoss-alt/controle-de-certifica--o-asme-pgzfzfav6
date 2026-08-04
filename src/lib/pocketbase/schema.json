@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-04T16:53:39.749Z",
+  "generatedAt": "2026-08-04T17:26:36.915Z",
   "collections": [
     {
       "name": "users",
@@ -570,7 +570,10 @@
           "system": false
         }
       ],
-      "indexes": ["CREATE INDEX `idx_documents_company_id` ON `documents` (company_id)"]
+      "indexes": [
+        "CREATE INDEX `idx_documents_company_id` ON `documents` (company_id)",
+        "CREATE INDEX `idx_documents_prefix` ON `documents` (prefix)"
+      ]
     },
     {
       "name": "companies",
