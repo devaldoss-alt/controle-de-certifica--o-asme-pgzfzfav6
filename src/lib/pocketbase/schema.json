@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-04T15:45:06.136Z",
+  "generatedAt": "2026-08-04T16:53:39.749Z",
   "collections": [
     {
       "name": "users",
@@ -404,8 +404,8 @@
       "name": "documents",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
-        "view": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
         "create": "@request.auth.id != ''",
         "update": "@request.auth.id != '' && company_id = @request.auth.primary_company_id && (@request.auth.role = 'QCC' || @request.auth.role = 'Manager')",
         "delete": "@request.auth.id != '' && company_id = @request.auth.primary_company_id && (@request.auth.role = 'QCC' || @request.auth.role = 'Manager')"
@@ -570,7 +570,7 @@
           "system": false
         }
       ],
-      "indexes": []
+      "indexes": ["CREATE INDEX `idx_documents_company_id` ON `documents` (company_id)"]
     },
     {
       "name": "companies",

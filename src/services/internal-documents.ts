@@ -64,6 +64,14 @@ const DOCUMENT_TYPE_MAP: Record<string, string> = {
 
 const VALID_DOCUMENT_TYPES = ['Internal', 'External', 'Record']
 
+const BATCH_SIZE = 5
+const BATCH_DELAY = 500
+const REQUEST_DELAY = 200
+const MAX_RETRIES = 8
+const MAX_BACKOFF_MS = 30000
+const BASE_BACKOFF_MS = 2000
+const JITTER_MS = 500
+
 export function normalizeDocumentType(raw: string | undefined): string {
   const trimmed = (raw || '').trim()
   if (!trimmed) return 'Internal'
@@ -75,7 +83,7 @@ export function normalizeDocumentType(raw: string | undefined): string {
 
 async function createDocumentWithRetry(
   data: Record<string, unknown>,
-  maxRetries = 4,
+  maxRetries = MAX_RETRIES,
 ): Promise<void> {
   let lastError: unknown
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -85,8 +93,13 @@ async function createDocumentWithRetry(
     } catch (e: any) {
       lastError = e
       if (e?.status === 429) {
-        const delay = Math.min(1000 * Math.pow(2, attempt), 8000)
-        await sleep(delay)
+        const baseDelay = Math.min(BASE_BACKOFF_MS * Math.pow(2, attempt), MAX_BACKOFF_MS)
+        const jitter = Math.floor(Math.random() * JITTER_MS)
+        await sleep(baseDelay + jitter)
+        continue
+      }
+      if (attempt < maxRetries - 1 && !e?.status) {
+        await sleep(BASE_BACKOFF_MS * (attempt + 1))
         continue
       }
       throw e
@@ -153,8 +166,6 @@ export async function bulkImportInternalDocuments(
 ): Promise<ImportResult> {
   const result: ImportResult = { success: 0, errors: [] }
   const existingDocs = await getInternalDocuments({ companyId })
-  const BATCH_SIZE = 5
-  const BATCH_DELAY = 500
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
@@ -217,6 +228,8 @@ export async function bulkImportInternalDocuments(
     }
 
     onProgress?.(i + 1, rows.length)
+
+    await sleep(REQUEST_DELAY)
 
     if ((i + 1) % BATCH_SIZE === 0 && i < rows.length - 1) {
       await sleep(BATCH_DELAY)
