@@ -30,7 +30,7 @@ import {
   findHeaderRow,
   normalizeText,
 } from '@/lib/spreadsheet-parser'
-import type { ImportRow, ImportResult } from '@/services/internal-documents'
+import type { ImportRow, ImportResult, ImportProgressCallback } from '@/services/internal-documents'
 
 const FIELD_OPTIONS = [
   { value: 'document_type', label: 'TIPO' },
@@ -62,7 +62,7 @@ const DEFAULT_MAP: Record<string, string> = {
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onImport: (rows: ImportRow[]) => Promise<ImportResult>
+  onImport: (rows: ImportRow[], onProgress?: ImportProgressCallback) => Promise<ImportResult>
 }
 
 export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: Props) {
@@ -73,6 +73,7 @@ export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: P
   const [isProcessing, setIsProcessing] = useState(false)
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [error, setError] = useState('')
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
 
   const guessMapping = useCallback((hdrs: string[]) => {
     const normalized = hdrs.map((h) => normalizeText(h))
@@ -110,6 +111,7 @@ export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: P
   const handleImport = async () => {
     setIsProcessing(true)
     setError('')
+    setProgress({ current: 0, total: rows.length })
     try {
       const importRows: ImportRow[] = rows.map((row) => {
         const obj: any = {}
@@ -127,13 +129,16 @@ export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: P
         }
         return obj as ImportRow
       })
-      const result = await onImport(importRows)
+      const result = await onImport(importRows, (current, total) => {
+        setProgress({ current, total })
+      })
       setImportResult(result)
       setStep('result')
     } catch (e: any) {
       setError(e?.message || 'Erro na importação.')
     } finally {
       setIsProcessing(false)
+      setProgress(null)
     }
   }
 
@@ -144,6 +149,7 @@ export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: P
     setMapping({})
     setImportResult(null)
     setError('')
+    setProgress(null)
   }
 
   return (
@@ -234,10 +240,17 @@ export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: P
                 </TableBody>
               </Table>
             </div>
+            {isProcessing && progress && (
+              <div className="flex items-center gap-2 text-sm text-white/80">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Importando {progress.current} de {progress.total} documentos...
+              </div>
+            )}
             <DialogFooter>
               <Button
                 variant="outline"
                 onClick={reset}
+                disabled={isProcessing}
                 className="border-white/10 text-muted-foreground"
               >
                 Voltar

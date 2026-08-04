@@ -49,6 +49,34 @@ export interface ImportResult {
   errors: { row: number; error: string }[]
 }
 
+export type ImportProgressCallback = (current: number, total: number) => void
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function createDocumentWithRetry(
+  data: Record<string, unknown>,
+  maxRetries = 4,
+): Promise<void> {
+  let lastError: unknown
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      await pb.collection('documents').create(data)
+      return
+    } catch (e: any) {
+      lastError = e
+      if (e?.status === 429) {
+        const delay = Math.min(1000 * Math.pow(2, attempt), 8000)
+        await sleep(delay)
+        continue
+      }
+      throw e
+    }
+  }
+  throw lastError
+}
+
 export async function getInternalDocuments(params: {
   companyId?: string
   search?: string
@@ -103,14 +131,18 @@ export async function deleteInternalDocument(id: string) {
 export async function bulkImportInternalDocuments(
   rows: ImportRow[],
   companyId: string,
+  onProgress?: ImportProgressCallback,
 ): Promise<ImportResult> {
   const result: ImportResult = { success: 0, errors: [] }
   const existingDocs = await getInternalDocuments({ companyId })
+  const BATCH_SIZE = 5
+  const BATCH_DELAY = 500
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
     if (!row.title || !row.title.trim()) {
       result.errors.push({ row: i + 1, error: 'Título é obrigatório' })
+      onProgress?.(i + 1, rows.length)
       continue
     }
 
@@ -121,11 +153,12 @@ export async function bulkImportInternalDocuments(
     )
     if (isDuplicate) {
       result.errors.push({ row: i + 1, error: `Duplicado: código ${code} revisão ${revision}` })
+      onProgress?.(i + 1, rows.length)
       continue
     }
 
     try {
-      await pb.collection('documents').create({
+      await createDocumentWithRetry({
         title: row.title.trim(),
         code,
         revision,
@@ -144,10 +177,23 @@ export async function bulkImportInternalDocuments(
       })
       result.success++
     } catch (e: any) {
-      result.errors.push({
-        row: i + 1,
-        error: e?.message || 'Erro ao criar documento',
-      })
+      if (e?.status === 429) {
+        result.errors.push({
+          row: i + 1,
+          error: 'Limite de requisições excedido após múltiplas tentativas',
+        })
+      } else {
+        result.errors.push({
+          row: i + 1,
+          error: e?.message || 'Erro ao criar documento',
+        })
+      }
+    }
+
+    onProgress?.(i + 1, rows.length)
+
+    if ((i + 1) % BATCH_SIZE === 0 && i < rows.length - 1) {
+      await sleep(BATCH_DELAY)
     }
   }
   return result

@@ -13,6 +13,7 @@ import {
   type InternalDocument,
   type ImportRow,
   type ImportResult,
+  type ImportProgressCallback,
 } from '@/services/internal-documents'
 import { InternalDocumentForm, type InternalDocFormData } from '@/components/InternalDocumentForm'
 import { InternalDocumentImportDialog } from '@/components/InternalDocumentImportDialog'
@@ -203,9 +204,12 @@ export default function MasterList() {
     }
   }
 
-  const handleImport = async (rows: ImportRow[]): Promise<ImportResult> => {
+  const handleImport = async (
+    rows: ImportRow[],
+    onProgress?: ImportProgressCallback,
+  ): Promise<ImportResult> => {
     const cid = selectedCompanyId !== 'all' ? selectedCompanyId : user?.primary_company_id || ''
-    return bulkImportInternalDocuments(rows, cid)
+    return bulkImportInternalDocuments(rows, cid, onProgress)
   }
 
   const fileUrl = (doc: InternalDocument) => {
