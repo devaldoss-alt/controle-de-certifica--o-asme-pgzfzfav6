@@ -30,6 +30,7 @@ export interface InternalDocument {
 }
 
 export interface ImportRow {
+  prefix?: string
   code?: string
   title: string
   revision?: string
@@ -165,6 +166,9 @@ export async function bulkImportInternalDocuments(
 
     const code = row.code?.trim() || ''
     const revision = row.revision?.trim() || ''
+    const rawDocType = (row.document_type || '').trim()
+    const isPrefixValue = rawDocType && !VALID_DOCUMENT_TYPES.includes(rawDocType)
+    const prefix = row.prefix?.trim() || (isPrefixValue ? rawDocType.toUpperCase() : '')
     const isDuplicate = existingDocs.some(
       (d) => (d.code || '') === code && (d.revision || '') === revision && code && revision,
     )
@@ -180,6 +184,7 @@ export async function bulkImportInternalDocuments(
         code,
         revision,
         category: 'Internal',
+        prefix: prefix || '',
         document_type: normalizeDocumentType(row.document_type),
         effective_date: row.effective_date || null,
         next_review_date: row.next_review_date || null,

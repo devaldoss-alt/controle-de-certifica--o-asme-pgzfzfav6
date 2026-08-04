@@ -33,6 +33,7 @@ import {
 import type { ImportRow, ImportResult, ImportProgressCallback } from '@/services/internal-documents'
 
 const FIELD_OPTIONS = [
+  { value: 'prefix', label: 'PREFIXO' },
   { value: 'document_type', label: 'TIPO' },
   { value: 'code', label: 'CÓDIGO' },
   { value: 'title', label: 'IDENTIFICAÇÃO' },
@@ -47,6 +48,7 @@ const FIELD_OPTIONS = [
 ]
 
 const DEFAULT_MAP: Record<string, string> = {
+  prefix: 'prefix',
   document_type: 'document_type',
   code: 'code',
   title: 'title',
@@ -123,6 +125,8 @@ export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: P
           } else if (field === 'review_deadline_days') {
             const num = parseInt(val, 10)
             obj[field] = isNaN(num) ? undefined : num
+          } else if (field === 'prefix') {
+            obj[field] = val.trim().toUpperCase()
           } else {
             obj[field] = val.trim()
           }
