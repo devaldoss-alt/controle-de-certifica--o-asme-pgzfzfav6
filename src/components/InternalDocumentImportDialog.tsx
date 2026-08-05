@@ -37,7 +37,6 @@ import {
   findHeaderRow,
   normalizeText,
 } from '@/lib/spreadsheet-parser'
-import { normalizePrefix } from '@/lib/dms-codes'
 import type { ImportRow, ImportResult, ImportProgressCallback } from '@/services/internal-documents'
 
 const FIELD_OPTIONS = [
@@ -162,7 +161,7 @@ export function InternalDocumentImportDialog({
             const num = parseInt(val, 10)
             obj[field] = isNaN(num) ? undefined : num
           } else if (field === 'prefix') {
-            obj[field] = normalizePrefix(val)
+            obj[field] = val.trim()
           } else {
             obj[field] = val.trim()
           }

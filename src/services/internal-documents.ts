@@ -60,14 +60,14 @@ function sleep(ms: number): Promise<void> {
 
 const PREFIX_TO_DOC_TYPE: Record<string, string> = {
   'ASME PSC': 'External',
-  'CDE-PSC': 'Record',
-  'CQS-PSC': 'Record',
-  'EVS-PSC': 'Record',
+  CDE: 'Record',
+  CQS: 'Record',
+  EVS: 'Record',
   FSGQ: 'Record',
   ISSGQ: 'Internal',
   'IT-CQ': 'Internal',
   ITSGQ: 'Internal',
-  'LP-KS': 'Record',
+  LP: 'Record',
   MCQ: 'Internal',
   MSGQ: 'Internal',
   'PR-CQ': 'Internal',
@@ -217,9 +217,10 @@ export async function bulkImportInternalDocuments(
 
     const code = row.code?.trim() || ''
     const revision = row.revision?.trim() || ''
-    const prefix = normalizePrefix(row.prefix || '')
+    const rawPrefix = row.prefix || ''
+    const prefix = normalizePrefix(rawPrefix)
     const documentType = inferDocumentType(prefix)
-    const resolvedCompanyId = resolveCompanyByPrefix(prefix, companyId, allCompanies as any)
+    const resolvedCompanyId = resolveCompanyByPrefix(rawPrefix, companyId, allCompanies as any)
     const existing =
       code && revision
         ? existingDocs.find((d) => (d.code || '') === code && (d.revision || '') === revision)

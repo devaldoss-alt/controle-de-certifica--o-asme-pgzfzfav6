@@ -1,5 +1,11 @@
 import { useI18n, BilingualText } from '@/hooks/use-i18n'
-import { DMS_PREFIXES, getPrefixLabel } from '@/lib/dms-codes'
+import {
+  DMS_PREFIXES,
+  getPrefixLabel,
+  normalizePrefix,
+  sortDocumentsByPrefixAndCode,
+  formatDocumentDisplayName,
+} from '@/lib/dms-codes'
 import type { DocumentRecord } from '@/services/documents'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -41,11 +47,14 @@ export function DocumentFolderView({
   const { t, lang } = useI18n()
 
   if (!selectedPrefix) {
-    const usedPrefixes = [...new Set(documents.map((d) => d.prefix).filter(Boolean))]
+    const usedPrefixes = [
+      ...new Set(documents.map((d) => normalizePrefix(d.prefix || '')).filter(Boolean)),
+    ]
+    const normalizedAccessible = accessiblePrefixes.map((p) => normalizePrefix(p))
     const prefixesToShow =
-      accessiblePrefixes.length > 0
+      normalizedAccessible.length > 0
         ? DMS_PREFIXES.filter(
-            (p) => accessiblePrefixes.includes(p.prefix) && usedPrefixes.includes(p.prefix),
+            (p) => normalizedAccessible.includes(p.prefix) && usedPrefixes.includes(p.prefix),
           )
         : DMS_PREFIXES.filter((p) => usedPrefixes.includes(p.prefix))
 
@@ -64,7 +73,7 @@ export function DocumentFolderView({
           </CardContent>
         </Card>
         {prefixesToShow.map((p) => {
-          const count = documents.filter((d) => d.prefix === p.prefix).length
+          const count = documents.filter((d) => normalizePrefix(d.prefix || '') === p.prefix).length
           return (
             <Card
               key={p.prefix}
@@ -92,7 +101,10 @@ export function DocumentFolderView({
   }
 
   const filtered =
-    selectedPrefix === 'ALL' ? documents : documents.filter((d) => d.prefix === selectedPrefix)
+    selectedPrefix === 'ALL'
+      ? documents
+      : documents.filter((d) => normalizePrefix(d.prefix || '') === selectedPrefix)
+  const sorted = sortDocumentsByPrefixAndCode(filtered)
 
   return (
     <div className="space-y-4">
@@ -108,7 +120,7 @@ export function DocumentFolderView({
         {selectedPrefix === 'ALL' ? t('dms.allFolders') : getPrefixLabel(selectedPrefix, lang)}
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((doc) => (
+        {sorted.map((doc) => (
           <Card
             key={doc.id}
             className="glass border-white/5 backdrop-blur-md hover:border-primary/20 transition-colors"
@@ -129,7 +141,11 @@ export function DocumentFolderView({
                 </div>
               )}
               <h3 className="font-medium text-white text-base line-clamp-2">
-                {localizedField(doc.title, doc.title_en, lang)}
+                {formatDocumentDisplayName(
+                  normalizePrefix(doc.prefix || ''),
+                  doc.code,
+                  localizedField(doc.title, doc.title_en, lang),
+                )}
               </h3>
               <p className="text-xs text-muted-foreground">
                 {format(new Date(doc.updated), 'dd/MM/yyyy HH:mm')}
@@ -186,7 +202,7 @@ export function DocumentFolderView({
           </Card>
         ))}
       </div>
-      {filtered.length === 0 && (
+      {sorted.length === 0 && (
         <div className="text-center py-20 text-muted-foreground">
           <FileText className="w-12 h-12 mx-auto mb-4 opacity-20" />
           <p>

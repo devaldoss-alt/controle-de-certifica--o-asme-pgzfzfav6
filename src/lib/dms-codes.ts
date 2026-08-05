@@ -6,17 +6,13 @@ export interface DmsPrefix {
 
 export const DMS_PREFIXES: DmsPrefix[] = [
   { prefix: 'ASME PSC', label_pt: 'ASME PSC', label_en: 'ASME PSC' },
+  { prefix: 'CDE', label_pt: 'CDE - Controle Dimensional', label_en: 'CDE - Dimensional Control' },
   {
-    prefix: 'CDE-PSC',
-    label_pt: 'CDE-PSC - Controle Dimensional',
-    label_en: 'CDE-PSC - Dimensional Control',
+    prefix: 'CQS',
+    label_pt: 'CQS - Certificado de Qualificação de Soldadores',
+    label_en: 'CQS - Welder Qualification Certificate',
   },
-  {
-    prefix: 'CQS-PSC',
-    label_pt: 'CQS-PSC - Certificado de Qualificação de Soldadores',
-    label_en: 'CQS-PSC - Welder Qualification Certificate',
-  },
-  { prefix: 'EVS-PSC', label_pt: 'EVS-PSC - Ensaio Visual', label_en: 'EVS-PSC - Visual Testing' },
+  { prefix: 'EVS', label_pt: 'EVS - Ensaio Visual', label_en: 'EVS - Visual Testing' },
   { prefix: 'FSGQ', label_pt: 'FSGQ - Formulários do SGQ', label_en: 'FSGQ - QMS Forms' },
   {
     prefix: 'ISSGQ',
@@ -29,11 +25,7 @@ export const DMS_PREFIXES: DmsPrefix[] = [
     label_en: 'IT-CQ - QC Instruction',
   },
   { prefix: 'ITSGQ', label_pt: 'ITSGQ - Instrução do SGQ', label_en: 'ITSGQ - QMS Instruction' },
-  {
-    prefix: 'LP-KS',
-    label_pt: 'LP-KS - Líquido Penetrante',
-    label_en: 'LP-KS - Dye Penetrant Testing',
-  },
+  { prefix: 'LP', label_pt: 'LP - Líquido Penetrante', label_en: 'LP - Dye Penetrant Testing' },
   { prefix: 'MCQ', label_pt: 'MCQ - Manual do Controle de Qualidade', label_en: 'MCQ - QC Manual' },
   { prefix: 'MSGQ', label_pt: 'MSGQ - Manual do SGQ', label_en: 'MSGQ - QMS Manual' },
   {
@@ -65,9 +57,24 @@ export interface DocumentFormData {
 export function normalizePrefix(prefix: string): string {
   const trimmed = (prefix || '').trim().toUpperCase()
   if (!trimmed) return ''
-  if (trimmed === 'CDE-PS' || trimmed === 'CDE PS' || trimmed === 'CDEPS' || trimmed === 'CDE_PS') {
-    return 'CDE-PSC'
+  const normalized = trimmed.replace(/[\s_]+/g, '-')
+  if (normalized === 'ASME-PSC') return 'ASME PSC'
+  const fixes: Record<string, string> = {
+    'CDE-PS': 'CDE',
+    CDEPS: 'CDE',
+    'CDE-PSC': 'CDE',
+    'CQS-PS': 'CQS',
+    CQSPS: 'CQS',
+    'CQS-PSC': 'CQS',
+    'EVS-PS': 'EVS',
+    EVSPS: 'EVS',
+    'EVS-PSC': 'EVS',
+    'LP-KS': 'LP',
+    LPKS: 'LP',
   }
+  if (fixes[normalized]) return fixes[normalized]
+  if (normalized.endsWith('-PSC')) return normalized.slice(0, -4)
+  if (normalized.endsWith('-KS')) return normalized.slice(0, -3)
   return trimmed
 }
 
@@ -76,15 +83,18 @@ export function resolveCompanyByPrefix(
   defaultCompanyId: string,
   companies: Array<{ id: string; name: string; name_en?: string }>,
 ): string {
-  const normalized = normalizePrefix(prefix)
-  if (normalized.endsWith('-KS')) {
+  const upper = (prefix || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s_]+/g, '-')
+  if (upper.endsWith('-KS')) {
     const koala = companies.find(
       (c) =>
         c.name.toLowerCase().includes('koala') || (c.name_en || '').toLowerCase().includes('koala'),
     )
     if (koala) return koala.id
   }
-  if (normalized.endsWith('-PSC')) {
+  if (upper.endsWith('-PSC') || upper === 'CDE-PS' || upper === 'CQS-PS' || upper === 'EVS-PS') {
     const psc = companies.find(
       (c) =>
         c.name.toLowerCase().includes('psc') || (c.name_en || '').toLowerCase().includes('psc'),
@@ -92,4 +102,41 @@ export function resolveCompanyByPrefix(
     if (psc) return psc.id
   }
   return defaultCompanyId
+}
+
+function compareNumericCodes(a: string, b: string): number {
+  const partsA = a.split('.').map((n) => parseFloat(n) || 0)
+  const partsB = b.split('.').map((n) => parseFloat(n) || 0)
+  const maxLen = Math.max(partsA.length, partsB.length)
+  for (let i = 0; i < maxLen; i++) {
+    const va = partsA[i] || 0
+    const vb = partsB[i] || 0
+    if (va < vb) return -1
+    if (va > vb) return 1
+  }
+  return 0
+}
+
+export function sortDocumentsByPrefixAndCode<T extends { prefix?: string; code?: string }>(
+  docs: T[],
+): T[] {
+  return [...docs].sort((a, b) => {
+    const prefixA = (a.prefix || '').toUpperCase()
+    const prefixB = (b.prefix || '').toUpperCase()
+    if (prefixA < prefixB) return -1
+    if (prefixA > prefixB) return 1
+    return compareNumericCodes(a.code || '', b.code || '')
+  })
+}
+
+export function formatDocumentDisplayName(
+  prefix: string | undefined,
+  code: string | undefined,
+  title: string,
+): string {
+  const parts = [prefix, code].filter(Boolean).join(' ')
+  if (parts && title.toUpperCase().startsWith(parts.toUpperCase())) {
+    return title
+  }
+  return [parts, title].filter(Boolean).join(' ')
 }

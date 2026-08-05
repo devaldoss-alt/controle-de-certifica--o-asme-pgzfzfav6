@@ -56,7 +56,11 @@ import {
 import { Plus, Upload, Search, Trash2, FileText, Pencil } from 'lucide-react'
 import { safeFormatDate } from '@/lib/safe-data'
 import pb from '@/lib/pocketbase/client'
-import { normalizePrefix, resolveCompanyByPrefix } from '@/lib/dms-codes'
+import {
+  normalizePrefix,
+  resolveCompanyByPrefix,
+  sortDocumentsByPrefixAndCode,
+} from '@/lib/dms-codes'
 
 const EMPTY_FORM: InternalDocFormData = {
   title: '',
@@ -113,7 +117,7 @@ export default function MasterList() {
       documentType: filterType,
       status: filterStatus,
     })
-    setDocuments(docs)
+    setDocuments(sortDocumentsByPrefixAndCode(docs))
   }
 
   useEffect(() => {
@@ -185,7 +189,7 @@ export default function MasterList() {
     fd.append('review_deadline_days', formData.reviewDeadlineDays || '')
     fd.append('notes', formData.notes)
     const baseCid = selectedCompanyId !== 'all' ? selectedCompanyId : user?.primary_company_id || ''
-    const cid = resolveCompanyByPrefix(normalizedPrefix, baseCid, companies)
+    const cid = resolveCompanyByPrefix(formData.prefix, baseCid, companies)
     if (cid) fd.append('company_id', cid)
     if (formData.file) fd.append('file', formData.file)
 
