@@ -40,8 +40,7 @@ import {
 import type { ImportRow, ImportResult, ImportProgressCallback } from '@/services/internal-documents'
 
 const FIELD_OPTIONS = [
-  { value: 'prefix', label: 'PREFIXO' },
-  { value: 'document_type', label: 'TIPO' },
+  { value: 'prefix', label: 'TIPO' },
   { value: 'code', label: 'CÓDIGO' },
   { value: 'title', label: 'IDENTIFICAÇÃO' },
   { value: 'revision', label: 'REVISÃO' },
@@ -56,7 +55,6 @@ const FIELD_OPTIONS = [
 
 const DEFAULT_MAP: Record<string, string> = {
   prefix: 'prefix',
-  document_type: 'document_type',
   code: 'code',
   title: 'title',
   revision: 'revision',

@@ -57,9 +57,20 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-const DOCUMENT_TYPE_MAP: Record<string, string> = {
-  PSGQ: 'Internal',
+const PREFIX_TO_DOC_TYPE: Record<string, string> = {
+  'ASME PSC': 'External',
+  'CDE-PS': 'Record',
+  'CQS-PSC': 'Record',
+  'EVS-PSC': 'Record',
   FSGQ: 'Record',
+  ISSGQ: 'Internal',
+  'IT-CQ': 'Internal',
+  ITSGQ: 'Internal',
+  'LP-KS': 'Record',
+  MCQ: 'Internal',
+  MSGQ: 'Internal',
+  'PR-CQ': 'Internal',
+  PSGQ: 'Internal',
 }
 
 const VALID_DOCUMENT_TYPES = ['Internal', 'External', 'Record']
@@ -72,11 +83,10 @@ const MAX_BACKOFF_MS = 30000
 const BASE_BACKOFF_MS = 2000
 const JITTER_MS = 500
 
-export function normalizeDocumentType(raw: string | undefined): string {
-  const trimmed = (raw || '').trim()
-  if (!trimmed) return 'Internal'
-  if (VALID_DOCUMENT_TYPES.includes(trimmed)) return trimmed
-  const mapped = DOCUMENT_TYPE_MAP[trimmed.toUpperCase()]
+export function inferDocumentType(prefix: string | undefined): string {
+  const normalized = (prefix || '').trim().toUpperCase()
+  if (!normalized) return 'Internal'
+  const mapped = PREFIX_TO_DOC_TYPE[normalized]
   if (mapped) return mapped
   return 'Internal'
 }
@@ -205,9 +215,8 @@ export async function bulkImportInternalDocuments(
 
     const code = row.code?.trim() || ''
     const revision = row.revision?.trim() || ''
-    const rawDocType = (row.document_type || '').trim()
-    const isPrefixValue = rawDocType && !VALID_DOCUMENT_TYPES.includes(rawDocType)
-    const prefix = row.prefix?.trim() || (isPrefixValue ? rawDocType.toUpperCase() : '')
+    const prefix = (row.prefix || '').trim().toUpperCase()
+    const documentType = inferDocumentType(prefix)
     const existing =
       code && revision
         ? existingDocs.find((d) => (d.code || '') === code && (d.revision || '') === revision)
@@ -221,7 +230,7 @@ export async function bulkImportInternalDocuments(
           revision,
           category: 'Internal',
           prefix: prefix || '',
-          document_type: normalizeDocumentType(row.document_type),
+          document_type: documentType,
           effective_date: row.effective_date || null,
           next_review_date: row.next_review_date || null,
           origin: row.origin || '',
@@ -269,7 +278,7 @@ export async function bulkImportInternalDocuments(
         revision,
         category: 'Internal',
         prefix: prefix || '',
-        document_type: normalizeDocumentType(row.document_type),
+        document_type: documentType,
         effective_date: row.effective_date || null,
         next_review_date: row.next_review_date || null,
         origin: row.origin || '',

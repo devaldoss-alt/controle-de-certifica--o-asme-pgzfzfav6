@@ -287,7 +287,7 @@ export default function MasterList() {
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tipo</SelectItem>
+                <SelectItem value="all">Categoria</SelectItem>
                 <SelectItem value="Internal">Internal</SelectItem>
                 <SelectItem value="External">External</SelectItem>
                 <SelectItem value="Record">Record</SelectItem>
@@ -310,7 +310,7 @@ export default function MasterList() {
             <Table>
               <TableHeader>
                 <TableRow className="border-white/10">
-                  <TableHead className="text-xs text-white/60">Tipo</TableHead>
+                  <TableHead className="text-xs text-white/60">Categoria</TableHead>
                   <TableHead className="text-xs text-white/60">Código</TableHead>
                   <TableHead className="text-xs text-white/60">Identificação</TableHead>
                   <TableHead className="text-xs text-white/60">Revisão</TableHead>
