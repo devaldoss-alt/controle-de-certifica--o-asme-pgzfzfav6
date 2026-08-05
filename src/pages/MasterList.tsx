@@ -229,9 +229,14 @@ export default function MasterList() {
     <div className="space-y-6 animate-fade-in pb-12">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-white mb-1">
-            Lista Mestra de Documentos Internos
-          </h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-3xl font-heading font-bold text-white mb-1">
+              Lista Mestra de Documentos Internos
+            </h1>
+            <Badge variant="outline" className="border-primary/30 text-primary text-sm font-medium">
+              Total: {documents.length} documentos
+            </Badge>
+          </div>
           <p className="text-muted-foreground">
             Controle de versões e revisões de documentos internos
           </p>
