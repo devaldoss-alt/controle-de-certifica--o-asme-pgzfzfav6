@@ -108,6 +108,34 @@ async function createDocumentWithRetry(
   throw lastError
 }
 
+async function updateDocumentWithRetry(
+  id: string,
+  data: Record<string, unknown>,
+  maxRetries = MAX_RETRIES,
+): Promise<void> {
+  let lastError: unknown
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      await pb.collection('documents').update(id, data)
+      return
+    } catch (e: any) {
+      lastError = e
+      if (e?.status === 429) {
+        const baseDelay = Math.min(BASE_BACKOFF_MS * Math.pow(2, attempt), MAX_BACKOFF_MS)
+        const jitter = Math.floor(Math.random() * JITTER_MS)
+        await sleep(baseDelay + jitter)
+        continue
+      }
+      if (attempt < maxRetries - 1 && !e?.status) {
+        await sleep(BASE_BACKOFF_MS * (attempt + 1))
+        continue
+      }
+      throw e
+    }
+  }
+  throw lastError
+}
+
 export async function getInternalDocuments(params: {
   companyId?: string
   search?: string
@@ -180,12 +208,57 @@ export async function bulkImportInternalDocuments(
     const rawDocType = (row.document_type || '').trim()
     const isPrefixValue = rawDocType && !VALID_DOCUMENT_TYPES.includes(rawDocType)
     const prefix = row.prefix?.trim() || (isPrefixValue ? rawDocType.toUpperCase() : '')
-    const isDuplicate = existingDocs.some(
-      (d) => (d.code || '') === code && (d.revision || '') === revision && code && revision,
-    )
-    if (isDuplicate) {
-      result.errors.push({ row: i + 1, error: `Duplicado: código ${code} revisão ${revision}` })
+    const existing =
+      code && revision
+        ? existingDocs.find((d) => (d.code || '') === code && (d.revision || '') === revision)
+        : existingDocs.find((d) => (d.title || '') === row.title.trim())
+
+    if (existing) {
+      try {
+        await updateDocumentWithRetry(existing.id, {
+          title: row.title.trim(),
+          code,
+          revision,
+          category: 'Internal',
+          prefix: prefix || '',
+          document_type: normalizeDocumentType(row.document_type),
+          effective_date: row.effective_date || null,
+          next_review_date: row.next_review_date || null,
+          origin: row.origin || '',
+          language: row.language || 'Portuguese',
+          status: row.status || 'Active',
+          applicable_document: row.applicable_document || '',
+          sector: row.sector || '',
+          review_deadline_days: row.review_deadline_days ?? null,
+          notes: row.notes || '',
+          company_id: companyId,
+        })
+        result.success++
+      } catch (e: any) {
+        if (e?.status === 429) {
+          result.errors.push({
+            row: i + 1,
+            error: 'Limite de requisições excedido após múltiplas tentativas',
+          })
+        } else {
+          const fieldErrors = extractFieldErrors(e)
+          const fieldEntries = Object.entries(fieldErrors)
+          if (fieldEntries.length > 0) {
+            const detail = fieldEntries.map(([field, msg]) => `${field}: ${msg}`).join('; ')
+            result.errors.push({ row: i + 1, error: detail })
+          } else {
+            result.errors.push({ row: i + 1, error: getErrorMessage(e) })
+          }
+        }
+      }
+
       onProgress?.(i + 1, rows.length)
+
+      await sleep(REQUEST_DELAY)
+
+      if ((i + 1) % BATCH_SIZE === 0 && i < rows.length - 1) {
+        await sleep(BATCH_DELAY)
+      }
       continue
     }
 

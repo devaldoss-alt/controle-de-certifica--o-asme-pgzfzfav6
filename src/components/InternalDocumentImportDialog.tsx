@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -23,7 +23,14 @@ import {
   TableRow,
   TableCell,
 } from '@/components/ui/table'
-import { Upload, FileSpreadsheet, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
+import {
+  Upload,
+  FileSpreadsheet,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Building2,
+} from 'lucide-react'
 import {
   parseSpreadsheet,
   normalizeDate,
@@ -61,13 +68,30 @@ const DEFAULT_MAP: Record<string, string> = {
   notes: 'notes',
 }
 
+interface CompanyOption {
+  id: string
+  name: string
+}
+
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onImport: (rows: ImportRow[], onProgress?: ImportProgressCallback) => Promise<ImportResult>
+  onImport: (
+    rows: ImportRow[],
+    companyId: string,
+    onProgress?: ImportProgressCallback,
+  ) => Promise<ImportResult>
+  companies: CompanyOption[]
+  defaultCompanyId?: string
 }
 
-export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: Props) {
+export function InternalDocumentImportDialog({
+  open,
+  onOpenChange,
+  onImport,
+  companies,
+  defaultCompanyId,
+}: Props) {
   const [step, setStep] = useState<'upload' | 'preview' | 'result'>('upload')
   const [headers, setHeaders] = useState<string[]>([])
   const [rows, setRows] = useState<string[][]>([])
@@ -76,6 +100,15 @@ export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: P
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [error, setError] = useState('')
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
+  const [destinationCompanyId, setDestinationCompanyId] = useState('')
+  const [companyError, setCompanyError] = useState('')
+
+  useEffect(() => {
+    if (open) {
+      setDestinationCompanyId(defaultCompanyId || '')
+      setCompanyError('')
+    }
+  }, [open, defaultCompanyId])
 
   const guessMapping = useCallback((hdrs: string[]) => {
     const normalized = hdrs.map((h) => normalizeText(h))
@@ -111,6 +144,10 @@ export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: P
   }
 
   const handleImport = async () => {
+    if (!destinationCompanyId) {
+      setCompanyError('Selecione a empresa de destino')
+      return
+    }
     setIsProcessing(true)
     setError('')
     setProgress({ current: 0, total: rows.length })
@@ -133,7 +170,7 @@ export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: P
         }
         return obj as ImportRow
       })
-      const result = await onImport(importRows, (current, total) => {
+      const result = await onImport(importRows, destinationCompanyId, (current, total) => {
         setProgress({ current, total })
       })
       setImportResult(result)
@@ -154,6 +191,8 @@ export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: P
     setImportResult(null)
     setError('')
     setProgress(null)
+    setDestinationCompanyId(defaultCompanyId || '')
+    setCompanyError('')
   }
 
   return (
@@ -168,6 +207,35 @@ export function InternalDocumentImportDialog({ open, onOpenChange, onImport }: P
         <DialogHeader>
           <DialogTitle className="text-white">Importar Planilha de Documentos</DialogTitle>
         </DialogHeader>
+
+        {step !== 'result' && (
+          <div className="space-y-2">
+            <Label className="text-white/80 flex items-center gap-1">
+              <Building2 className="w-3.5 h-3.5" /> Empresa Destino *
+            </Label>
+            <Select
+              value={destinationCompanyId}
+              onValueChange={(v) => {
+                setDestinationCompanyId(v)
+                setCompanyError('')
+              }}
+            >
+              <SelectTrigger
+                className={`bg-black/20 border-white/10 text-white ${companyError ? 'border-rose-500' : ''}`}
+              >
+                <SelectValue placeholder="Selecione a empresa de destino" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {companyError && <p className="text-sm text-rose-400">{companyError}</p>}
+          </div>
+        )}
 
         {step === 'upload' && (
           <div className="py-8 text-center">

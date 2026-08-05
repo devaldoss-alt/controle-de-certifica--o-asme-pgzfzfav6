@@ -73,7 +73,7 @@ export default function MasterList() {
   const { user } = useAuth()
   const { t } = useI18n()
   const { toast } = useToast()
-  const { selectedCompanyId } = useCompany()
+  const { selectedCompanyId, companies, availableCompanyIds } = useCompany()
   const [documents, setDocuments] = useState<InternalDocument[]>([])
   const [search, setSearch] = useState('')
   const [filterRevision, setFilterRevision] = useState('all')
@@ -206,10 +206,10 @@ export default function MasterList() {
 
   const handleImport = async (
     rows: ImportRow[],
+    companyId: string,
     onProgress?: ImportProgressCallback,
   ): Promise<ImportResult> => {
-    const cid = selectedCompanyId !== 'all' ? selectedCompanyId : user?.primary_company_id || ''
-    return bulkImportInternalDocuments(rows, cid, onProgress)
+    return bulkImportInternalDocuments(rows, companyId, onProgress)
   }
 
   const fileUrl = (doc: InternalDocument) => {
@@ -396,6 +396,8 @@ export default function MasterList() {
         open={importOpen}
         onOpenChange={setImportOpen}
         onImport={handleImport}
+        companies={companies.filter((c) => availableCompanyIds.includes(c.id))}
+        defaultCompanyId={selectedCompanyId !== 'all' ? selectedCompanyId : undefined}
       />
 
       <Dialog open={!!detailDoc} onOpenChange={(v) => !v && setDetailDoc(null)}>
