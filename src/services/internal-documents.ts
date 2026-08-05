@@ -2,6 +2,7 @@ import pb from '@/lib/pocketbase/client'
 import { safeArray } from '@/lib/safe-data'
 import { normalizeDate } from '@/lib/spreadsheet-parser'
 import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
+import { normalizePrefix, resolveCompanyByPrefix } from '@/lib/dms-codes'
 
 export interface InternalDocument {
   id: string
@@ -59,7 +60,7 @@ function sleep(ms: number): Promise<void> {
 
 const PREFIX_TO_DOC_TYPE: Record<string, string> = {
   'ASME PSC': 'External',
-  'CDE-PS': 'Record',
+  'CDE-PSC': 'Record',
   'CQS-PSC': 'Record',
   'EVS-PSC': 'Record',
   FSGQ: 'Record',
@@ -84,7 +85,7 @@ const BASE_BACKOFF_MS = 2000
 const JITTER_MS = 500
 
 export function inferDocumentType(prefix: string | undefined): string {
-  const normalized = (prefix || '').trim().toUpperCase()
+  const normalized = normalizePrefix(prefix || '')
   if (!normalized) return 'Internal'
   const mapped = PREFIX_TO_DOC_TYPE[normalized]
   if (mapped) return mapped
@@ -204,6 +205,7 @@ export async function bulkImportInternalDocuments(
 ): Promise<ImportResult> {
   const result: ImportResult = { success: 0, errors: [] }
   const existingDocs = await getInternalDocuments({ companyId })
+  const allCompanies = await pb.collection('companies').getFullList()
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
@@ -215,8 +217,9 @@ export async function bulkImportInternalDocuments(
 
     const code = row.code?.trim() || ''
     const revision = row.revision?.trim() || ''
-    const prefix = (row.prefix || '').trim().toUpperCase()
+    const prefix = normalizePrefix(row.prefix || '')
     const documentType = inferDocumentType(prefix)
+    const resolvedCompanyId = resolveCompanyByPrefix(prefix, companyId, allCompanies as any)
     const existing =
       code && revision
         ? existingDocs.find((d) => (d.code || '') === code && (d.revision || '') === revision)
@@ -240,7 +243,7 @@ export async function bulkImportInternalDocuments(
           sector: row.sector || '',
           review_deadline_days: row.review_deadline_days ?? null,
           notes: row.notes || '',
-          company_id: companyId,
+          company_id: resolvedCompanyId,
         })
         result.success++
       } catch (e: any) {
@@ -288,7 +291,7 @@ export async function bulkImportInternalDocuments(
         sector: row.sector || '',
         review_deadline_days: row.review_deadline_days ?? null,
         notes: row.notes || '',
-        company_id: companyId,
+        company_id: resolvedCompanyId,
       })
       result.success++
     } catch (e: any) {

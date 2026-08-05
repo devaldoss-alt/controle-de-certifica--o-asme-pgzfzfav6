@@ -41,10 +41,13 @@ export function DocumentFolderView({
   const { t, lang } = useI18n()
 
   if (!selectedPrefix) {
+    const usedPrefixes = [...new Set(documents.map((d) => d.prefix).filter(Boolean))]
     const prefixesToShow =
       accessiblePrefixes.length > 0
-        ? DMS_PREFIXES.filter((p) => accessiblePrefixes.includes(p.prefix))
-        : DMS_PREFIXES
+        ? DMS_PREFIXES.filter(
+            (p) => accessiblePrefixes.includes(p.prefix) && usedPrefixes.includes(p.prefix),
+          )
+        : DMS_PREFIXES.filter((p) => usedPrefixes.includes(p.prefix))
 
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">

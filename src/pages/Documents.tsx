@@ -22,6 +22,16 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Lock, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 
 const EMPTY_FORM: DocumentFormData = {
   title: '',
@@ -51,6 +61,7 @@ export default function Documents() {
   const [existingFileName, setExistingFileName] = useState<string | undefined>(undefined)
   const [isSaving, setIsSaving] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const canEdit = canUseDocumentEditor(user?.plan) && ['QCC', 'Manager'].includes(user?.role || '')
   const txt = (pt: string, en: string) => (lang === 'pt' ? pt : en)
 
@@ -170,9 +181,14 @@ export default function Documents() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteRequest = (id: string) => {
+    setDeleteTarget(id)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
     try {
-      await deleteDocument(id)
+      await deleteDocument(deleteTarget)
       toast({ title: txt('Documento excluído', 'Document deleted') })
       loadData()
     } catch (e) {
@@ -181,6 +197,8 @@ export default function Documents() {
         description: getErrorMessage(e),
         variant: 'destructive',
       })
+    } finally {
+      setDeleteTarget(null)
     }
   }
 
@@ -261,11 +279,31 @@ export default function Documents() {
           selectedPrefix={selectedPrefix}
           onSelectPrefix={setSelectedPrefix}
           onEdit={openEdit}
-          onDelete={handleDelete}
+          onDelete={handleDeleteRequest}
           onExport={handleExport}
           canEdit={canEdit}
         />
       )}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{txt('Confirmar exclusão', 'Confirm deletion')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {txt(
+                'Tem certeza que deseja excluir este documento?',
+                'Are you sure you want to delete this document?',
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{txt('Cancelar', 'Cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>
+              {txt('Excluir', 'Delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -36,6 +36,16 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
+import {
   Table,
   TableHeader,
   TableBody,
@@ -46,6 +56,7 @@ import {
 import { Plus, Upload, Search, Trash2, FileText, Pencil } from 'lucide-react'
 import { safeFormatDate } from '@/lib/safe-data'
 import pb from '@/lib/pocketbase/client'
+import { normalizePrefix, resolveCompanyByPrefix } from '@/lib/dms-codes'
 
 const EMPTY_FORM: InternalDocFormData = {
   title: '',
@@ -86,6 +97,7 @@ export default function MasterList() {
   const [isSaving, setIsSaving] = useState(false)
   const [detailDoc, setDetailDoc] = useState<InternalDocument | null>(null)
   const [existingFileName, setExistingFileName] = useState<string | undefined>()
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const canEdit = ['QCC', 'Manager'].includes(user?.role || '')
 
   const revisions = useMemo(
@@ -158,7 +170,8 @@ export default function MasterList() {
     fd.append('content', formData.content)
     fd.append('category', 'Internal')
     fd.append('file_path', formData.filePath)
-    fd.append('prefix', formData.prefix)
+    const normalizedPrefix = normalizePrefix(formData.prefix)
+    fd.append('prefix', normalizedPrefix)
     fd.append('code', formData.code)
     fd.append('revision', formData.revision)
     fd.append('document_type', formData.documentType)
@@ -171,7 +184,8 @@ export default function MasterList() {
     fd.append('sector', formData.sector)
     fd.append('review_deadline_days', formData.reviewDeadlineDays || '')
     fd.append('notes', formData.notes)
-    const cid = selectedCompanyId !== 'all' ? selectedCompanyId : user?.primary_company_id || ''
+    const baseCid = selectedCompanyId !== 'all' ? selectedCompanyId : user?.primary_company_id || ''
+    const cid = resolveCompanyByPrefix(normalizedPrefix, baseCid, companies)
     if (cid) fd.append('company_id', cid)
     if (formData.file) fd.append('file', formData.file)
 
@@ -198,6 +212,7 @@ export default function MasterList() {
       await deleteInternalDocument(id)
       toast({ title: 'Documento excluído' })
       setDetailDoc(null)
+      setDeleteTarget(null)
       loadData()
     } catch (e: any) {
       toast({ title: 'Erro', description: e?.message, variant: 'destructive' })
@@ -311,6 +326,7 @@ export default function MasterList() {
               <TableHeader>
                 <TableRow className="border-white/10">
                   <TableHead className="text-xs text-white/60">Categoria</TableHead>
+                  <TableHead className="text-xs text-white/60">Tipo/Prefixo</TableHead>
                   <TableHead className="text-xs text-white/60">Código</TableHead>
                   <TableHead className="text-xs text-white/60">Identificação</TableHead>
                   <TableHead className="text-xs text-white/60">Revisão</TableHead>
@@ -333,6 +349,7 @@ export default function MasterList() {
                     <TableCell className="text-xs text-white/70">
                       {doc.document_type || '—'}
                     </TableCell>
+                    <TableCell className="text-xs text-white/70">{doc.prefix || '—'}</TableCell>
                     <TableCell className="text-xs font-mono text-primary">
                       {doc.code || '—'}
                     </TableCell>
@@ -418,6 +435,10 @@ export default function MasterList() {
                   <span className="text-white">{detailDoc.document_type || '—'}</span>
                 </div>
                 <div>
+                  <span className="text-muted-foreground">Prefixo:</span>{' '}
+                  <span className="text-white">{detailDoc.prefix || '—'}</span>
+                </div>
+                <div>
                   <span className="text-muted-foreground">Código:</span>{' '}
                   <span className="text-white font-mono">{detailDoc.code || '—'}</span>
                 </div>
@@ -491,13 +512,30 @@ export default function MasterList() {
               >
                 <Pencil className="w-4 h-4 mr-2" /> Editar
               </Button>
-              <Button variant="destructive" onClick={() => handleDelete(detailDoc.id)}>
+              <Button variant="destructive" onClick={() => setDeleteTarget(detailDoc.id)}>
                 <Trash2 className="w-4 h-4 mr-2" /> Excluir
               </Button>
             </DialogFooter>
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este documento?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteTarget && handleDelete(deleteTarget)}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
