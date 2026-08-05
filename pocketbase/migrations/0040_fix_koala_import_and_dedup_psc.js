@@ -21,100 +21,115 @@ migrate(
       return
     }
 
-    // Step 1: Reassign Koala System documents from PSC to Koala
-    // Match by origin field containing "koala" (case-insensitive, ~ operator)
+    // Step 1: Reassign Koala documents from PSC to Koala via raw SQL (fast, no per-record save)
     var reassigned = 0
     try {
-      var koalaDocs = app.findRecordsByFilter(
-        'documents',
-        "company_id = '" + PSC_ID + "' && origin ~ 'koala'",
-        'created',
-        1000,
-        0,
-      )
-      for (var k = 0; k < koalaDocs.length; k++) {
-        koalaDocs[k].set('company_id', KOALA_ID)
-        app.save(koalaDocs[k])
-        reassigned++
-      }
-    } catch (_) {}
-
-    // Fallback: if origin match yielded nothing, try matching by title containing "koala"
-    if (reassigned === 0) {
-      try {
-        var koalaTitleDocs = app.findRecordsByFilter(
-          'documents',
-          "company_id = '" + PSC_ID + "' && title ~ 'koala'",
-          'created',
-          1000,
-          0,
+      var res1 = app
+        .db()
+        .newQuery(
+          'UPDATE documents SET company_id = {:koala} ' +
+            "WHERE company_id = {:psc} AND (origin LIKE '%koala%' OR title LIKE '%koala%')",
         )
-        for (var kt = 0; kt < koalaTitleDocs.length; kt++) {
-          koalaTitleDocs[kt].set('company_id', KOALA_ID)
-          app.save(koalaTitleDocs[kt])
-          reassigned++
-        }
-      } catch (_) {}
+        .bind({ koala: KOALA_ID, psc: PSC_ID })
+        .execute()
+      reassigned = res1.changes || 0
+    } catch (err) {
+      console.log('Migration 0040: Koala reassignment error: ' + err)
     }
 
-    // Step 2: Deduplicate PSC documents by (code + prefix + revision + title)
-    // Keep the most complete record (has file, most fields filled, most recent updated)
-    var pscDocs = []
+    // Step 2: Deduplicate PSC documents via raw SQL
+    // Find duplicate groups first (code+prefix+revision+title with >1 row)
+    var dupRows = []
     try {
-      pscDocs = app.findRecordsByFilter(
-        'documents',
-        "company_id = '" + PSC_ID + "'",
-        '-updated',
-        5000,
-        0,
-      )
-    } catch (_) {}
+      var dupQuery = app
+        .db()
+        .newQuery(
+          'SELECT code, prefix, revision, title, COUNT(*) as cnt ' +
+            'FROM documents WHERE company_id = {:psc} ' +
+            'GROUP BY code, prefix, revision, title ' +
+            'HAVING cnt > 1 LIMIT 500',
+        )
+        .bind({ psc: PSC_ID })
 
-    var dedupMap = {}
-    for (var d = 0; d < pscDocs.length; d++) {
-      var doc = pscDocs[d]
-      var key =
-        (doc.getString('code') || '') +
-        '||' +
-        (doc.getString('prefix') || '') +
-        '||' +
-        (doc.getString('revision') || '') +
-        '||' +
-        (doc.getString('title') || '')
-
-      if (!dedupMap[key]) {
-        dedupMap[key] = []
-      }
-      dedupMap[key].push(doc)
+      var result = dupQuery.all()
+      dupRows = result || []
+    } catch (err) {
+      console.log('Migration 0040: Duplicate query error: ' + err)
     }
 
     var deleted = 0
-    for (var key in dedupMap) {
-      if (dedupMap[key].length > 1) {
-        var group = dedupMap[key]
+
+    // For each duplicate group, fetch the records and keep the best one
+    for (var d = 0; d < dupRows.length; d++) {
+      var row = dupRows[d]
+      var code = row['code'] || ''
+      var prefix = row['prefix'] || ''
+      var revision = row['revision'] || ''
+      var title = row['title'] || ''
+
+      // Build filter to get this group's records, sorted by best-first
+      // Best = has file, has effective_date, most recent updated
+      var groupFilter =
+        "company_id = '" +
+        PSC_ID +
+        "'" +
+        " && code = '" +
+        code.replace(/'/g, "''") +
+        "'" +
+        " && prefix = '" +
+        prefix.replace(/'/g, "''") +
+        "'" +
+        " && revision = '" +
+        revision.replace(/'/g, "''") +
+        "'" +
+        " && title = '" +
+        title.replace(/'/g, "''") +
+        "'"
+
+      try {
+        var groupRecords = app.findRecordsByFilter('documents', groupFilter, '-updated', 100, 0)
+        if (groupRecords.length <= 1) continue
+
+        // Score each record to find the best
         var bestIdx = 0
         var bestScore = -1
-        for (var g = 0; g < group.length; g++) {
+        for (var g = 0; g < groupRecords.length; g++) {
           var score = 0
-          if (group[g].getString('file') && group[g].getString('file') !== '') score += 1000
-          if (group[g].getString('effective_date')) score += 10
-          if (group[g].getString('sector')) score += 5
-          if (group[g].getString('applicable_document')) score += 5
-          if (group[g].getString('notes')) score += 5
-          if (group[g].getString('origin')) score += 5
-          // Earlier index = more recent (sorted by -updated)
-          score += group.length - g
+          if (groupRecords[g].getString('file') && groupRecords[g].getString('file') !== '')
+            score += 1000
+          if (groupRecords[g].getString('effective_date')) score += 10
+          if (groupRecords[g].getString('sector')) score += 5
+          if (groupRecords[g].getString('applicable_document')) score += 5
+          if (groupRecords[g].getString('notes')) score += 5
+          if (groupRecords[g].getString('origin')) score += 5
+          score += groupRecords.length - g
           if (score > bestScore) {
             bestScore = score
             bestIdx = g
           }
         }
-        for (var g2 = 0; g2 < group.length; g2++) {
+
+        // Delete all non-best records via raw SQL (fast bulk delete)
+        var idsToDelete = []
+        for (var g2 = 0; g2 < groupRecords.length; g2++) {
           if (g2 !== bestIdx) {
-            app.delete(group[g2])
-            deleted++
+            idsToDelete.push("'" + groupRecords[g2].id + "'")
           }
         }
+
+        if (idsToDelete.length > 0) {
+          try {
+            var delRes = app
+              .db()
+              .newQuery('DELETE FROM documents WHERE id IN (' + idsToDelete.join(',') + ')')
+              .execute()
+            deleted += idsToDelete.length
+          } catch (delErr) {
+            console.log('Migration 0040: Delete error: ' + delErr)
+          }
+        }
+      } catch (grpErr) {
+        console.log('Migration 0040: Group fetch error: ' + grpErr)
       }
     }
 
