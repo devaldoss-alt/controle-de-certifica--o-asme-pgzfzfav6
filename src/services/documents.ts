@@ -1,5 +1,6 @@
 import pb from '@/lib/pocketbase/client'
 import { safeArray } from '@/lib/safe-data'
+import { normalizePrefix } from '@/lib/dms-codes'
 
 export interface DocumentRecord {
   id: string
@@ -37,7 +38,10 @@ export const getDocuments = async (
   else filters.push('company_id != ""')
   if (accessiblePrefixes && accessiblePrefixes.length === 0) return []
   if (accessiblePrefixes && accessiblePrefixes.length > 0) {
-    const prefixFilter = accessiblePrefixes.map((p) => `prefix = "${p}"`).join(' || ')
+    const normalized = [
+      ...new Set(accessiblePrefixes.map((p) => normalizePrefix(p)).filter(Boolean)),
+    ]
+    const prefixFilter = normalized.map((p) => `prefix = "${p}"`).join(' || ')
     filters.push(`(${prefixFilter})`)
   }
   const opts: Record<string, any> = { sort: '-updated' }

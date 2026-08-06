@@ -60,6 +60,7 @@ import {
   normalizePrefix,
   resolveCompanyByPrefix,
   sortDocumentsByPrefixAndCode,
+  extractCodeFromTitle,
 } from '@/lib/dms-codes'
 
 const EMPTY_FORM: InternalDocFormData = {
@@ -176,7 +177,7 @@ export default function MasterList() {
     fd.append('file_path', formData.filePath)
     const normalizedPrefix = normalizePrefix(formData.prefix)
     fd.append('prefix', normalizedPrefix)
-    fd.append('code', formData.code)
+    fd.append('code', formData.code.trim() || extractCodeFromTitle(formData.title))
     fd.append('revision', formData.revision)
     fd.append('document_type', formData.documentType)
     fd.append('effective_date', formData.effectiveDate)
@@ -355,7 +356,7 @@ export default function MasterList() {
                     </TableCell>
                     <TableCell className="text-xs text-white/70">{doc.prefix || '—'}</TableCell>
                     <TableCell className="text-xs font-mono text-primary">
-                      {doc.code || '—'}
+                      {doc.code || extractCodeFromTitle(doc.title) || '—'}
                     </TableCell>
                     <TableCell className="text-xs text-white/90 max-w-48 truncate">
                       {doc.title}

@@ -2,7 +2,7 @@ import pb from '@/lib/pocketbase/client'
 import { safeArray } from '@/lib/safe-data'
 import { normalizeDate } from '@/lib/spreadsheet-parser'
 import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
-import { normalizePrefix, resolveCompanyByPrefix } from '@/lib/dms-codes'
+import { normalizePrefix, resolveCompanyByPrefix, extractCodeFromTitle } from '@/lib/dms-codes'
 
 export interface InternalDocument {
   id: string
@@ -215,7 +215,7 @@ export async function bulkImportInternalDocuments(
       continue
     }
 
-    const code = row.code?.trim() || ''
+    const code = row.code?.trim() || extractCodeFromTitle(row.title)
     const revision = row.revision?.trim() || ''
     const rawPrefix = row.prefix || ''
     const prefix = normalizePrefix(rawPrefix)

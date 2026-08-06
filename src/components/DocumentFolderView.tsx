@@ -46,10 +46,20 @@ export function DocumentFolderView({
 }: DocumentFolderViewProps) {
   const { t, lang } = useI18n()
 
+  const getDocPrefix = (doc: DocumentRecord): string => {
+    const norm = normalizePrefix(doc.prefix || '')
+    if (norm) return norm
+    const title = (doc.title || '').trim().toUpperCase()
+    for (const p of DMS_PREFIXES) {
+      if (title.startsWith(p.prefix) || title.startsWith(p.prefix.replace(/[\s_]+/g, '-'))) {
+        return p.prefix
+      }
+    }
+    return ''
+  }
+
   if (!selectedPrefix) {
-    const usedPrefixes = [
-      ...new Set(documents.map((d) => normalizePrefix(d.prefix || '')).filter(Boolean)),
-    ]
+    const usedPrefixes = [...new Set(documents.map((d) => getDocPrefix(d)).filter(Boolean))]
     const normalizedAccessible = accessiblePrefixes.map((p) => normalizePrefix(p))
     const prefixesToShow =
       normalizedAccessible.length > 0
@@ -103,7 +113,7 @@ export function DocumentFolderView({
   const filtered =
     selectedPrefix === 'ALL'
       ? documents
-      : documents.filter((d) => normalizePrefix(d.prefix || '') === selectedPrefix)
+      : documents.filter((d) => getDocPrefix(d) === selectedPrefix)
   const sorted = sortDocumentsByPrefixAndCode(filtered)
 
   return (
@@ -142,7 +152,7 @@ export function DocumentFolderView({
               )}
               <h3 className="font-medium text-white text-base line-clamp-2">
                 {formatDocumentDisplayName(
-                  normalizePrefix(doc.prefix || ''),
+                  getDocPrefix(doc),
                   doc.code,
                   localizedField(doc.title, doc.title_en, lang),
                 )}

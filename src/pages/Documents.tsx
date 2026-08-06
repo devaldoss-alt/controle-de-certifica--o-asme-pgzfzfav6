@@ -13,7 +13,7 @@ import {
 } from '@/services/documents'
 import { getDocumentAccess } from '@/services/document-access'
 import { canUseDocumentEditor } from '@/lib/plans'
-import { DMS_PREFIXES, type DocumentFormData } from '@/lib/dms-codes'
+import { DMS_PREFIXES, extractCodeFromTitle, type DocumentFormData } from '@/lib/dms-codes'
 import { exportDocumentPdf, exportDocumentWord, exportDocumentExcel } from '@/lib/document-exports'
 import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
 import { DocumentFolderView } from '@/components/DocumentFolderView'
@@ -68,10 +68,10 @@ export default function Documents() {
   const loadData = async () => {
     setLoadError(null)
     try {
+      const isFullAccess = ['Manager', 'Director', 'QCC'].includes(user?.role || '')
       const access = await getDocumentAccess(user?.role)
       const prefixes = access.filter((r: any) => r.can_view).map((r: any) => r.document_prefix)
-      setAccessiblePrefixes(prefixes)
-      const isFullAccess = ['Manager', 'Director', 'QCC'].includes(user?.role || '')
+      setAccessiblePrefixes(isFullAccess ? [] : prefixes)
       const effectivePrefixes = isFullAccess ? undefined : prefixes
       const docs = await getDocuments(filter, selectedCompanyId, effectivePrefixes)
       setDocuments(docs)
@@ -150,7 +150,7 @@ export default function Documents() {
     fd.append('prefix', formData.prefix)
     const prefixMeta = DMS_PREFIXES.find((p) => p.prefix === formData.prefix)
     fd.append('prefix_en', prefixMeta?.label_en || '')
-    fd.append('code', formData.code)
+    fd.append('code', formData.code.trim() || extractCodeFromTitle(formData.title))
     fd.append('revision', formData.revision)
     const effectiveCompanyId =
       selectedCompanyId !== 'all' ? selectedCompanyId : user?.primary_company_id || ''

@@ -105,16 +105,22 @@ export function resolveCompanyByPrefix(
 }
 
 function compareNumericCodes(a: string, b: string): number {
-  const partsA = a.split('.').map((n) => parseFloat(n) || 0)
-  const partsB = b.split('.').map((n) => parseFloat(n) || 0)
+  if (!a && !b) return 0
+  if (!a) return 1
+  if (!b) return -1
+
+  const partsA = a.split('.').map((n) => parseInt(n, 10))
+  const partsB = b.split('.').map((n) => parseInt(n, 10))
   const maxLen = Math.max(partsA.length, partsB.length)
+
   for (let i = 0; i < maxLen; i++) {
-    const va = partsA[i] || 0
-    const vb = partsB[i] || 0
+    const va = isNaN(partsA[i]) ? 0 : partsA[i]
+    const vb = isNaN(partsB[i]) ? 0 : partsB[i]
     if (va < vb) return -1
     if (va > vb) return 1
   }
-  return 0
+
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
 }
 
 export function sortDocumentsByPrefixAndCode<T extends { prefix?: string; code?: string }>(
@@ -129,14 +135,45 @@ export function sortDocumentsByPrefixAndCode<T extends { prefix?: string; code?:
   })
 }
 
+export function extractCodeFromTitle(title: string | undefined): string {
+  if (!title) return ''
+  const trimmed = title.trim()
+  const match1 = trimmed.match(/^[^\d]+?\s+(\d+(?:\.\d+)*)/)
+  if (match1) return match1[1]
+  const match2 = trimmed.match(/^(\d+(?:\.\d+)*)/)
+  if (match2) return match2[1]
+  const match3 = trimmed.match(/\b(\d+\.\d+(?:\.\d+)*)\b/)
+  if (match3) return match3[1]
+  const match4 = trimmed.match(/\b(\d{2,})\b/)
+  if (match4) return match4[1]
+  return ''
+}
+
 export function formatDocumentDisplayName(
   prefix: string | undefined,
   code: string | undefined,
   title: string,
 ): string {
-  const parts = [prefix, code].filter(Boolean).join(' ')
-  if (parts && title.toUpperCase().startsWith(parts.toUpperCase())) {
-    return title
+  const normPrefix = prefix ? normalizePrefix(prefix) : ''
+  const normCode = code ? code.trim() : extractCodeFromTitle(title)
+  let cleanTitle = (title || '').trim()
+
+  if (normPrefix) {
+    const prefixRegex = new RegExp(
+      `^${normPrefix.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}[\\s_-]*`,
+      'i',
+    )
+    cleanTitle = cleanTitle.replace(prefixRegex, '').trim()
   }
-  return [parts, title].filter(Boolean).join(' ')
+
+  if (normCode) {
+    const codeRegex = new RegExp(
+      `^${normCode.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}[\\s_-]*`,
+      'i',
+    )
+    cleanTitle = cleanTitle.replace(codeRegex, '').trim()
+  }
+
+  const parts = [normPrefix, normCode, cleanTitle].filter(Boolean)
+  return parts.join(' ')
 }
