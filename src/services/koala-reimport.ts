@@ -10,7 +10,7 @@ import {
   type ImportResult,
   type ImportProgressCallback,
 } from '@/services/internal-documents'
-import koalaSpreadsheetUrl from '@/assets/fsgq-7.5.1-lista-mestra-internos-rev.07-ec5e9.xlsx'
+import koalaSpreadsheetUrl from '@/assets/fsgq-7.5.1-lista-mestra-internos-rev.07-ec5e9.xlsx?url'
 
 const FIELDS = [
   'prefix',
