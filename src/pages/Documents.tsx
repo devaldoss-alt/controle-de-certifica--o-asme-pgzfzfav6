@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, useI18n } from '@/hooks/use-i18n'
 import useRealtime from '@/hooks/use-realtime'
@@ -20,7 +20,8 @@ import { DocumentFolderView } from '@/components/DocumentFolderView'
 import { DocumentEditor } from '@/components/DocumentEditor'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Lock, AlertTriangle } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Plus, Lock, AlertTriangle, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   AlertDialog,
@@ -57,6 +58,7 @@ export default function Documents() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<DocumentFormData>(EMPTY_FORM)
   const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [existingFileName, setExistingFileName] = useState<string | undefined>(undefined)
   const [isSaving, setIsSaving] = useState(false)
@@ -64,6 +66,21 @@ export default function Documents() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const canEdit = canUseDocumentEditor(user?.plan) && ['QCC', 'Manager'].includes(user?.role || '')
   const txt = (pt: string, en: string) => (lang === 'pt' ? pt : en)
+
+  const filteredDocuments = useMemo(() => {
+    if (!search.trim()) return documents
+    const q = search.trim().toLowerCase()
+    return documents.filter(
+      (doc) =>
+        (doc.code || '').toLowerCase().includes(q) ||
+        (doc.prefix || '').toLowerCase().includes(q) ||
+        (doc.prefix_en || '').toLowerCase().includes(q) ||
+        (doc.title || '').toLowerCase().includes(q) ||
+        (doc.title_en || '').toLowerCase().includes(q),
+    )
+  }, [documents, search])
+
+  const effectiveSelectedPrefix = search.trim() ? 'ALL' : selectedPrefix
 
   const loadData = async () => {
     setLoadError(null)
@@ -262,6 +279,19 @@ export default function Documents() {
         ))}
       </div>
 
+      <div className="relative max-w-md">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={txt(
+            'Buscar por código, tipo ou título...',
+            'Search by code, type or title...',
+          )}
+          className="bg-black/20 border-white/10 text-white pl-9"
+        />
+      </div>
+
       {loadError ? (
         <div className="flex items-start gap-3 p-4 rounded-lg border border-rose-500/20 bg-rose-500/5 text-rose-400">
           <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
@@ -274,9 +304,9 @@ export default function Documents() {
         </div>
       ) : (
         <DocumentFolderView
-          documents={documents}
+          documents={filteredDocuments}
           accessiblePrefixes={accessiblePrefixes}
-          selectedPrefix={selectedPrefix}
+          selectedPrefix={effectiveSelectedPrefix}
           onSelectPrefix={setSelectedPrefix}
           onEdit={openEdit}
           onDelete={handleDeleteRequest}

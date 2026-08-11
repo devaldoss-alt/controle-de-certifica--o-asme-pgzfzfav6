@@ -174,6 +174,6 @@ export function formatDocumentDisplayName(
     cleanTitle = cleanTitle.replace(codeRegex, '').trim()
   }
 
-  const parts = [normPrefix, normCode, cleanTitle].filter(Boolean)
-  return parts.join(' ')
+  const parts = [normPrefix, normCode, cleanTitle].filter((p) => p && p !== '—' && p !== '-')
+  return parts.join(' - ')
 }

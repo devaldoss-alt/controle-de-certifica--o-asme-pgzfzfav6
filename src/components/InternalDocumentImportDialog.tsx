@@ -53,6 +53,19 @@ const FIELD_OPTIONS = [
   { value: '_skip', label: '— Ignorar —' },
 ]
 
+const FIELD_SYNONYMS: Record<string, string[]> = {
+  code: ['codigo', 'item', 'cod'],
+  title: ['identificacao', 'titulo', 'descricao'],
+  revision: ['revisao', 'n revisao', 'nº revisao', 'n° revisao', 'n rev', 'rev'],
+  effective_date: ['data de aprovacao', 'data de aprovacao reaprovacao', 'data aprovacao', 'data'],
+  applicable_document: ['documento que se aplica', 'doc aplicavel', 'doc que se aplica'],
+  review_deadline_days: ['prazo de revisao', 'prazo revisao', 'prazo de revisao dias', 'prazo'],
+  notes: ['observacoes', 'observacao', 'obs'],
+  sector: ['setor', 'area', 'departamento'],
+  status: ['status', 'situacao'],
+  prefix: ['tipo'],
+}
+
 const DEFAULT_MAP: Record<string, string> = {
   prefix: 'prefix',
   code: 'code',
@@ -108,17 +121,93 @@ export function InternalDocumentImportDialog({
     }
   }, [open, defaultCompanyId])
 
-  const guessMapping = useCallback((hdrs: string[]) => {
+  const guessMapping = useCallback((hdrs: string[], dataRows: string[][]) => {
     const normalized = hdrs.map((h) => normalizeText(h))
     const guess: Record<string, string> = {}
+    const usedIndices = new Set<number>()
+
     for (const field of Object.keys(DEFAULT_MAP)) {
       const label = normalizeText(FIELD_OPTIONS.find((f) => f.value === field)?.label || '')
-      let idx = normalized.findIndex((h) => h === label)
-      if (idx < 0) {
-        idx = normalized.findIndex((h) => h.includes(label) || label.includes(h))
+      const idx = normalized.findIndex((h, i) => !usedIndices.has(i) && h === label)
+      if (idx >= 0) {
+        guess[field] = String(idx)
+        usedIndices.add(idx)
+      } else {
+        guess[field] = '_skip'
       }
-      guess[field] = idx >= 0 ? String(idx) : '_skip'
     }
+
+    for (const field of Object.keys(DEFAULT_MAP)) {
+      if (guess[field] !== '_skip') continue
+      const label = normalizeText(FIELD_OPTIONS.find((f) => f.value === field)?.label || '')
+      const idx = normalized.findIndex(
+        (h, i) => !usedIndices.has(i) && (h.includes(label) || label.includes(h)),
+      )
+      if (idx >= 0) {
+        guess[field] = String(idx)
+        usedIndices.add(idx)
+      }
+    }
+
+    for (const field of Object.keys(DEFAULT_MAP)) {
+      if (guess[field] !== '_skip') continue
+      const synonyms = FIELD_SYNONYMS[field] || []
+      let found = -1
+      for (const syn of synonyms) {
+        found = normalized.findIndex(
+          (h, i) =>
+            !usedIndices.has(i) &&
+            (h === syn ||
+              (syn.length >= 3 && h.includes(syn)) ||
+              (h.length >= 3 && syn.includes(h))),
+        )
+        if (found >= 0) break
+      }
+      if (found >= 0) {
+        guess[field] = String(found)
+        usedIndices.add(found)
+      }
+    }
+
+    if (guess.applicable_document === '_skip') {
+      const dmsPrefixes = [
+        'ASME PSC',
+        'CDE',
+        'CQS',
+        'EVS',
+        'FSGQ',
+        'ISSGQ',
+        'IT-CQ',
+        'ITSGQ',
+        'LP',
+        'MCQ',
+        'MSGQ',
+        'PR-CQ',
+        'PSGQ',
+      ]
+      const prefixPattern = new RegExp(
+        '^(' + dmsPrefixes.map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|') + ')',
+        'i',
+      )
+      let bestIdx = -1
+      let bestScore = 0
+      for (let i = 0; i < hdrs.length; i++) {
+        if (usedIndices.has(i)) continue
+        const colValues = dataRows
+          .slice(0, 50)
+          .map((r) => (r[i] || '').trim())
+          .filter(Boolean)
+        const matches = colValues.filter((v) => prefixPattern.test(v)).length
+        if (matches > bestScore) {
+          bestScore = matches
+          bestIdx = i
+        }
+      }
+      if (bestIdx >= 0 && bestScore >= 1) {
+        guess.applicable_document = String(bestIdx)
+      }
+    }
+
     return guess
   }, [])
 
@@ -134,7 +223,7 @@ export function InternalDocumentImportDialog({
       const hdrs = data[headerIdx].map((h, i) => h || `Coluna ${i + 1}`)
       setHeaders(hdrs)
       setRows(data.slice(headerIdx + 1))
-      setMapping(guessMapping(hdrs))
+      setMapping(guessMapping(hdrs, data.slice(headerIdx + 1)))
       setStep('preview')
     } catch (e: any) {
       setError(e?.message || 'Erro ao processar arquivo.')
