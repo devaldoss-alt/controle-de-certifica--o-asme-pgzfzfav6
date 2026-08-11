@@ -206,14 +206,19 @@ export async function deleteInternalDocument(id: string) {
   return pb.collection('documents').delete(id)
 }
 
+export interface BulkImportOptions {
+  forceCompanyId?: boolean
+}
+
 export async function bulkImportInternalDocuments(
   rows: ImportRow[],
   companyId: string,
   onProgress?: ImportProgressCallback,
+  options?: BulkImportOptions,
 ): Promise<ImportResult> {
   const result: ImportResult = { success: 0, errors: [] }
   const existingDocs = await getInternalDocuments({ companyId })
-  const allCompanies = await pb.collection('companies').getFullList()
+  const allCompanies = options?.forceCompanyId ? [] : await pb.collection('companies').getFullList()
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
@@ -228,7 +233,9 @@ export async function bulkImportInternalDocuments(
     const rawPrefix = normalizeDashValue(row.prefix) || ''
     const prefix = normalizePrefix(rawPrefix)
     const documentType = inferDocumentType(prefix)
-    const resolvedCompanyId = resolveCompanyByPrefix(rawPrefix, companyId, allCompanies as any)
+    const resolvedCompanyId = options?.forceCompanyId
+      ? companyId
+      : resolveCompanyByPrefix(rawPrefix, companyId, allCompanies as any)
     const existing =
       code && revision
         ? existingDocs.find((d) => (d.code || '') === code && (d.revision || '') === revision)
