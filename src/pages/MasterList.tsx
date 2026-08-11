@@ -331,15 +331,17 @@ export default function MasterList() {
               <TableHeader>
                 <TableRow className="border-white/10">
                   <TableHead className="text-xs text-white/60">Categoria</TableHead>
-                  <TableHead className="text-xs text-white/60">Tipo/Prefixo</TableHead>
+                  <TableHead className="text-xs text-white/60">Tipo</TableHead>
                   <TableHead className="text-xs text-white/60">Código</TableHead>
                   <TableHead className="text-xs text-white/60">Identificação</TableHead>
                   <TableHead className="text-xs text-white/60">Revisão</TableHead>
                   <TableHead className="text-xs text-white/60">Status</TableHead>
-                  <TableHead className="text-xs text-white/60">Doc. que se Aplica</TableHead>
+                  <TableHead className="text-xs text-white/60">Documento que se Aplica</TableHead>
                   <TableHead className="text-xs text-white/60">Setor</TableHead>
-                  <TableHead className="text-xs text-white/60">Dt. Aprovação/Reaprov.</TableHead>
-                  <TableHead className="text-xs text-white/60">Prazo Rev. (Dias)</TableHead>
+                  <TableHead className="text-xs text-white/60">
+                    Data de Aprovação/Reaprovação
+                  </TableHead>
+                  <TableHead className="text-xs text-white/60">Prazo de Revisão (Dias)</TableHead>
                   <TableHead className="text-xs text-white/60">Observação</TableHead>
                   <TableHead className="text-xs text-white/60">Arquivo</TableHead>
                 </TableRow>
@@ -436,11 +438,11 @@ export default function MasterList() {
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Tipo:</span>{' '}
+                  <span className="text-muted-foreground">Categoria:</span>{' '}
                   <span className="text-white">{detailDoc.document_type || '—'}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Prefixo:</span>{' '}
+                  <span className="text-muted-foreground">Tipo:</span>{' '}
                   <span className="text-white">{detailDoc.prefix || '—'}</span>
                 </div>
                 <div>
@@ -461,7 +463,7 @@ export default function MasterList() {
                   </Badge>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Doc. que se Aplica:</span>{' '}
+                  <span className="text-muted-foreground">Documento que se Aplica:</span>{' '}
                   <span className="text-white">{detailDoc.applicable_document || '—'}</span>
                 </div>
                 <div>
@@ -469,13 +471,13 @@ export default function MasterList() {
                   <span className="text-white">{detailDoc.sector || '—'}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Dt. Aprovação/Reaprov.:</span>{' '}
+                  <span className="text-muted-foreground">Data de Aprovação/Reaprovação:</span>{' '}
                   <span className="text-white">
                     {safeFormatDate(detailDoc.effective_date, 'dd/MM/yyyy')}
                   </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Prazo Rev. (Dias):</span>{' '}
+                  <span className="text-muted-foreground">Prazo de Revisão (Dias):</span>{' '}
                   <span className="text-white">
                     {detailDoc.review_deadline_days != null
                       ? String(detailDoc.review_deadline_days)

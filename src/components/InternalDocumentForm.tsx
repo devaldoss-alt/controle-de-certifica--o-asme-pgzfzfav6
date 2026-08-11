@@ -129,14 +129,14 @@ export function InternalDocumentForm({
           </div>
 
           <div className="flex gap-3 flex-wrap">
-            <Field label="Título" required>
+            <Field label="Identificação" required>
               <Input
                 value={data.title}
                 onChange={(e) => onChange('title', e.target.value)}
                 className="bg-black/20 border-white/10 text-white"
               />
             </Field>
-            <Field label="Título (EN)">
+            <Field label="Identificação (EN)">
               <Input
                 value={data.titleEn}
                 onChange={(e) => onChange('titleEn', e.target.value)}
@@ -146,7 +146,7 @@ export function InternalDocumentForm({
           </div>
 
           <div className="flex gap-3 flex-wrap items-end">
-            <Field label="Prefixo">
+            <Field label="Tipo">
               <Select value={data.prefix} onValueChange={(v) => onChange('prefix', v)}>
                 <SelectTrigger className="bg-black/20 border-white/10 text-white w-36">
                   <SelectValue placeholder="—" />
@@ -176,7 +176,7 @@ export function InternalDocumentForm({
                 className="bg-black/20 border-white/10 text-white w-20 font-mono"
               />
             </Field>
-            <Field label="Tipo">
+            <Field label="Categoria">
               <Select value={data.documentType} onValueChange={(v) => onChange('documentType', v)}>
                 <SelectTrigger className="bg-black/20 border-white/10 text-white w-36">
                   <SelectValue />
@@ -203,7 +203,7 @@ export function InternalDocumentForm({
           </div>
 
           <div className="flex gap-3 flex-wrap items-end">
-            <Field label="Data de Emissão">
+            <Field label="Data de Aprovação/Reaprovação">
               <Input
                 type="date"
                 value={data.effectiveDate}
