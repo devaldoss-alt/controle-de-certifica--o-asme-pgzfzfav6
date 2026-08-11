@@ -231,7 +231,7 @@ export default function MasterList() {
     companyId: string,
     onProgress?: ImportProgressCallback,
   ): Promise<ImportResult> => {
-    return bulkImportInternalDocuments(rows, companyId, onProgress)
+    return bulkImportInternalDocuments(rows, companyId, onProgress, { forceCompanyId: true })
   }
 
   const fileUrl = (doc: InternalDocument) => {
