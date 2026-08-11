@@ -429,10 +429,16 @@ export function InternalDocumentImportDialog({
         {step === 'result' && importResult && (
           <div className="py-6 space-y-4">
             <div className="flex items-center gap-3">
-              <CheckCircle2 className="w-8 h-8 text-green-500" />
+              {importResult.success > 0 ? (
+                <CheckCircle2 className="w-8 h-8 text-green-500" />
+              ) : (
+                <AlertCircle className="w-8 h-8 text-rose-500" />
+              )}
               <div>
                 <p className="text-white font-medium">
-                  {importResult.success} documento(s) importado(s)
+                  {importResult.success > 0
+                    ? `${importResult.success} documento(s) importado(s)`
+                    : 'Nenhum documento foi importado'}
                 </p>
                 {importResult.errors.length > 0 && (
                   <p className="text-sm text-amber-500">
