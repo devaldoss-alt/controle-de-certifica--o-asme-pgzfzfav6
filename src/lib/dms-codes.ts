@@ -83,6 +83,10 @@ export function resolveCompanyByPrefix(
   defaultCompanyId: string,
   companies: Array<{ id: string; name: string; name_en?: string }>,
 ): string {
+  // If defaultCompanyId is explicitly passed, strictly enforce it to respect the user's explicit company selection.
+  if (defaultCompanyId) {
+    return defaultCompanyId
+  }
   const upper = (prefix || '')
     .trim()
     .toUpperCase()

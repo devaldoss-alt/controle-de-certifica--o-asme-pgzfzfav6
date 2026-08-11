@@ -250,7 +250,14 @@ export default function Approvals() {
                         <Paperclip className="w-3 h-3" />
                         <BilingualText k="common.evidence" />
                       </div>
-                      <EvidencePreview checklistId={item.id} filename={item.evidence_file} />
+                      <EvidencePreview
+                        checklistId={item.id}
+                        filename={
+                          Array.isArray(item.evidence_file)
+                            ? item.evidence_file[0]
+                            : item.evidence_file
+                        }
+                      />
                       {item.evidence_notes && item.evidence_notes.trim() !== '' && (
                         <p className="text-xs text-muted-foreground mt-2 italic">
                           {item.evidence_notes}

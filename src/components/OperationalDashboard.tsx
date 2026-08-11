@@ -67,8 +67,8 @@ export function OperationalDashboard() {
   useRealtime('checklists', () => loadData())
   useRealtime('interactions', () => loadData())
 
-  const safeChecklists = safeArray(checklists)
-  const safeInteractions = safeArray(interactions)
+  const safeChecklists = safeArray<Checklist>(checklists)
+  const safeInteractions = safeArray<Interaction>(interactions)
 
   const pending = safeChecklists.filter((c) => c && c.status === 'pending').length
   const completed = safeChecklists.filter(

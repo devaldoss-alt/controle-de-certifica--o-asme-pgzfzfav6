@@ -344,9 +344,9 @@ export default function Checklists() {
                         <p className="text-xs text-rose-400">{item.rejection_comment}</p>
                       </div>
                     )}
-                    {item.approval_status === 'approved' && item.approval_comment && (
+                    {item.approval_status === 'approved' && (item as any).approval_comment && (
                       <div className="mt-2 p-2 rounded bg-emerald-500/5 border border-emerald-500/10">
-                        <p className="text-xs text-emerald-400">{item.approval_comment}</p>
+                        <p className="text-xs text-emerald-400">{(item as any).approval_comment}</p>
                       </div>
                     )}
                   </div>

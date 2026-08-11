@@ -16,7 +16,7 @@ export async function forceRealtimeReconnect(): Promise<void> {
   isReconnecting = true
 
   try {
-    await pb.unsubscribe()
+    await pb.realtime.unsubscribe()
   } catch {
     // ignore
   }

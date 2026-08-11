@@ -218,7 +218,8 @@ export async function bulkImportInternalDocuments(
 ): Promise<ImportResult> {
   const result: ImportResult = { success: 0, errors: [] }
   const existingDocs = await getInternalDocuments({ companyId })
-  const allCompanies = options?.forceCompanyId ? [] : await pb.collection('companies').getFullList()
+  const forceCompany = options?.forceCompanyId ?? true
+  const allCompanies = forceCompany ? [] : await pb.collection('companies').getFullList()
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
@@ -233,7 +234,7 @@ export async function bulkImportInternalDocuments(
     const rawPrefix = normalizeDashValue(row.prefix) || ''
     const prefix = normalizePrefix(rawPrefix)
     const documentType = inferDocumentType(prefix)
-    const resolvedCompanyId = options?.forceCompanyId
+    const resolvedCompanyId = forceCompany
       ? companyId
       : resolveCompanyByPrefix(rawPrefix, companyId, allCompanies as any)
     const existing =

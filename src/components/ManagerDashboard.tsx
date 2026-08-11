@@ -56,8 +56,8 @@ export function ManagerDashboard() {
   }, [selectedCompanyId])
   useRealtime('checklists', () => loadData())
 
-  const safeChecklists = safeArray(checklists)
-  const safeUsers = safeArray(users)
+  const safeChecklists = safeArray<Checklist>(checklists)
+  const safeUsers = safeArray<User>(users)
 
   const pending = safeChecklists.filter((c) => c && c.status === 'pending').length
   const awaiting = safeChecklists.filter(
@@ -194,7 +194,7 @@ export function ManagerDashboard() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-white/5">
-                {safeArray(pendingApprovals).map((item) => {
+                {safeArray<Checklist>(pendingApprovals).map((item) => {
                   if (!item) return null
                   return (
                     <div

@@ -71,7 +71,7 @@ export default function Team() {
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={() => generateComplianceReport(checklists, users)}
+            onClick={() => generateComplianceReport(checklists, users, t)}
             className="border-white/10 text-white hover:bg-white/5"
           >
             <FileDown className="w-4 h-4 mr-2" />

@@ -164,9 +164,11 @@ export const rejectChecklist = async (id: string, comment: string) => {
   })
 }
 
-export const getUsers = async () => {
+export const getUsers = async (companyId?: string) => {
   try {
-    const result = await pb.collection('users').getFullList<User>({ sort: 'name' })
+    const filter =
+      companyId && companyId !== 'all' ? `primary_company_id = "${companyId}"` : undefined
+    const result = await pb.collection('users').getFullList<User>({ filter, sort: 'name' })
     return safeArray<User>(result)
   } catch (e) {
     console.error('getUsers failed:', e)
