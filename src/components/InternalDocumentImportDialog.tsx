@@ -438,7 +438,7 @@ export function InternalDocumentImportDialog({
                 <p className="text-white font-medium">
                   {importResult.success > 0
                     ? `${importResult.success} documento(s) importado(s)`
-                    : 'Nenhum documento foi importado'}
+                    : 'Nenhum documento foi registrado para a empresa selecionada'}
                 </p>
                 {importResult.errors.length > 0 && (
                   <p className="text-sm text-amber-500">

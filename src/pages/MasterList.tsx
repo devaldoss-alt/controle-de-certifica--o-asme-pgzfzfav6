@@ -58,7 +58,6 @@ import { safeFormatDate } from '@/lib/safe-data'
 import pb from '@/lib/pocketbase/client'
 import {
   normalizePrefix,
-  resolveCompanyByPrefix,
   sortDocumentsByPrefixAndCode,
   extractCodeFromTitle,
 } from '@/lib/dms-codes'
@@ -191,8 +190,7 @@ export default function MasterList() {
     fd.append('sector', formData.sector)
     fd.append('review_deadline_days', formData.reviewDeadlineDays || '')
     fd.append('notes', formData.notes)
-    const baseCid = selectedCompanyId !== 'all' ? selectedCompanyId : user?.primary_company_id || ''
-    const cid = resolveCompanyByPrefix(formData.prefix, baseCid, companies)
+    const cid = selectedCompanyId !== 'all' ? selectedCompanyId : user?.primary_company_id || ''
     if (cid) fd.append('company_id', cid)
     if (formData.file) fd.append('file', formData.file)
 
