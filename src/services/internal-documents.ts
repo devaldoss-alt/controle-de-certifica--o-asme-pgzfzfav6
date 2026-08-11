@@ -3,6 +3,7 @@ import { safeArray } from '@/lib/safe-data'
 import { normalizeDate } from '@/lib/spreadsheet-parser'
 import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
 import { normalizePrefix, resolveCompanyByPrefix, extractCodeFromTitle } from '@/lib/dms-codes'
+import { normalizeImportStatus } from '@/lib/document-status'
 
 export interface InternalDocument {
   id: string
@@ -246,7 +247,7 @@ export async function bulkImportInternalDocuments(
           next_review_date: row.next_review_date || null,
           origin: row.origin || '',
           language: row.language || 'Portuguese',
-          status: row.status || 'Active',
+          status: normalizeImportStatus(row.status),
           applicable_document: normalizeDashValue(row.applicable_document) || '',
           sector: normalizeDashValue(row.sector) || '',
           review_deadline_days: row.review_deadline_days ?? null,
@@ -294,7 +295,7 @@ export async function bulkImportInternalDocuments(
         next_review_date: row.next_review_date || null,
         origin: row.origin || '',
         language: row.language || 'Portuguese',
-        status: row.status || 'Active',
+        status: normalizeImportStatus(row.status),
         applicable_document: normalizeDashValue(row.applicable_document) || '',
         sector: normalizeDashValue(row.sector) || '',
         review_deadline_days: row.review_deadline_days ?? null,

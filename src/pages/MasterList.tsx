@@ -62,6 +62,7 @@ import {
   sortDocumentsByPrefixAndCode,
   extractCodeFromTitle,
 } from '@/lib/dms-codes'
+import { displayStatus, STATUS_FILTER_TO_DB } from '@/lib/document-status'
 
 const EMPTY_FORM: InternalDocFormData = {
   title: '',
@@ -111,12 +112,13 @@ export default function MasterList() {
   )
 
   const loadData = async () => {
+    const dbStatus = filterStatus !== 'all' ? STATUS_FILTER_TO_DB[filterStatus] || 'all' : 'all'
     const docs = await getInternalDocuments({
       companyId: selectedCompanyId,
       search,
       revision: filterRevision,
       documentType: filterType,
-      status: filterStatus,
+      status: dbStatus,
     })
     setDocuments(sortDocumentsByPrefixAndCode(docs))
   }
@@ -318,10 +320,10 @@ export default function MasterList() {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Status</SelectItem>
-                <SelectItem value="Active">Active</SelectItem>
-                <SelectItem value="Obsolete">Obsolete</SelectItem>
-                <SelectItem value="Under Review">Under Review</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="APROVADO">APROVADO</SelectItem>
+                <SelectItem value="EM REVISÃO">EM REVISÃO</SelectItem>
+                <SelectItem value="OBSOLETO">OBSOLETO</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -366,7 +368,7 @@ export default function MasterList() {
                     <TableCell className="text-xs text-white/70">{doc.revision || '—'}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`text-[10px] ${statusColor(doc.status)}`}>
-                        {doc.status || '—'}
+                        {displayStatus(doc.status)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs text-white/70 max-w-32 truncate">
@@ -459,7 +461,7 @@ export default function MasterList() {
                     variant="outline"
                     className={`text-[10px] ${statusColor(detailDoc.status)}`}
                   >
-                    {detailDoc.status || '—'}
+                    {displayStatus(detailDoc.status)}
                   </Badge>
                 </div>
                 <div>

@@ -194,9 +194,9 @@ export function InternalDocumentForm({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Obsolete">Obsolete</SelectItem>
-                  <SelectItem value="Under Review">Under Review</SelectItem>
+                  <SelectItem value="Active">APROVADO</SelectItem>
+                  <SelectItem value="Under Review">EM REVISÃO</SelectItem>
+                  <SelectItem value="Obsolete">OBSOLETO</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
