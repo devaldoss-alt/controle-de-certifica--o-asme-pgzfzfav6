@@ -17,7 +17,6 @@ import {
 } from '@/services/internal-documents'
 import { InternalDocumentForm, type InternalDocFormData } from '@/components/InternalDocumentForm'
 import { InternalDocumentImportDialog } from '@/components/InternalDocumentImportDialog'
-import { KoalaReimportDialog } from '@/components/KoalaReimportDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -99,7 +98,6 @@ export default function MasterList() {
   const [filterStatus, setFilterStatus] = useState('all')
   const [formOpen, setFormOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
-  const [koalaReimportOpen, setKoalaReimportOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<InternalDocFormData>(EMPTY_FORM)
   const [isSaving, setIsSaving] = useState(false)
@@ -274,13 +272,6 @@ export default function MasterList() {
             >
               <Upload className="w-4 h-4 mr-2" /> Importar Planilha
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => setKoalaReimportOpen(true)}
-              className="border-amber-500/30 text-amber-500 hover:text-amber-400"
-            >
-              <Upload className="w-4 h-4 mr-2" /> Reimportar Koala
-            </Button>
             <Button onClick={openNew} className="bg-primary hover:bg-primary/90">
               <Plus className="w-4 h-4 mr-2" /> Adicionar
             </Button>
@@ -438,13 +429,6 @@ export default function MasterList() {
         onImport={handleImport}
         companies={companies.filter((c) => availableCompanyIds.includes(c.id))}
         defaultCompanyId={selectedCompanyId !== 'all' ? selectedCompanyId : undefined}
-      />
-
-      <KoalaReimportDialog
-        open={koalaReimportOpen}
-        onOpenChange={setKoalaReimportOpen}
-        companies={companies}
-        onComplete={() => loadData()}
       />
 
       <Dialog open={!!detailDoc} onOpenChange={(v) => !v && setDetailDoc(null)}>
