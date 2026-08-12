@@ -224,6 +224,7 @@ export default function Calendar() {
                   {ev.type === 'checklist' && '✓ '}
                   {ev.type === 'document_review' && '📄 '}
                   {ev.type === 'os_deadline' && '🛠 '}
+                  {ev.type === 'packing_slip' && '📦 '}
                   {ev.title}
                 </div>
               )
@@ -382,6 +383,19 @@ export default function Calendar() {
           >
             <Briefcase className="w-3.5 h-3.5 mr-1" />
             {lang === 'pt' ? 'Prazos O.S.' : 'O.S. Deadlines'}
+          </Button>
+          <Button
+            variant={typeFilter === 'packing_slip' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setTypeFilter('packing_slip')}
+            className={
+              typeFilter === 'packing_slip'
+                ? 'bg-purple-600 text-white'
+                : 'border-white/10 text-muted-foreground'
+            }
+          >
+            <Clock className="w-3.5 h-3.5 mr-1" />
+            {lang === 'pt' ? 'Romaneios' : 'Packing Slips'}
           </Button>
         </div>
 

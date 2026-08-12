@@ -3,17 +3,19 @@ import { getChecklists, type Checklist } from '@/services/api'
 import { getDocuments, type DocumentRecord } from '@/services/documents'
 import { getServiceOrders, type ServiceOrder } from '@/services/service-orders'
 
+import { getPackingSlips, type PackingSlip } from '@/services/packing-slips'
+
 export interface CalendarEvent {
   id: string
   title: string
-  type: 'checklist' | 'document_review' | 'os_deadline'
+  type: 'checklist' | 'document_review' | 'os_deadline' | 'packing_slip'
   date: string // YYYY-MM-DD
   status: 'completed' | 'pending' | 'overdue' | 'upcoming'
   priority?: 'high' | 'medium' | 'low'
   role?: string
   sector?: string
   assignedUser?: string
-  originalItem: Checklist | DocumentRecord | ServiceOrder
+  originalItem: Checklist | DocumentRecord | ServiceOrder | PackingSlip
 }
 
 export const getCalendarEvents = async (
@@ -90,7 +92,7 @@ export const getCalendarEvents = async (
     })
 
     // 3. Fetch Service Orders (Deadlines)
-    const serviceOrders = await getServiceOrders(companyId)
+    const serviceOrders = await getServiceOrders('all', companyId)
     serviceOrders.forEach((so) => {
       if (so.deadline) {
         const isDone = so.status === 'Completed'
@@ -116,6 +118,24 @@ export const getCalendarEvents = async (
           date: so.deadline,
           status,
           originalItem: so,
+        })
+      }
+    })
+
+    // 4. Fetch Packing Slips (Romaneios)
+    const packingSlips = await getPackingSlips(companyId)
+    packingSlips.forEach((ps) => {
+      if (ps.issue_date) {
+        const isDone = ps.status === 'Finalized' || ps.status === 'Cancelled'
+        events.push({
+          id: `ps_${ps.id}`,
+          title: `Romaneio ${ps.type} #${ps.number}: ${ps.recipient_origin || 'Pend'}`.slice(0, 45),
+          type: 'packing_slip',
+          date: ps.issue_date.split('T')[0],
+          status: isDone ? 'completed' : 'pending',
+          sector: ps.sector || 'Expedição/Almoxarifado',
+          assignedUser: ps.delivery_responsible || (ps.expand?.responsible_id as any)?.name,
+          originalItem: ps,
         })
       }
     })

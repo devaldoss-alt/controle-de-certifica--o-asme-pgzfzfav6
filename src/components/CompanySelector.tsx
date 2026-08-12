@@ -1,5 +1,6 @@
 import { useCompany } from '@/hooks/use-company'
 import { useI18n } from '@/hooks/use-i18n'
+import { useAuth } from '@/hooks/use-auth'
 import {
   Select,
   SelectContent,
@@ -14,9 +15,13 @@ export function CompanySelector() {
   const { companies, selectedCompanyId, setSelectedCompanyId, availableCompanyIds } = useCompany()
   const { t, lang } = useI18n()
 
-  const availableCompanies = companies.filter((c) => availableCompanyIds.includes(c.id))
+  const { user } = useAuth()
+  const isFullAccess = ['Manager', 'Director', 'QCC', 'Consultor'].includes(user?.role || '')
+  const availableCompanies = isFullAccess
+    ? companies
+    : companies.filter((c) => availableCompanyIds.includes(c.id))
 
-  if (availableCompanies.length <= 1) return null
+  if (availableCompanies.length === 0) return null
 
   return (
     <div className="flex items-center gap-2">

@@ -9,6 +9,8 @@ import { IndicatorCard } from '@/components/IndicatorCard'
 import { Button } from '@/components/ui/button'
 import { Plus, Target } from 'lucide-react'
 
+import { ShieldAlert } from 'lucide-react'
+
 export default function Indicators() {
   const { user } = useAuth()
   const { lang } = useI18n()
@@ -16,7 +18,17 @@ export default function Indicators() {
   const [indicators, setIndicators] = useState<Indicator[]>([])
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const txt = (pt: string, en: string) => (lang === 'pt' ? pt : en)
-  const canEdit = ['Manager', 'Director', 'QCC'].includes(user?.role || '')
+
+  const isQualityManager =
+    user?.email === 'devaldoss@gmail.com' ||
+    user?.name?.toLowerCase().includes('quality manager') ||
+    user?.name?.toLowerCase().includes('gestor da qualidade')
+  const isConsultantTest =
+    user?.name?.toLowerCase().includes('consultor teste') ||
+    user?.email === 'consultor.teste@qualihub.com'
+
+  const canView = isQualityManager || isConsultantTest || user?.role === 'Manager'
+  const canEdit = ['Manager', 'Director', 'QCC', 'Consultor'].includes(user?.role || '')
 
   const loadData = async () => {
     const data = await getIndicators(selectedCompanyId)
@@ -28,6 +40,24 @@ export default function Indicators() {
   }, [selectedCompanyId])
   useRealtime('indicators', () => loadData())
   useRealtime('indicator_history', () => loadData())
+
+  if (!canView) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 space-y-4">
+        <div className="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-500 mb-2">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <h2 className="text-2xl font-bold text-white">
+          {lang === 'pt' ? 'Acesso Restrito' : 'Restricted Access'}
+        </h2>
+        <p className="text-muted-foreground max-w-md">
+          {lang === 'pt'
+            ? 'A visualização dos Indicadores estratégicos (IET, Lead Time, etc.) é restrita ao Gestor da Qualidade e ao Consultor Teste.'
+            : 'Viewing strategic Indicators (IET, Lead Time, etc.) is restricted to Quality Manager and Consultant Test.'}
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">

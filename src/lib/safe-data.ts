@@ -57,8 +57,12 @@ export function safeString(value: unknown, fallback: string = ''): string {
   return String(value)
 }
 
-export function safeRole(value: string | undefined | null): string {
-  if (!value || typeof value !== 'string') return 'Unknown'
+export function safeRole(value: unknown): string {
+  if (!value) return 'Unknown'
+  if (Array.isArray(value)) {
+    return value.length > 0 ? safeRole(value[0]) : 'Unknown'
+  }
+  if (typeof value !== 'string') return 'Unknown'
   const knownRoles = [
     'Director',
     'QCC',
@@ -70,8 +74,10 @@ export function safeRole(value: string | undefined | null): string {
     'Welder',
     'NDE',
     'Manager',
+    'Consultor',
+    'Apontador',
   ]
-  return knownRoles.includes(value) ? value : 'Unknown'
+  return knownRoles.includes(value) ? value : value
 }
 
 export function safeExpandOs(

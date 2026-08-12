@@ -38,7 +38,7 @@ export default function Checklists() {
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([])
   const [evidenceItem, setEvidenceItem] = useState<Checklist | null>(null)
   const [tutorialItem, setTutorialItem] = useState<Checklist | null>(null)
-  const isManager = user?.role === 'Manager'
+  const isManager = user?.role === 'Manager' || user?.role === 'Consultor'
   const isApontador = user?.role === 'Apontador'
   const { selectedCompanyId } = useCompany()
   const [searchParams] = useSearchParams()

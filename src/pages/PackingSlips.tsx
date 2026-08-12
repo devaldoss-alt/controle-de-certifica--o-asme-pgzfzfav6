@@ -374,23 +374,30 @@ export default function PackingSlips() {
           <div className="flex items-center gap-2 flex-wrap">
             <Button
               onClick={() => handleOpenCreate('Entrada')}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg"
             >
               <Plus className="w-4 h-4 mr-1.5" />
+              {lang === 'pt' ? '+ Novo Romaneio' : '+ New Packing Slip'}
+            </Button>
+            <Button
+              onClick={() => handleOpenCreate('Entrada')}
+              variant="outline"
+              className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 font-medium"
+            >
               {lang === 'pt' ? 'Entrada' : 'Inbound'}
             </Button>
             <Button
               onClick={() => handleOpenCreate('Saída')}
-              className="bg-rose-600 hover:bg-rose-700 text-white font-medium"
+              variant="outline"
+              className="border-rose-500/40 text-rose-400 hover:bg-rose-500/10 font-medium"
             >
-              <Plus className="w-4 h-4 mr-1.5" />
               {lang === 'pt' ? 'Saída' : 'Outbound'}
             </Button>
             <Button
               onClick={() => handleOpenCreate('Cancelamento')}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-medium"
+              variant="outline"
+              className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 font-medium"
             >
-              <Plus className="w-4 h-4 mr-1.5" />
               {lang === 'pt' ? 'Cancelamento' : 'Cancel'}
             </Button>
           </div>

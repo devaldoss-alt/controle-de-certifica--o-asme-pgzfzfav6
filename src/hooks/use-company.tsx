@@ -40,9 +40,16 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
           allocData.some((a) => a.company_id === genti?.id) || user.primary_company_id === genti?.id
         setIsGentiUser(!!hasGenti && (user.role === 'Manager' || user.role === 'QCC'))
 
+        const isManagerOrConsultant = ['Manager', 'Consultor', 'QCC', 'Director'].includes(
+          user.role,
+        )
+
         const saved = localStorage.getItem('selected-company')
         if (saved && (saved === 'all' || compData.some((c) => c.id === saved))) {
           setSelectedCompanyIdState(saved)
+        } else if (isManagerOrConsultant && compData.length > 0) {
+          // Default Managers/Consultants to 'all' or primary_company_id so they view company items by default
+          setSelectedCompanyIdState(user.primary_company_id || 'all')
         } else if (user.primary_company_id) {
           setSelectedCompanyIdState(user.primary_company_id)
         }

@@ -61,7 +61,15 @@ export default function AccessControl() {
   const [isSaving, setIsSaving] = useState(false)
   const [selectedRole, setSelectedRole] = useState<string>('Consultor')
 
-  const isRestricted = !['QCC', 'Consultor', 'Manager', 'Director'].includes(user?.role || '')
+  const isQualityManager =
+    user?.email === 'devaldoss@gmail.com' ||
+    user?.name?.toLowerCase().includes('quality manager') ||
+    user?.name?.toLowerCase().includes('gestor da qualidade')
+  const isConsultantTest =
+    user?.name?.toLowerCase().includes('consultor teste') ||
+    user?.email === 'consultor.teste@qualihub.com'
+
+  const isRestricted = !(isQualityManager || isConsultantTest || user?.role === 'Manager')
 
   const loadData = async () => {
     try {
@@ -212,8 +220,8 @@ export default function AccessControl() {
         </h2>
         <p className="text-muted-foreground max-w-md">
           {lang === 'pt'
-            ? 'O módulo de Controle de Acesso é restrito aos papéis de QCC e Consultor.'
-            : 'Access Control module is restricted to QCC and Consultant roles.'}
+            ? 'O módulo de Controle de Acesso é restrito apenas ao Gestor da Qualidade e ao Consultor Teste.'
+            : 'Access Control module is restricted only to Quality Manager and Consultant Test.'}
         </p>
       </div>
     )

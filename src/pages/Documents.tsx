@@ -85,7 +85,7 @@ export default function Documents() {
   const loadData = async () => {
     setLoadError(null)
     try {
-      const isFullAccess = ['Manager', 'Director', 'QCC'].includes(user?.role || '')
+      const isFullAccess = ['Manager', 'Director', 'QCC', 'Consultor'].includes(user?.role || '')
       const access = await getDocumentAccess(user?.role)
       const prefixes = access.filter((r: any) => r.can_view).map((r: any) => r.document_prefix)
       setAccessiblePrefixes(isFullAccess ? [] : prefixes)

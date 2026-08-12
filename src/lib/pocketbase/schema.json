@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-12T15:00:34.251Z",
+  "generatedAt": "2026-08-12T16:14:14.929Z",
   "collections": [
     {
       "name": "users",
@@ -88,8 +88,8 @@
       "name": "checklists",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id)",
-        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id)",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
         "create": "@request.auth.id != ''",
         "update": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id)",
         "delete": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id)"
@@ -262,8 +262,8 @@
       "name": "interactions",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id)",
-        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id)",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
         "create": "@request.auth.id != ''",
         "update": "@request.auth.id != '' && company_id = @request.auth.primary_company_id",
         "delete": "@request.auth.id != '' && company_id = @request.auth.primary_company_id"
@@ -328,8 +328,8 @@
       "name": "service_orders",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || owner_company_id = @request.auth.primary_company_id)",
-        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || owner_company_id = @request.auth.primary_company_id)",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || owner_company_id = @request.auth.primary_company_id || owner_company_id = '')",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || owner_company_id = @request.auth.primary_company_id || owner_company_id = '')",
         "create": "@request.auth.id != ''",
         "update": "@request.auth.id != '' && (@request.auth.role = 'Manager' || owner_company_id = @request.auth.primary_company_id)",
         "delete": "@request.auth.id != '' && (@request.auth.role = 'Manager' || owner_company_id = @request.auth.primary_company_id)"
@@ -406,8 +406,8 @@
       "name": "documents",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
         "create": "@request.auth.id != ''",
         "update": "@request.auth.id != '' && (@request.auth.role = 'Manager' || (company_id = @request.auth.primary_company_id && @request.auth.role = 'QCC'))",
         "delete": "@request.auth.id != '' && (@request.auth.role = 'Manager' || (company_id = @request.auth.primary_company_id && @request.auth.role = 'QCC'))"
@@ -651,8 +651,8 @@
       "name": "user_allocations",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || user_id = @request.auth.id)",
-        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || user_id = @request.auth.id)",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
         "create": "@request.auth.id != '' && @request.auth.role = 'Manager'",
         "update": "@request.auth.id != '' && @request.auth.role = 'Manager'",
         "delete": "@request.auth.id != '' && @request.auth.role = 'Manager'"
@@ -759,8 +759,8 @@
       "name": "indicators",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id)",
-        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id)",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
         "create": "@request.auth.id != '' && (@request.auth.role = 'Manager' || @request.auth.role = 'Director' || @request.auth.role = 'QCC')",
         "update": "@request.auth.id != '' && (@request.auth.role = 'Manager' || (company_id = @request.auth.primary_company_id && (@request.auth.role = 'Director' || @request.auth.role = 'QCC')))",
         "delete": "@request.auth.id != '' && (@request.auth.role = 'Manager' || (company_id = @request.auth.primary_company_id && @request.auth.role = 'Manager'))"
@@ -864,8 +864,8 @@
       "name": "indicator_history",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id)",
-        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id)",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
         "create": "@request.auth.id != '' && (@request.auth.role = 'Manager' || @request.auth.role = 'Director' || @request.auth.role = 'QCC')",
         "update": "@request.auth.id != '' && (@request.auth.role = 'Manager' || (company_id = @request.auth.primary_company_id && (@request.auth.role = 'Director' || @request.auth.role = 'QCC')))",
         "delete": "@request.auth.id != '' && (@request.auth.role = 'Manager' || (company_id = @request.auth.primary_company_id && @request.auth.role = 'Manager'))"
@@ -930,8 +930,8 @@
       "name": "notifications",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id = user_id && company_id = @request.auth.primary_company_id",
-        "view": "@request.auth.id = user_id && company_id = @request.auth.primary_company_id",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || user_id = @request.auth.id || company_id = @request.auth.primary_company_id)",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || user_id = @request.auth.id || company_id = @request.auth.primary_company_id)",
         "create": "@request.auth.id != ''",
         "update": "@request.auth.id = user_id && company_id = @request.auth.primary_company_id",
         "delete": "@request.auth.id = user_id && company_id = @request.auth.primary_company_id"
@@ -1014,8 +1014,8 @@
       "name": "user_certificates",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
         "create": "@request.auth.id != '' && (user_id = @request.auth.id || @request.auth.role = 'Manager')",
         "update": "@request.auth.id != '' && (user_id = @request.auth.id || @request.auth.role = 'Manager')",
         "delete": "@request.auth.id != '' && (user_id = @request.auth.id || @request.auth.role = 'Manager')"
@@ -1080,8 +1080,8 @@
       "name": "packing_slips",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'Manager' || company_id = @request.auth.primary_company_id || company_id = '')",
         "create": "@request.auth.id != ''",
         "update": "@request.auth.id != ''",
         "delete": "@request.auth.id != ''"
