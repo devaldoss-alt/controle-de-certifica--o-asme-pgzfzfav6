@@ -8,6 +8,9 @@ import { getNavLinks } from '@/lib/nav-config'
 const navLabelMap: Record<string, { pt: string; en: string }> = {
   'nav.masterList': { pt: 'Lista Mestra', en: 'Master List' },
   'nav.notifications': { pt: 'Notificações', en: 'Notifications' },
+  'nav.packingSlips': { pt: 'Romaneios', en: 'Packing Slips' },
+  'nav.calendar': { pt: 'Agenda', en: 'Calendar' },
+  'nav.accessControl': { pt: 'Controle de Acesso', en: 'Access Control' },
 }
 
 export default function Sidebar() {

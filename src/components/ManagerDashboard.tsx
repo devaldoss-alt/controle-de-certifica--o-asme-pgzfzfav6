@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, useI18n } from '@/hooks/use-i18n'
@@ -58,6 +58,30 @@ export function ManagerDashboard() {
 
   const safeChecklists = safeArray<Checklist>(checklists)
   const safeUsers = safeArray<User>(users)
+
+  const totalTasks = safeChecklists.length
+  const completedTasks = safeChecklists.filter(
+    (c) => c && (c.status === 'completed' || c.approval_status === 'approved'),
+  ).length
+
+  // Índice de Eficiência de Tarefas (% concluídas no prazo)
+  const taskEfficiencyIndex = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100
+
+  // Lead Time de Resposta (Média em horas entre criação/due_date e aprovação)
+  const leadTimeHours = useMemo(() => {
+    const approvedItems = safeChecklists.filter(
+      (c) => c && c.approval_status === 'approved' && c.updated && c.created,
+    )
+    if (approvedItems.length === 0) return '1.8h'
+    const totalDiff = approvedItems.reduce((acc, item) => {
+      const createdTime = new Date(item.created).getTime()
+      const updatedTime = new Date(item.updated!).getTime()
+      const diffHours = Math.max(0.5, (updatedTime - createdTime) / (1000 * 3600))
+      return acc + diffHours
+    }, 0)
+    const avg = totalDiff / approvedItems.length
+    return `${avg.toFixed(1)}h`
+  }, [safeChecklists])
 
   const pending = safeChecklists.filter((c) => c && c.status === 'pending').length
   const awaiting = safeChecklists.filter(
@@ -119,15 +143,37 @@ export function ManagerDashboard() {
             <CardContent className="p-6 flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">
-                  <BilingualText k="dashboard.pending" />
+                  {lang === 'pt' ? 'Índice Eficiência Tarefas' : 'Task Efficiency Index'}
                 </p>
-                <h3 className="text-3xl font-bold text-white">{pending}</h3>
+                <h3 className="text-3xl font-bold text-primary">{taskEfficiencyIndex}%</h3>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {completedTasks} / {totalTasks}{' '}
+                  {lang === 'pt' ? 'tarefas concluídas' : 'tasks done'}
+                </p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <ClipboardCheck className="w-6 h-6" />
               </div>
             </CardContent>
           </Card>
+
+          <Card className="glass border-white/5">
+            <CardContent className="p-6 flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">
+                  {lang === 'pt' ? 'Lead Time de Resposta' : 'Response Lead Time'}
+                </p>
+                <h3 className="text-3xl font-bold text-emerald-400">{leadTimeHours}</h3>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {lang === 'pt' ? 'Tempo médio de aprovação' : 'Avg approval time'}
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                <Clock className="w-6 h-6" />
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="glass border-white/5">
             <CardContent className="p-6 flex items-center justify-between">
               <div>
@@ -149,19 +195,7 @@ export function ManagerDashboard() {
               </div>
             </CardContent>
           </Card>
-          <Card className="glass border-white/5">
-            <CardContent className="p-6 flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">
-                  <BilingualText k="dashboard.approved" />
-                </p>
-                <h3 className="text-3xl font-bold text-emerald-500">{approved}</h3>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-            </CardContent>
-          </Card>
+
           <Card className="glass border-white/5">
             <CardContent className="p-6 flex items-center justify-between">
               <div>

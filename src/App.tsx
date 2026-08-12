@@ -16,6 +16,9 @@ import Qualifications from '@/pages/Qualifications'
 import Indicators from '@/pages/Indicators'
 import NotificationsPage from '@/pages/NotificationsPage'
 import MasterList from '@/pages/MasterList'
+import PackingSlips from '@/pages/PackingSlips'
+import Calendar from '@/pages/Calendar'
+import AccessControl from '@/pages/AccessControl'
 import NotFound from '@/pages/NotFound'
 
 const App = () => (
@@ -30,6 +33,9 @@ const App = () => (
               <Route path="/" element={<Dashboard />} />
               <Route path="/checklists" element={<Checklists />} />
               <Route path="/service-orders" element={<ServiceOrders />} />
+              <Route path="/packing-slips" element={<PackingSlips />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/access-control" element={<AccessControl />} />
               <Route path="/documents" element={<Documents />} />
               <Route path="/master-list" element={<MasterList />} />
               <Route path="/notifications" element={<NotificationsPage />} />

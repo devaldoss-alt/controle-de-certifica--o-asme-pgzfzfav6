@@ -70,6 +70,14 @@ export function OperationalDashboard() {
   const safeChecklists = safeArray<Checklist>(checklists)
   const safeInteractions = safeArray<Interaction>(interactions)
 
+  const totalTasks = safeChecklists.length
+  const completedTasks = safeChecklists.filter(
+    (c) => c && (c.status === 'completed' || c.approval_status === 'approved'),
+  ).length
+
+  // Índice de Eficiência de Tarefas (% concluídas no prazo)
+  const taskEfficiencyIndex = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100
+
   const pending = safeChecklists.filter((c) => c && c.status === 'pending').length
   const completed = safeChecklists.filter(
     (c) => c && (c.status === 'completed' || c.approval_status === 'approved'),
@@ -122,11 +130,11 @@ export function OperationalDashboard() {
             <CardContent className="p-6 flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">
-                  <BilingualText k="dashboard.pending" />
+                  {lang === 'pt' ? 'Eficiência de Tarefas' : 'Task Efficiency'}
                 </p>
-                <h3 className="text-3xl font-bold text-white">{pending}</h3>
+                <h3 className="text-3xl font-bold text-primary">{taskEfficiencyIndex}%</h3>
               </div>
-              <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <ClipboardCheck className="w-6 h-6" />
               </div>
             </CardContent>

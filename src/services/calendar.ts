@@ -51,7 +51,7 @@ export const getCalendarEvents = async (
           date: chk.due_date,
           status,
           role: chk.role_assigned,
-          assignedUser: chk.apontador_id || chk.last_action_by,
+          assignedUser: (chk as any).apontador_id || chk.last_action_by,
           originalItem: chk,
         })
       }
@@ -83,7 +83,7 @@ export const getCalendarEvents = async (
           type: 'document_review',
           date: doc.next_review_date,
           status,
-          sector: doc.sector,
+          sector: (doc as any).sector || doc.category,
           originalItem: doc,
         })
       }
