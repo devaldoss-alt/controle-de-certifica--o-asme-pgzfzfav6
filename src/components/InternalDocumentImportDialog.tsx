@@ -54,8 +54,8 @@ const FIELD_OPTIONS = [
 ]
 
 const FIELD_SYNONYMS: Record<string, string[]> = {
-  code: ['codigo', 'item', 'cod'],
-  title: ['identificacao', 'titulo', 'descricao'],
+  code: ['item', 'codigo', 'cod', 'item n', 'item no'],
+  title: ['identificacao', 'titulo', 'descricao', 'nome'],
   revision: ['revisao', 'n revisao', 'nº revisao', 'n° revisao', 'n rev', 'rev'],
   effective_date: ['data de aprovacao', 'data de aprovacao reaprovacao', 'data aprovacao', 'data'],
   applicable_document: ['documento que se aplica', 'doc aplicavel', 'doc que se aplica'],

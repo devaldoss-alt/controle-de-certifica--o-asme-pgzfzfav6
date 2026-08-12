@@ -66,6 +66,13 @@ function normalizeDashValue(value: string | undefined | null): string {
   return trimmed
 }
 
+function normalizeImportFieldValue(value: string | undefined | null): string {
+  if (!value) return ''
+  const trimmed = value.trim()
+  if (trimmed === '-' || trimmed === '—' || trimmed === '–') return ''
+  return trimmed
+}
+
 const PREFIX_TO_DOC_TYPE: Record<string, string> = {
   'ASME PSC': 'External',
   CDE: 'Record',
@@ -229,11 +236,12 @@ export async function bulkImportInternalDocuments(
       continue
     }
 
-    const code = normalizeDashValue(row.code) || extractCodeFromTitle(row.title)
-    const revision = normalizeDashValue(row.revision) || ''
-    const rawPrefix = normalizeDashValue(row.prefix) || ''
+    const code = normalizeImportFieldValue(row.code) || extractCodeFromTitle(row.title)
+    const revision = normalizeImportFieldValue(row.revision) || ''
+    const rawPrefix = normalizeImportFieldValue(row.prefix) || ''
     const prefix = normalizePrefix(rawPrefix)
     const documentType = inferDocumentType(prefix)
+    const notes = normalizeImportFieldValue(row.notes) || ''
     const resolvedCompanyId = forceCompany
       ? companyId
       : resolveCompanyByPrefix(rawPrefix, companyId, allCompanies as any)
@@ -256,10 +264,10 @@ export async function bulkImportInternalDocuments(
           origin: row.origin || '',
           language: row.language || 'Portuguese',
           status: normalizeImportStatus(row.status),
-          applicable_document: normalizeDashValue(row.applicable_document) || '',
-          sector: normalizeDashValue(row.sector) || '',
+          applicable_document: normalizeImportFieldValue(row.applicable_document) || '',
+          sector: normalizeImportFieldValue(row.sector) || '',
           review_deadline_days: row.review_deadline_days ?? null,
-          notes: normalizeDashValue(row.notes) || '',
+          notes,
           company_id: resolvedCompanyId,
         })
         result.success++
@@ -304,10 +312,10 @@ export async function bulkImportInternalDocuments(
         origin: row.origin || '',
         language: row.language || 'Portuguese',
         status: normalizeImportStatus(row.status),
-        applicable_document: normalizeDashValue(row.applicable_document) || '',
-        sector: normalizeDashValue(row.sector) || '',
+        applicable_document: normalizeImportFieldValue(row.applicable_document) || '',
+        sector: normalizeImportFieldValue(row.sector) || '',
         review_deadline_days: row.review_deadline_days ?? null,
-        notes: normalizeDashValue(row.notes) || '',
+        notes,
         company_id: resolvedCompanyId,
       })
       result.success++
