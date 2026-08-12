@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-12T13:50:18.979Z",
+  "generatedAt": "2026-08-12T15:00:34.251Z",
   "collections": [
     {
       "name": "users",
@@ -74,7 +74,8 @@
             "Welder",
             "NDE",
             "Apontador",
-            "Manager"
+            "Manager",
+            "Consultor"
           ]
         }
       ],
@@ -121,7 +122,8 @@
             "CertifyingEngineer",
             "Welder",
             "NDE",
-            "Manager"
+            "Manager",
+            "Consultor"
           ]
         },
         {
@@ -746,7 +748,8 @@
             "Welder",
             "NDE",
             "Apontador",
-            "Manager"
+            "Manager",
+            "Consultor"
           ]
         }
       ],
@@ -1046,6 +1049,249 @@
         {
           "name": "file",
           "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "packing_slips",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "number",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "issue_date",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Entrada", "Saída", "Cancelamento"]
+        },
+        {
+          "name": "recipient_origin",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "origin_location",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "destination_location",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "delivery_responsible",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsible_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "os_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "service_orders"
+        },
+        {
+          "name": "oc_number",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "nfe_number",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "doc_non_official",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cm_number",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "contact_phone",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "warehouse_responsible",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cq_pcp_responsible",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "sector",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "requester",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "in_charge",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "items",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "grv_info",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Draft", "Finalized", "Cancelled"]
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "module_permissions",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "role",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "module",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Documentos", "Romaneios", "Checklists", "Indicadores"]
+        },
+        {
+          "name": "can_view",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "can_create",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "can_edit",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "can_delete",
+          "type": "bool",
           "required": false,
           "system": false
         },
