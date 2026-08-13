@@ -1,9 +1,9 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, LanguageToggle, useI18n } from '@/hooks/use-i18n'
+import { useNavLinks } from '@/hooks/use-nav-links'
 import { LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getNavLinks } from '@/lib/nav-config'
 
 const navLabelMap: Record<string, { pt: string; en: string }> = {
   'nav.masterList': { pt: 'Lista Mestra', en: 'Master List' },
@@ -14,11 +14,11 @@ const navLabelMap: Record<string, { pt: string; en: string }> = {
 }
 
 export default function Sidebar() {
-  const { user, signOut } = useAuth()
+  const { signOut } = useAuth()
   const location = useLocation()
   const { lang } = useI18n()
 
-  const links = getNavLinks(user?.role)
+  const links = useNavLinks()
 
   return (
     <aside className="w-64 glass hidden md:flex flex-col h-full shrink-0 shadow-elevation relative z-10">

@@ -60,7 +60,7 @@ export const getCalendarEvents = async (
     })
 
     // 2. Fetch documents (Next Review Date)
-    const docs = await getDocuments(companyId)
+    const docs = await getDocuments('all', companyId)
     docs.forEach((doc) => {
       if (doc.next_review_date) {
         let status: CalendarEvent['status'] = doc.status === 'Active' ? 'pending' : 'completed'

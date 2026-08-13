@@ -4,7 +4,7 @@ import { Menu, LogOut } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, LanguageToggle, useI18n } from '@/hooks/use-i18n'
-import { getNavLinks } from '@/lib/nav-config'
+import { useNavLinks } from '@/hooks/use-nav-links'
 import { cn } from '@/lib/utils'
 
 const navLabelMap: Record<string, { pt: string; en: string }> = {
@@ -16,11 +16,11 @@ const navLabelMap: Record<string, { pt: string; en: string }> = {
 }
 
 export function MobileNav() {
-  const { user, signOut } = useAuth()
+  const { signOut } = useAuth()
   const location = useLocation()
   const { lang } = useI18n()
   const [open, setOpen] = useState(false)
-  const links = getNavLinks(user?.role)
+  const links = useNavLinks()
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
