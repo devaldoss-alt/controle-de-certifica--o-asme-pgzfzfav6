@@ -16,13 +16,27 @@ import {
   deleteDocumentAccess,
   type DocumentAccess,
 } from '@/services/document-access'
+import {
+  getDocumentPermissions,
+  getDocumentSectors,
+  toggleDocumentPermission,
+  type DocumentPermission,
+} from '@/services/document-permissions'
+import { getTeamMembers, type TeamMember } from '@/services/team'
 import { DMS_PREFIXES } from '@/lib/dms-codes'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table'
 import {
   Select,
   SelectContent,
@@ -39,8 +53,9 @@ import {
   Save,
   UserCheck,
   Settings,
+  Users,
 } from 'lucide-react'
-
+import { Loader2 } from 'lucide-react'
 const ROLES = ['Manager', 'Director', 'QCC', 'Inspector', 'Welder', 'Consultor', 'Apontador']
 const MODULES: Array<'Documentos' | 'Romaneios' | 'Checklists' | 'Indicadores'> = [
   'Documentos',
@@ -207,7 +222,75 @@ export default function AccessControl() {
     }
   }
 
-  const [selectedTab, setSelectedTab] = useState<'modules' | 'documents'>('modules')
+  const [selectedTab, setSelectedTab] = useState<'modules' | 'documents' | 'docs' | 'team'>(
+    'modules',
+  )
+
+  // ---- Documents (per-person) tab state ----------------------------------
+  const [docPermMembers, setDocPermMembers] = useState<TeamMember[]>([])
+  const [docPermSectors, setDocPermSectors] = useState<string[]>([])
+  const [docPerms, setDocPerms] = useState<DocumentPermission[]>([])
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('')
+
+  const loadDocPermData = async () => {
+    try {
+      const [members, sectors, perms] = await Promise.all([
+        getTeamMembers({ companyId: selectedCompanyId }),
+        getDocumentSectors(selectedCompanyId),
+        getDocumentPermissions(selectedCompanyId),
+      ])
+      setDocPermMembers(members)
+      setDocPermSectors(sectors)
+      setDocPerms(perms)
+      if (!selectedMemberId && members.length > 0) {
+        setSelectedMemberId(members[0].id)
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  useEffect(() => {
+    if (selectedTab === 'docs') loadDocPermData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTab, selectedCompanyId])
+
+  const handleToggleDocPerm = async (
+    sector: string,
+    field: 'can_view' | 'can_edit',
+    val: boolean,
+  ) => {
+    if (!selectedMemberId) return
+    const companyId = selectedCompanyId !== 'all' ? selectedCompanyId : ''
+    const existing = docPerms.find((p) => p.team_id === selectedMemberId && p.sector === sector)
+    try {
+      const updated = await toggleDocumentPermission(
+        selectedMemberId,
+        sector,
+        companyId,
+        field,
+        val,
+        existing,
+      )
+      setDocPerms((prev) => {
+        const without = prev.filter((p) => !(p.team_id === selectedMemberId && p.sector === sector))
+        if (updated) return [...without, updated]
+        return without
+      })
+    } catch (e) {
+      toast({
+        title: lang === 'pt' ? 'Erro ao atualizar permissão' : 'Error updating permission',
+        description: getErrorMessage(e),
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const getDocPerm = (sector: string) =>
+    docPerms.find((p) => p.team_id === selectedMemberId && p.sector === sector) || {
+      can_view: false,
+      can_edit: false,
+    }
 
   if (isRestricted) {
     return (
@@ -278,6 +361,14 @@ export default function AccessControl() {
           >
             <FileText className="w-4 h-4 mr-2" />
             {lang === 'pt' ? 'Acesso a Pastas/Prefixos' : 'Folder Access'}
+          </Button>
+          <Button
+            variant={selectedTab === 'docs' ? 'default' : 'ghost'}
+            onClick={() => setSelectedTab('docs')}
+            className={selectedTab === 'docs' ? 'bg-primary text-white' : 'text-muted-foreground'}
+          >
+            <Users className="w-4 h-4 mr-2" />
+            {lang === 'pt' ? 'Documentos' : 'Documents'}
           </Button>
         </div>
 
@@ -390,7 +481,7 @@ export default function AccessControl() {
               </table>
             </CardContent>
           </Card>
-        ) : (
+        ) : selectedTab === 'documents' ? (
           <Card className="glass border-white/10">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -470,6 +561,107 @@ export default function AccessControl() {
                   )
                 })}
               </div>
+            </CardContent>
+          </Card>
+        ) : (
+          // ---- Documentos: per-person sector matrix ----
+          <Card className="glass border-white/10">
+            <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
+              <div>
+                <CardTitle className="text-lg text-white flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  {lang === 'pt'
+                    ? 'Permissões por Documento (Setores)'
+                    : 'Document Permissions (Sectors)'}
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  {lang === 'pt'
+                    ? 'Matriz por colaborador: linhas = setores da Lista Mestra, colunas = Visualizar / Editar.'
+                    : 'Per-person matrix: rows = Master List sectors, columns = View / Edit.'}
+                </CardDescription>
+              </div>
+
+              <div className="w-64">
+                <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
+                  <SelectTrigger className="bg-black/30 border-white/10 text-white">
+                    <SelectValue
+                      placeholder={lang === 'pt' ? 'Selecione o colaborador' : 'Select team member'}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {docPermMembers.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
+                        {m.department ? ` — ${m.department}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-0">
+              {!selectedMemberId ? (
+                <div className="p-8 text-center text-muted-foreground text-sm">
+                  {lang === 'pt'
+                    ? 'Cadastre colaboradores na tela /team para habilitar esta matriz.'
+                    : 'Add team members in /team to enable this matrix.'}
+                </div>
+              ) : docPermSectors.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground text-sm">
+                  {lang === 'pt'
+                    ? 'Nenhum setor encontrado na Lista Mestra desta empresa.'
+                    : 'No sectors found in the Master List for this company.'}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-white/10">
+                        <TableHead className="text-xs text-white/60">
+                          {lang === 'pt' ? 'Setor' : 'Sector'}
+                        </TableHead>
+                        <TableHead className="text-xs text-white/60 text-center">
+                          {lang === 'pt' ? 'Visualizar' : 'View'}
+                        </TableHead>
+                        <TableHead className="text-xs text-white/60 text-center">
+                          {lang === 'pt' ? 'Editar' : 'Edit'}
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {docPermSectors.map((sector) => {
+                        const p = getDocPerm(sector)
+                        return (
+                          <TableRow key={sector} className="border-white/5">
+                            <TableCell className="text-sm text-white">{sector}</TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex justify-center">
+                                <Checkbox
+                                  checked={p.can_view}
+                                  onCheckedChange={(c) =>
+                                    handleToggleDocPerm(sector, 'can_view', !!c)
+                                  }
+                                />
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex justify-center">
+                                <Checkbox
+                                  checked={p.can_edit}
+                                  onCheckedChange={(c) =>
+                                    handleToggleDocPerm(sector, 'can_edit', !!c)
+                                  }
+                                />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

@@ -477,6 +477,12 @@ export default function MasterList() {
                   </span>
                 </div>
                 <div>
+                  <span className="text-muted-foreground">Próxima Revisão:</span>{' '}
+                  <span className="text-white">
+                    {safeFormatDate(detailDoc.next_review_date, 'dd/MM/yyyy')}
+                  </span>
+                </div>
+                <div>
                   <span className="text-muted-foreground">Prazo de Revisão (Dias):</span>{' '}
                   <span className="text-white">
                     {detailDoc.review_deadline_days != null
