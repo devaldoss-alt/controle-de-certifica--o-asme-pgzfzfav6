@@ -7,6 +7,8 @@ export type ModuleName =
   | 'Indicadores'
   | 'Ordens de Serviço'
   | 'Agenda'
+  | 'RNC'
+  | 'PCP'
 
 export const ALL_MODULE_NAMES: ModuleName[] = [
   'Documentos',
@@ -15,6 +17,8 @@ export const ALL_MODULE_NAMES: ModuleName[] = [
   'Romaneios',
   'Ordens de Serviço',
   'Agenda',
+  'RNC',
+  'PCP',
 ]
 
 export interface ModulePermission {

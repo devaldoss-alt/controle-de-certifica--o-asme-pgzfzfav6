@@ -16,6 +16,8 @@ import Qualifications from '@/pages/Qualifications'
 import Indicators from '@/pages/Indicators'
 import NotificationsPage from '@/pages/NotificationsPage'
 import MasterList from '@/pages/MasterList'
+import RNCPage from '@/pages/RNC'
+import PCPPage from '@/pages/PCP'
 import PackingSlips from '@/pages/PackingSlips'
 import Calendar from '@/pages/Calendar'
 import AccessControl from '@/pages/AccessControl'
@@ -38,6 +40,8 @@ const App = () => (
               <Route path="/access-control" element={<AccessControl />} />
               <Route path="/documents" element={<Documents />} />
               <Route path="/master-list" element={<MasterList />} />
+              <Route path="/rnc" element={<RNCPage />} />
+              <Route path="/pcp" element={<PCPPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/approvals" element={<Approvals />} />
               <Route path="/qualifications" element={<Qualifications />} />

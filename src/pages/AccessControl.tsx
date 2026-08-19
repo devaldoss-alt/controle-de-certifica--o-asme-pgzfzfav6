@@ -145,20 +145,25 @@ export default function AccessControl() {
     )
   }
 
-  const handleToggleModulePerm = (
+  const handleToggleModulePerm = async (
     role: string,
     module: ModulePermission['module'],
     field: 'can_view' | 'can_create' | 'can_edit' | 'can_delete',
     val: boolean,
   ) => {
+    let previousPermissions: ModulePermission[] = []
+    let updatedPermission: ModulePermission | null = null
+
     setPermissions((prev) => {
+      previousPermissions = prev
       const existingIdx = prev.findIndex((p) => p.role === role && p.module === module)
       if (existingIdx >= 0) {
         const copy = [...prev]
-        copy[existingIdx] = { ...copy[existingIdx], [field]: val }
+        updatedPermission = { ...copy[existingIdx], [field]: val }
+        copy[existingIdx] = updatedPermission
         return copy
       } else {
-        const newPerm: ModulePermission = {
+        updatedPermission = {
           id: '',
           role,
           module,
@@ -168,9 +173,30 @@ export default function AccessControl() {
           can_delete: field === 'can_delete' ? val : false,
           company_id: selectedCompanyId !== 'all' ? selectedCompanyId : '',
         }
-        return [...prev, newPerm]
+        return [...prev, updatedPermission]
       }
     })
+
+    if (updatedPermission) {
+      try {
+        const effectiveCompany = selectedCompanyId !== 'all' ? selectedCompanyId : ''
+        const saved = await saveModulePermission({
+          ...updatedPermission,
+          company_id: effectiveCompany,
+        })
+        // Update stored record with real ID from database if it was a new creation
+        setPermissions((prev) =>
+          prev.map((p) => (p.role === role && p.module === module ? saved : p)),
+        )
+      } catch (e) {
+        setPermissions(previousPermissions)
+        toast({
+          title: lang === 'pt' ? 'Erro ao salvar permissão' : 'Error saving permission',
+          description: getErrorMessage(e),
+          variant: 'destructive',
+        })
+      }
+    }
   }
 
   const handleSaveModulePermissions = async () => {
@@ -216,20 +242,47 @@ export default function AccessControl() {
     field: 'can_view' | 'can_edit',
     val: boolean,
   ) => {
+    const previousList = docAccessList
     const existing = docAccessList.find((d) => d.role === role && d.document_prefix === prefix)
-    try {
-      if (existing && existing.id) {
-        await updateDocumentAccess(existing.id, { [field]: val })
+
+    // Optimistic UI update
+    setDocAccessList((prev) => {
+      const idx = prev.findIndex((d) => d.role === role && d.document_prefix === prefix)
+      if (idx >= 0) {
+        const copy = [...prev]
+        copy[idx] = { ...copy[idx], [field]: val }
+        return copy
       } else {
-        await createDocumentAccess({
+        const newAccess: DocumentAccess = {
+          id: '',
+          role,
+          document_prefix: prefix,
+          can_view: field === 'can_view' ? val : true,
+          can_edit: field === 'can_edit' ? val : false,
+          created: '',
+          updated: '',
+        }
+        return [...prev, newAccess]
+      }
+    })
+
+    try {
+      let saved: any
+      if (existing && existing.id) {
+        saved = await updateDocumentAccess(existing.id, { [field]: val })
+      } else {
+        saved = await createDocumentAccess({
           role,
           document_prefix: prefix,
           can_view: field === 'can_view' ? val : true,
           can_edit: field === 'can_edit' ? val : false,
         })
       }
-      loadData()
+      setDocAccessList((prev) =>
+        prev.map((d) => (d.role === role && d.document_prefix === prefix ? { ...d, ...saved } : d)),
+      )
     } catch (e) {
+      setDocAccessList(previousList)
       toast({
         title: lang === 'pt' ? 'Erro ao atualizar acesso' : 'Error updating access',
         description: getErrorMessage(e),
@@ -277,8 +330,33 @@ export default function AccessControl() {
     val: boolean,
   ) => {
     if (!selectedMemberId) return
+    const previousDocPerms = docPerms
     const companyId = selectedCompanyId !== 'all' ? selectedCompanyId : ''
     const existing = docPerms.find((p) => p.team_id === selectedMemberId && p.sector === sector)
+
+    // Optimistic UI update
+    setDocPerms((prev) => {
+      const without = prev.filter((p) => !(p.team_id === selectedMemberId && p.sector === sector))
+      const curView = existing ? existing.can_view : false
+      const curEdit = existing ? existing.can_edit : false
+      const nextView = field === 'can_view' ? val : curView
+      const nextEdit = field === 'can_edit' ? val : curEdit
+
+      if (!nextView && !nextEdit) return without
+
+      const updatedOpt: DocumentPermission = {
+        id: existing ? existing.id : '',
+        team_id: selectedMemberId,
+        company_id: companyId,
+        sector,
+        can_view: nextView,
+        can_edit: nextEdit,
+        created: existing ? existing.created : '',
+        updated: existing ? existing.updated : '',
+      }
+      return [...without, updatedOpt]
+    })
+
     try {
       const updated = await toggleDocumentPermission(
         selectedMemberId,
@@ -294,6 +372,7 @@ export default function AccessControl() {
         return without
       })
     } catch (e) {
+      setDocPerms(previousDocPerms)
       toast({
         title: lang === 'pt' ? 'Erro ao atualizar permissão' : 'Error updating permission',
         description: getErrorMessage(e),

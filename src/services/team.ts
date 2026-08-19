@@ -126,6 +126,8 @@ const COMPANY_ID_BY_ALIAS: Record<string, string> = {
   'genti servicos empresariais ltda me': 'zt57khfow39nwa1',
   'genti serviços empresariais ltda me': 'zt57khfow39nwa1',
   'genti services': 'zt57khfow39nwa1',
+  'genti servicos empresariais': 'zt57khfow39nwa1',
+  'genti serviços empresariais': 'zt57khfow39nwa1',
 }
 
 export async function bulkImportTeamMembers(
@@ -140,8 +142,14 @@ export async function bulkImportTeamMembers(
   const findCompanyByName = (name: string): string => {
     if (!name) return ''
     const norm = normalizeText(name)
-    // Direct alias match first ("PSC", "Koala", "KS", ...).
+
+    // Direct alias match
     if (COMPANY_ID_BY_ALIAS[norm]) return COMPANY_ID_BY_ALIAS[norm]
+
+    // GENTI flexible check: if normalized string starts with or includes 'genti'
+    if (norm.includes('genti')) {
+      return COMPANY_ID_BY_ALIAS['genti']
+    }
 
     // Check alias keys if any substring matches
     for (const [alias, id] of Object.entries(COMPANY_ID_BY_ALIAS)) {
@@ -170,7 +178,41 @@ export async function bulkImportTeamMembers(
     return ''
   }
 
-  // Existing members for dedup (by normalized name within the resolved company)
+  // Fetch Master List document sectors for company mapping
+  let masterListSectors: string[] = []
+  try {
+    const docSectors = await pb.collection('documents').getFullList<{ sector?: string }>({
+      filter: 'category = "Internal" && sector != ""',
+      fields: 'sector',
+    })
+    const sectorSet = new Set<string>()
+    for (const d of docSectors) {
+      if (d.sector?.trim()) sectorSet.add(d.sector.trim())
+    }
+    masterListSectors = Array.from(sectorSet)
+  } catch (e) {
+    masterListSectors = []
+  }
+
+  // Helper function to map a row's raw department/sector text to Master List sectors
+  const mapDepartmentToMasterListSector = (deptRaw: string): string => {
+    if (!deptRaw || !masterListSectors.length) return deptRaw
+    const normDept = normalizeText(deptRaw)
+
+    // Exact or case-insensitive match
+    const exact = masterListSectors.find((s) => normalizeText(s) === normDept)
+    if (exact) return exact
+
+    // Partial/contains match
+    const partial = masterListSectors.find(
+      (s) => normalizeText(s).includes(normDept) || normDept.includes(normalizeText(s)),
+    )
+    if (partial) return partial
+
+    return deptRaw
+  }
+
+  // Existing members for dedup (by normalized Name + Company combination)
   let existing: TeamMember[] = []
   try {
     existing = await pb.collection('team').getFullList<TeamMember>({
@@ -211,8 +253,12 @@ export async function bulkImportTeamMembers(
       onProgress?.(i + 1, rows.length)
       continue
     }
-    const department = (row.department || '').trim()
+
+    const rawDepartment = (row.department || '').trim()
+    const mappedDepartment = mapDepartmentToMasterListSector(rawDepartment)
     const role = (row.role || 'Colaborador').trim()
+
+    // Key unique constraint: Name + Company
     const normName = normalizeText(name)
     const dup = existing.find(
       (m) =>
@@ -220,12 +266,14 @@ export async function bulkImportTeamMembers(
           (m.name || '').trim().toLowerCase() === name.toLowerCase()) &&
         m.company_id === companyId,
     )
+
     try {
       if (dup) {
+        // Upsert (update existing member data for this company)
         const updatedRecord = await pb.collection('team').update<TeamMember>(dup.id, {
           name,
           company_id: companyId,
-          department: department || dup.department,
+          department: mappedDepartment || dup.department,
           role: role || dup.role,
         })
         // Update in memory so subsequent rows in the same spreadsheet run de-dup correctly
@@ -234,10 +282,11 @@ export async function bulkImportTeamMembers(
           existing[idx] = { ...existing[idx], ...updatedRecord }
         }
       } else {
+        // Create new member record
         const createdRecord = await pb.collection('team').create<TeamMember>({
           name,
           company_id: companyId,
-          department,
+          department: mappedDepartment,
           role,
           is_indicator: false,
           linked_operators: [],

@@ -5,6 +5,8 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'nav.checklists': { pt: 'Checklists', en: 'Checklists' },
   'nav.serviceOrders': { pt: 'Ordens de Serviço', en: 'Service Orders' },
   'nav.documents': { pt: 'Documentos', en: 'Documents' },
+  'nav.rnc': { pt: 'RNC (Não Conformidade)', en: 'RNC (Non-Conformity)' },
+  'nav.pcp': { pt: 'PCP (Planejamento)', en: 'PCP (Capacity Planning)' },
   'nav.approvals': { pt: 'Aprovações', en: 'Approvals' },
   'nav.team': { pt: 'Equipe', en: 'Team' },
   'nav.companies': { pt: 'Empresas', en: 'Companies' },

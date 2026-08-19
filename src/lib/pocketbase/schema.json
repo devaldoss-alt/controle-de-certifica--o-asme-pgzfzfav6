@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-19T18:48:01.574Z",
+  "generatedAt": "2026-08-19T20:19:26.351Z",
   "collections": [
     {
       "name": "users",
@@ -396,6 +396,30 @@
         {
           "name": "equipment_en",
           "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "estimated_hours",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "sector",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "start_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "completed_date",
+          "type": "date",
           "required": false,
           "system": false
         }
@@ -1455,6 +1479,131 @@
       "indexes": [
         "CREATE INDEX idx_doc_perms_team ON document_permissions (team_id)",
         "CREATE INDEX idx_doc_perms_sector ON document_permissions (sector)"
+      ]
+    },
+    {
+      "name": "non_conformities",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "number",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "date",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "process",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "severity",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Leve", "Médio", "Grave", "Crítico"]
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "immediate_action",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "root_cause_analysis",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "corrective_action",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "deadline",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsible",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Em Andamento", "Fechada", "Cancelada"]
+        },
+        {
+          "name": "effectiveness_verification",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "verification_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "verifier",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_nc_company ON non_conformities (company_id)",
+        "CREATE INDEX idx_nc_number ON non_conformities (number)",
+        "CREATE INDEX idx_nc_status ON non_conformities (status)"
       ]
     }
   ]

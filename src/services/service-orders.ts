@@ -11,6 +11,10 @@ export interface ServiceOrder {
   deadline: string
   status: 'Active' | 'Completed' | 'Paused'
   owner_company_id?: string
+  estimated_hours?: number
+  sector?: string
+  start_date?: string
+  completed_date?: string
   expand?: {
     owner_company_id?: { id: string; name: string; name_en?: string } | null
   }
