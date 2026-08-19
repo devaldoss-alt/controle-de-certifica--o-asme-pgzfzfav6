@@ -106,6 +106,21 @@ export async function deleteTeamMember(id: string): Promise<void> {
   await pb.collection('team').delete(id)
 }
 
+// Stable company IDs for PSC and Koala (Skip Cloud PocketBase). Used as a
+// safety net when a spreadsheet contains the company name ("PSC", "Koala",
+// "Koala System", "KS") instead of the internal ID — PocketBase requires the
+// relation record id, not the human-readable name.
+const COMPANY_ID_BY_ALIAS: Record<string, string> = {
+  psc: 'a631bv695rr4gef',
+  'psc industria comercio e servicos ltda': 'a631bv695rr4gef',
+  'psc industry': 'a631bv695rr4gef',
+  koala: 'i7kjauu378swxg6',
+  ks: 'i7kjauu378swxg6',
+  'koala system': 'i7kjauu378swxg6',
+  'koala system industria e comercio ltda': 'i7kjauu378swxg6',
+  'koala engineering': 'i7kjauu378swxg6',
+}
+
 export async function bulkImportTeamMembers(
   rows: TeamImportRow[],
   defaultCompanyId: string,
@@ -118,12 +133,24 @@ export async function bulkImportTeamMembers(
   const findCompanyByName = (name: string): string => {
     if (!name) return ''
     const norm = normalizeText(name)
-    return (
+    // Direct alias match first ("PSC", "Koala", "KS", ...).
+    if (COMPANY_ID_BY_ALIAS[norm]) return COMPANY_ID_BY_ALIAS[norm]
+    // Then resolve against the real companies list (by name / name_en),
+    // matching either by includes or by alias-style prefix.
+    const found =
       companies.find(
         (c) =>
-          normalizeText(c.name).includes(norm) || normalizeText(c.name_en || '').includes(norm),
+          normalizeText(c.name).includes(norm) ||
+          normalizeText(c.name_en || '').includes(norm) ||
+          norm.includes(normalizeText(c.name)) ||
+          norm.includes(normalizeText(c.name_en || '')),
       )?.id || ''
-    )
+    if (found) return found
+    // Alias prefix match (e.g. "Koala System ..." resolves to Koala).
+    for (const [alias, id] of Object.entries(COMPANY_ID_BY_ALIAS)) {
+      if (norm.startsWith(alias) || alias.startsWith(norm)) return id
+    }
+    return ''
   }
 
   // Existing members for dedup (by name within the resolved company)
