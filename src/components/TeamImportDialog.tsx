@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -30,8 +30,15 @@ import {
   AlertCircle,
   CheckCircle2,
   Building2,
+  Layers,
 } from 'lucide-react'
-import { parseSpreadsheet, findHeaderRow, normalizeText } from '@/lib/spreadsheet-parser'
+import {
+  parseSpreadsheetSheets,
+  findPeopleSheet,
+  scoreSheetForPeople,
+  normalizeText,
+  type SheetData,
+} from '@/lib/spreadsheet-parser'
 import type { TeamImportRow, TeamImportResult, TeamImportProgressCallback } from '@/services/team'
 
 const FIELD_OPTIONS = [
@@ -56,6 +63,9 @@ const DEFAULT_MAP: Record<string, string> = {
   role: 'role',
 }
 
+const NO_PEOPLE_SHEET_ERROR =
+  'Nenhuma aba com dados de colaboradores encontrada. Verifique se o arquivo contém colunas como Nome, Empresa e Cargo.'
+
 interface CompanyOption {
   id: string
   name: string
@@ -73,6 +83,14 @@ interface Props {
   defaultCompanyId?: string
 }
 
+interface SheetState {
+  sheets: SheetData[]
+  selectedSheetName: string
+  headerIdx: number
+  headers: string[]
+  rows: string[][]
+}
+
 export function TeamImportDialog({
   open,
   onOpenChange,
@@ -81,8 +99,7 @@ export function TeamImportDialog({
   defaultCompanyId,
 }: Props) {
   const [step, setStep] = useState<'upload' | 'preview' | 'result'>('upload')
-  const [headers, setHeaders] = useState<string[]>([])
-  const [rows, setRows] = useState<string[][]>([])
+  const [sheetState, setSheetState] = useState<SheetState | null>(null)
   const [mapping, setMapping] = useState<Record<string, string>>({})
   const [isProcessing, setIsProcessing] = useState(false)
   const [importResult, setImportResult] = useState<TeamImportResult | null>(null)
@@ -150,33 +167,113 @@ export function TeamImportDialog({
 
   const handleFile = async (file: File) => {
     setError('')
+    setSheetState(null)
+    setMapping({})
     try {
-      const data = await parseSpreadsheet(file)
-      if (data.length < 1) {
-        setError('Arquivo vazio.')
+      const sheets = await parseSpreadsheetSheets(file)
+      if (sheets.length === 0) {
+        setError(NO_PEOPLE_SHEET_ERROR)
         return
       }
-      const headerIdx = findHeaderRow(data)
-      const hdrs = data[headerIdx].map((h, i) => h || `Coluna ${i + 1}`)
-      setHeaders(hdrs)
-      setRows(data.slice(headerIdx + 1))
-      setMapping(guessMapping(hdrs, data.slice(headerIdx + 1)))
+
+      // Try to auto-select the best people sheet
+      const best = findPeopleSheet(sheets)
+      if (best) {
+        const hdrs = (best.sheet.data[best.score.headerIdx] || []).map(
+          (h, i) => h || `Coluna ${i + 1}`,
+        )
+        const dataRows = best.sheet.data
+          .slice(best.score.headerIdx + 1)
+          .filter((r) => r.some((c) => (c || '').trim().length > 0))
+        setSheetState({
+          sheets,
+          selectedSheetName: best.sheet.name,
+          headerIdx: best.score.headerIdx,
+          headers: hdrs,
+          rows: dataRows,
+        })
+        setMapping(guessMapping(hdrs, dataRows))
+        setStep('preview')
+        return
+      }
+
+      // No people sheet detected — try the first sheet as a last resort, then validate
+      const first = sheets[0]
+      const score = scoreSheetForPeople(first.data)
+      const headerIdx = score.headerIdx
+      const hdrs = (first.data[headerIdx] || []).map((h, i) => h || `Coluna ${i + 1}`)
+      const dataRows = first.data
+        .slice(headerIdx + 1)
+        .filter((r) => r.some((c) => (c || '').trim().length > 0))
+      setSheetState({
+        sheets,
+        selectedSheetName: first.name,
+        headerIdx,
+        headers: hdrs,
+        rows: dataRows,
+      })
+      setMapping(guessMapping(hdrs, dataRows))
+
+      if (sheets.length > 1) {
+        setError(
+          'Não foi possível identificar automaticamente a aba de colaboradores. Selecione a aba correta abaixo.',
+        )
+      } else {
+        setError(NO_PEOPLE_SHEET_ERROR)
+      }
       setStep('preview')
     } catch (e: any) {
       setError(e?.message || 'Erro ao processar arquivo.')
     }
   }
 
+  const handleSheetChange = (name: string) => {
+    if (!sheetState) return
+    const target = sheetState.sheets.find((s) => s.name === name)
+    if (!target) return
+    const score = scoreSheetForPeople(target.data)
+    const headerIdx = score.headerIdx
+    const hdrs = (target.data[headerIdx] || []).map((h, i) => h || `Coluna ${i + 1}`)
+    const dataRows = target.data
+      .slice(headerIdx + 1)
+      .filter((r) => r.some((c) => (c || '').trim().length > 0))
+    setSheetState({
+      sheets: sheetState.sheets,
+      selectedSheetName: name,
+      headerIdx,
+      headers: hdrs,
+      rows: dataRows,
+    })
+    setMapping(guessMapping(hdrs, dataRows))
+    setError('')
+  }
+
+  // Validate that the currently selected sheet actually looks like a people sheet
+  const currentSheetScore = useMemo(() => {
+    if (!sheetState) return null
+    const sheet = sheetState.sheets.find((s) => s.name === sheetState.selectedSheetName)
+    if (!sheet) return null
+    return scoreSheetForPeople(sheet.data)
+  }, [sheetState])
+
+  const looksLikePeopleSheet = currentSheetScore?.qualifies ?? false
+  const showSheetError = step === 'preview' && sheetState !== null && !looksLikePeopleSheet
+
   const handleImport = async () => {
     if (!destinationCompanyId) {
       setCompanyError('Selecione a empresa de destino')
       return
     }
+    if (!sheetState) return
+    if (!looksLikePeopleSheet) {
+      setError(NO_PEOPLE_SHEET_ERROR)
+      return
+    }
     setIsProcessing(true)
     setError('')
-    setProgress({ current: 0, total: rows.length })
+    setProgress({ current: 0, total: sheetState.rows.length })
     try {
-      const importRows: TeamImportRow[] = rows.map((row) => {
+      const importRows: TeamImportRow[] = sheetState.rows.map((row) => {
         const obj: any = {}
         for (const [field, colIdx] of Object.entries(mapping)) {
           if (colIdx === '_skip') continue
@@ -200,8 +297,7 @@ export function TeamImportDialog({
 
   const reset = () => {
     setStep('upload')
-    setHeaders([])
-    setRows([])
+    setSheetState(null)
     setMapping({})
     setImportResult(null)
     setError('')
@@ -276,84 +372,136 @@ export function TeamImportDialog({
           </div>
         )}
 
-        {step === 'preview' && (
+        {step === 'preview' && sheetState && (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Confira o mapeamento de colunas e a pré-visualização:
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {Object.keys(DEFAULT_MAP).map((field) => (
-                <div key={field}>
-                  <Label className="text-xs text-white/60 mb-1 block">
-                    {FIELD_OPTIONS.find((f) => f.value === field)?.label}
-                  </Label>
-                  <Select
-                    value={mapping[field] || '_skip'}
-                    onValueChange={(v) => setMapping((p) => ({ ...p, [field]: v }))}
-                  >
-                    <SelectTrigger className="bg-black/20 border-white/10 text-white text-xs h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="_skip">— Ignorar —</SelectItem>
-                      {headers.map((h, i) => (
-                        <SelectItem key={i} value={String(i)}>
-                          {h}
+            {/* Sheet selector (when multiple sheets) */}
+            {sheetState.sheets.length > 1 && (
+              <div className="space-y-2">
+                <Label className="text-white/80 flex items-center gap-1">
+                  <Layers className="w-3.5 h-3.5" /> Aba do arquivo
+                </Label>
+                <Select value={sheetState.selectedSheetName} onValueChange={handleSheetChange}>
+                  <SelectTrigger className="bg-black/20 border-white/10 text-white">
+                    <SelectValue placeholder="Selecione a aba" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sheetState.sheets.map((s) => {
+                      const sc = scoreSheetForPeople(s.data)
+                      const tag = sc.qualifies ? ' ✓ colaboradores' : ''
+                      return (
+                        <SelectItem key={s.name} value={s.name}>
+                          {s.name}
+                          {tag}
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ))}
-            </div>
-            <div className="border border-white/10 rounded-md overflow-hidden max-h-64 overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-white/10">
-                    {headers.map((h, i) => (
-                      <TableHead key={i} className="text-xs text-white/60">
-                        {h}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.slice(0, 50).map((row, i) => (
-                    <TableRow key={i} className="border-white/5">
-                      {headers.map((_, j) => (
-                        <TableCell key={j} className="text-xs text-white/80 px-2">
-                          {row[j] || ''}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            {isProcessing && progress && (
-              <div className="flex items-center gap-2 text-sm text-white/80">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Importando {progress.current} de {progress.total} colaboradores...
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Abas marcadas com ✓ parecem conter dados de colaboradores.
+                </p>
               </div>
             )}
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={reset}
-                disabled={isProcessing}
-                className="border-white/10 text-muted-foreground"
-              >
-                Voltar
-              </Button>
-              <Button
-                onClick={handleImport}
-                disabled={isProcessing}
-                className="bg-primary hover:bg-primary/90"
-              >
-                {isProcessing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Importar {rows.length} registro(s)
-              </Button>
-            </DialogFooter>
+
+            {showSheetError && (
+              <div className="flex items-start gap-2 text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-md p-3">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>{error || NO_PEOPLE_SHEET_ERROR}</span>
+              </div>
+            )}
+
+            {!showSheetError && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Confira o mapeamento de colunas e a pré-visualização:
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {Object.keys(DEFAULT_MAP).map((field) => (
+                    <div key={field}>
+                      <Label className="text-xs text-white/60 mb-1 block">
+                        {FIELD_OPTIONS.find((f) => f.value === field)?.label}
+                      </Label>
+                      <Select
+                        value={mapping[field] || '_skip'}
+                        onValueChange={(v) => setMapping((p) => ({ ...p, [field]: v }))}
+                      >
+                        <SelectTrigger className="bg-black/20 border-white/10 text-white text-xs h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_skip">— Ignorar —</SelectItem>
+                          {sheetState.headers.map((h, i) => (
+                            <SelectItem key={i} value={String(i)}>
+                              {h}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+                </div>
+                <div className="border border-white/10 rounded-md overflow-hidden max-h-64 overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-white/10">
+                        {sheetState.headers.map((h, i) => (
+                          <TableHead key={i} className="text-xs text-white/60">
+                            {h}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sheetState.rows.slice(0, 50).map((row, i) => (
+                        <TableRow key={i} className="border-white/5">
+                          {sheetState.headers.map((_, j) => (
+                            <TableCell key={j} className="text-xs text-white/80 px-2">
+                              {row[j] || ''}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {isProcessing && progress && (
+                  <div className="flex items-center gap-2 text-sm text-white/80">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Importando {progress.current} de {progress.total} colaboradores...
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={reset}
+                    disabled={isProcessing}
+                    className="border-white/10 text-muted-foreground"
+                  >
+                    Voltar
+                  </Button>
+                  <Button
+                    onClick={handleImport}
+                    disabled={isProcessing}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    {isProcessing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Importar {sheetState.rows.length} registro(s)
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+
+            {showSheetError && (
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={reset}
+                  className="border-white/10 text-muted-foreground"
+                >
+                  Voltar
+                </Button>
+              </DialogFooter>
+            )}
           </div>
         )}
 
@@ -412,7 +560,7 @@ export function TeamImportDialog({
           </div>
         )}
 
-        {error && step !== 'upload' && (
+        {error && step !== 'upload' && step !== 'preview' && (
           <div className="flex items-center gap-2 text-sm text-rose-400 mt-2">
             <AlertCircle className="w-4 h-4" /> {error}
           </div>
