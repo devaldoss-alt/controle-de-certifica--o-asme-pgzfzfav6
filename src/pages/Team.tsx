@@ -275,7 +275,7 @@ export default function Team() {
                             variant="outline"
                             className="border-amber-500/30 text-amber-400 text-[10px]"
                           >
-                            Indicador
+                            Apontador
                           </Badge>
                         )}
                       </TableCell>

@@ -6,10 +6,14 @@ export const ROLES = [
   'Designer',
   'Engineer',
   'CertifyingEngineer',
+  'Supervisor',
+  'Analista',
+  'Técnico',
   'Welder',
   'NDE',
   'Apontador',
   'Manager',
+  'Consultor',
 ] as const
 
 export interface RoleData {
@@ -135,6 +139,62 @@ export const roleData: Record<string, RoleData> = {
       'Solicitar inspeção de soldas ao Inspector',
     ],
     observacoes: 'Risco de perda de qualificação por falta de continuidade documentada.',
+  },
+  Supervisor: {
+    objetivo:
+      'Supervisionar e coordenar as atividades operacionais e de equipe, garantindo a execução conforme os procedimentos e prazos estabelecidos.',
+    authorities: [
+      'Supervisionar equipe operacional',
+      'Acompanhar andamento de atividades e checklists',
+    ],
+    responsibilities: [
+      'Orientar a equipe na execução das atividades de campo e qualidade',
+      'Garantir conformidade operacional e cumprimento de prazos',
+      'Reportar desvios e progresso à gestão',
+    ],
+    observacoes: 'Atua como elo de articulação direta entre a gestão e a operação.',
+  },
+  Analista: {
+    objetivo:
+      'Analisar dados, documentações e processos de qualidade, apoiando na melhoria contínua e conformidade de registros.',
+    authorities: [
+      'Revisar relatórios e documentações técnicas',
+      'Consolidar dados e métricas operacionais',
+    ],
+    responsibilities: [
+      'Analisar registros e evidências do sistema de gestão da qualidade',
+      'Acompanhar indicadores e rotinas de controle',
+      'Preparar relatórios e relatar divergências',
+    ],
+    observacoes: 'Apoia diretamente a coordenação e a gestão na análise de conformidade.',
+  },
+  Técnico: {
+    objetivo:
+      'Executar rotinas e ensaios técnicos especializados conforme procedimentos e normas aplicáveis.',
+    authorities: [
+      'Executar verificações técnicas de campo',
+      'Emitir laudos e registros técnicos preliminares',
+    ],
+    responsibilities: [
+      'Acompanhar e registrar parâmetros técnicos de execução',
+      'Zelar pelo cumprimento das especificações de engenharia e inspeção',
+      'Reportar inconsistências técnicas aos inspetores e engenheiros',
+    ],
+    observacoes: 'Atuação técnica focada no acompanhamento de requisitos e normas.',
+  },
+  Consultor: {
+    objetivo:
+      'Apoiar e prestar consultoria técnica no Sistema de Controle da Qualidade e auditorias.',
+    authorities: [
+      'Acesso de visualização global para avaliação e suporte técnico',
+      'Emitir pareceres e recomendações técnicas',
+    ],
+    responsibilities: [
+      'Avaliar conformidade do sistema e processos',
+      'Recomendar melhorias técnicas e operacionais',
+      'Auxiliar na preparação e acompanhamento de auditorias',
+    ],
+    observacoes: 'Perfil de consultoria externa ou auditoria interna técnica.',
   },
   Apontador: {
     objetivo:

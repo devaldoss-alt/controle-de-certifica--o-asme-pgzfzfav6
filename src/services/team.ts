@@ -119,6 +119,13 @@ const COMPANY_ID_BY_ALIAS: Record<string, string> = {
   'koala system': 'i7kjauu378swxg6',
   'koala system industria e comercio ltda': 'i7kjauu378swxg6',
   'koala engineering': 'i7kjauu378swxg6',
+  genti: 'zt57khfow39nwa1',
+  'genti servicos': 'zt57khfow39nwa1',
+  'genti serviços': 'zt57khfow39nwa1',
+  'genti servicos empresariais ltda': 'zt57khfow39nwa1',
+  'genti servicos empresariais ltda me': 'zt57khfow39nwa1',
+  'genti serviços empresariais ltda me': 'zt57khfow39nwa1',
+  'genti services': 'zt57khfow39nwa1',
 }
 
 export async function bulkImportTeamMembers(
@@ -163,7 +170,7 @@ export async function bulkImportTeamMembers(
     return ''
   }
 
-  // Existing members for dedup (by name within the resolved company)
+  // Existing members for dedup (by normalized name within the resolved company)
   let existing: TeamMember[] = []
   try {
     existing = await pb.collection('team').getFullList<TeamMember>({
@@ -206,19 +213,28 @@ export async function bulkImportTeamMembers(
     }
     const department = (row.department || '').trim()
     const role = (row.role || 'Colaborador').trim()
+    const normName = normalizeText(name)
     const dup = existing.find(
-      (m) => (m.name || '').toLowerCase() === name.toLowerCase() && m.company_id === companyId,
+      (m) =>
+        (normalizeText(m.name || '') === normName ||
+          (m.name || '').trim().toLowerCase() === name.toLowerCase()) &&
+        m.company_id === companyId,
     )
     try {
       if (dup) {
-        await pb.collection('team').update(dup.id, {
+        const updatedRecord = await pb.collection('team').update<TeamMember>(dup.id, {
           name,
           company_id: companyId,
-          department,
-          role,
+          department: department || dup.department,
+          role: role || dup.role,
         })
+        // Update in memory so subsequent rows in the same spreadsheet run de-dup correctly
+        const idx = existing.findIndex((e) => e.id === dup.id)
+        if (idx >= 0) {
+          existing[idx] = { ...existing[idx], ...updatedRecord }
+        }
       } else {
-        await pb.collection('team').create({
+        const createdRecord = await pb.collection('team').create<TeamMember>({
           name,
           company_id: companyId,
           department,
@@ -226,6 +242,7 @@ export async function bulkImportTeamMembers(
           is_indicator: false,
           linked_operators: [],
         })
+        existing.push(createdRecord)
       }
       result.success++
     } catch (e: any) {

@@ -137,12 +137,37 @@ export function TeamFormDialog({
 
           <div>
             <Label className="text-white/80 mb-1 block">Cargo</Label>
-            <Input
-              value={form.role}
-              onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}
-              className="bg-black/20 border-white/10 text-white"
-              placeholder="Colaborador"
-            />
+            <Select value={form.role} onValueChange={(v) => setForm((p) => ({ ...p, role: v }))}>
+              <SelectTrigger className="bg-black/20 border-white/10 text-white">
+                <SelectValue placeholder="Selecione o cargo" />
+              </SelectTrigger>
+              <SelectContent>
+                {[
+                  'Colaborador',
+                  'Engenheiro',
+                  'Engineer',
+                  'CertifyingEngineer',
+                  'NDE',
+                  'Designer',
+                  'Inspetor',
+                  'Inspector',
+                  'AI',
+                  'Supervisor',
+                  'Analista',
+                  'Técnico',
+                  'Director',
+                  'QCC',
+                  'Welder',
+                  'Apontador',
+                  'Manager',
+                  'Consultor',
+                ].map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer">
@@ -151,7 +176,7 @@ export function TeamFormDialog({
               onCheckedChange={(c) => setForm((p) => ({ ...p, is_indicator: !!c }))}
             />
             <span className="text-sm text-white/80">
-              Responsável por indicador (aparece na matriz de permissões de documentos)
+              Apontador (aparece na matriz de permissões de documentos)
             </span>
           </label>
         </div>

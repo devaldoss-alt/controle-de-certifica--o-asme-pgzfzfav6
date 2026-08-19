@@ -56,7 +56,23 @@ import {
   Users,
 } from 'lucide-react'
 import { Loader2 } from 'lucide-react'
-const ROLES = ['Manager', 'Director', 'QCC', 'Inspector', 'Welder', 'Consultor', 'Apontador']
+const ROLES = [
+  'Manager',
+  'Director',
+  'QCC',
+  'Inspector',
+  'AI',
+  'Designer',
+  'Engineer',
+  'CertifyingEngineer',
+  'Supervisor',
+  'Analista',
+  'Técnico',
+  'Welder',
+  'NDE',
+  'Apontador',
+  'Consultor',
+]
 const MODULES: Array<'Documentos' | 'Romaneios' | 'Checklists' | 'Indicadores'> = [
   'Documentos',
   'Romaneios',
