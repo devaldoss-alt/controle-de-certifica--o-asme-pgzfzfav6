@@ -66,8 +66,6 @@ export const getChecklists = async (
   if (osId) filters.push(`os_id = "${osId}"`)
   if (companyId && companyId !== 'all') {
     filters.push(`company_id = "${companyId}"`)
-  } else if (companyId === 'all') {
-    filters.push('company_id != ""')
   }
   const opts: Record<string, any> = {
     sort: '-created',

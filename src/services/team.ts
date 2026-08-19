@@ -135,18 +135,28 @@ export async function bulkImportTeamMembers(
     const norm = normalizeText(name)
     // Direct alias match first ("PSC", "Koala", "KS", ...).
     if (COMPANY_ID_BY_ALIAS[norm]) return COMPANY_ID_BY_ALIAS[norm]
-    // Then resolve against the real companies list (by name / name_en),
-    // matching either by includes or by alias-style prefix.
+
+    // Check alias keys if any substring matches
+    for (const [alias, id] of Object.entries(COMPANY_ID_BY_ALIAS)) {
+      if (norm === alias || norm.includes(alias) || alias.includes(norm)) {
+        return id
+      }
+    }
+
+    // Then resolve against the real companies list (by name / name_en)
     const found =
       companies.find(
         (c) =>
+          normalizeText(c.name) === norm ||
+          normalizeText(c.name_en || '') === norm ||
           normalizeText(c.name).includes(norm) ||
           normalizeText(c.name_en || '').includes(norm) ||
           norm.includes(normalizeText(c.name)) ||
           norm.includes(normalizeText(c.name_en || '')),
       )?.id || ''
     if (found) return found
-    // Alias prefix match (e.g. "Koala System ..." resolves to Koala).
+
+    // Alias prefix match
     for (const [alias, id] of Object.entries(COMPANY_ID_BY_ALIAS)) {
       if (norm.startsWith(alias) || alias.startsWith(norm)) return id
     }
@@ -171,8 +181,21 @@ export async function bulkImportTeamMembers(
       onProgress?.(i + 1, rows.length)
       continue
     }
-    const companyId =
-      row.company_id || findCompanyByName(row.company_name || '') || defaultCompanyId
+    const rawCompany = row.company_id || row.company_name || ''
+    let companyId = ''
+    if (rawCompany) {
+      // Check if rawCompany is already a valid company UUID
+      const matchedCompany = companies.find((c) => c.id === rawCompany)
+      if (matchedCompany) {
+        companyId = matchedCompany.id
+      } else {
+        companyId = findCompanyByName(rawCompany)
+      }
+    }
+    if (!companyId) {
+      companyId = defaultCompanyId
+    }
+
     if (!companyId) {
       result.errors.push({
         row: i + 1,

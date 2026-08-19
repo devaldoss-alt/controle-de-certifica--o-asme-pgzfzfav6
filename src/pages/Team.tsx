@@ -90,10 +90,7 @@ export default function Team() {
   const [importOpen, setImportOpen] = useState(false)
   const [deleteMemberId, setDeleteMemberId] = useState<string | null>(null)
 
-  const availableCompanies = useMemo(
-    () => companies.filter((c) => availableCompanyIds.includes(c.id)),
-    [companies, availableCompanyIds],
-  )
+  const availableCompanies = useMemo(() => (companies.length > 0 ? companies : []), [companies])
 
   const loadMembers = async () => {
     const [list, depts] = await Promise.all([

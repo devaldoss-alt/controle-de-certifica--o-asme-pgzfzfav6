@@ -45,10 +45,11 @@ export const getCalendarEvents = async (
   const daysFromToday = (value?: string): number => {
     const key = toDateKey(value)
     if (!key) return NaN
-    const d = new Date(key + 'T00:00:00.000Z').getTime()
-    if (isNaN(d)) return NaN
+    const [y, m, day] = key.split('-').map(Number)
+    if (!y || !m || !day) return NaN
+    const d = Date.UTC(y, m - 1, day)
     const now = new Date()
-    const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())).getTime()
+    const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
     return Math.round((d - today) / (1000 * 3600 * 24))
   }
 
