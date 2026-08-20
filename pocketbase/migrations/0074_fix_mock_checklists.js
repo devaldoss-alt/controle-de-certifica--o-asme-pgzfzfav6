@@ -33,7 +33,7 @@ migrate(
 
     // ---------- 1. Add approved_by / approved_at to checklists if missing ----------
     var checkCol = app.findCollectionByNameOrId('checklists')
-    var usersColId = "_pb_users_auth_"
+    var usersColId = '_pb_users_auth_'
 
     if (!checkCol.fields.getByName('approved_by')) {
       checkCol.fields.add(
@@ -92,10 +92,7 @@ migrate(
     }
     if (!managerUserId) {
       try {
-        var mgrDevaldoss = app.findAuthRecordByEmail(
-          '_pb_users_auth_',
-          'devaldoss@gmail.com',
-        )
+        var mgrDevaldoss = app.findAuthRecordByEmail('_pb_users_auth_', 'devaldoss@gmail.com')
         if (mgrDevaldoss && mgrDevaldoss.getString('primary_company_id') === PSC_ID) {
           managerUserId = mgrDevaldoss.id
         }
