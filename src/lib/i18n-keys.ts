@@ -7,4 +7,5 @@ export const I18N_NEW_KEYS: Record<string, { pt: string; en: string }> = {
   'msg.docUploaded': { pt: 'Documento enviado com sucesso', en: 'Document uploaded successfully' },
   'msg.docUpdated': { pt: 'Documento atualizado com sucesso', en: 'Document updated successfully' },
   'msg.uploadFailed': { pt: 'Falha ao enviar documento', en: 'Failed to upload document' },
+  'trainings.plan': { pt: 'Plano de Treinamento', en: 'Training Plan' },
 }

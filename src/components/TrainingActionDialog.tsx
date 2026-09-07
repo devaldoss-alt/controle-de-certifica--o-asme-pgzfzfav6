@@ -367,7 +367,9 @@ export function TrainingActionDialog({
           <div className="p-3 bg-white/5 rounded-md border border-white/5 space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <Label className="text-xs text-white font-medium">Requer Avaliação de Eficácia?</Label>
+                <Label className="text-xs text-white font-medium">
+                  Requer Avaliação de Eficácia?
+                </Label>
                 <p className="text-[11px] text-muted-foreground">
                   Gera automaticamente prazo de avaliação para +60 dias após a data realizada.
                 </p>
