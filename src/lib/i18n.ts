@@ -314,6 +314,12 @@ export const translations: Record<string, { pt: string; en: string }> = {
     pt: 'Controle de materiais, saldo por empresa e inspeção do CQ.',
     en: 'Material control, stock by company and QC inspection.',
   },
+  'nav.trainings': { pt: 'Treinamentos', en: 'Trainings' },
+  'page.trainings.title': { pt: 'Plano de Treinamento', en: 'Training Plan' },
+  'page.trainings.desc': {
+    pt: 'Controle rigoroso do Plano Anual de Treinamentos (FSGQ 7.2-1 Rev.03).',
+    en: 'Strict control of the Annual Training Plan (FSGQ 7.2-1 Rev.03).',
+  },
   'report.yes': { pt: 'Sim', en: 'Yes' },
   'report.no': { pt: 'Não', en: 'No' },
 

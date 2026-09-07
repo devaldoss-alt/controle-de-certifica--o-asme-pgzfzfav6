@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-07T15:31:39.514Z",
+  "generatedAt": "2026-09-07T16:20:50.368Z",
   "collections": [
     {
       "name": "users",
@@ -1313,7 +1313,8 @@
             "Indicadores",
             "Ordens de Serviço",
             "Agenda",
-            "Almoxarifado"
+            "Almoxarifado",
+            "Treinamentos"
           ]
         },
         {
@@ -1875,6 +1876,158 @@
         "CREATE INDEX idx_sm_item ON stock_movements (item_id)",
         "CREATE INDEX idx_sm_company ON stock_movements (company_id)",
         "CREATE INDEX idx_sm_date ON stock_movements (movement_date)"
+      ]
+    },
+    {
+      "name": "training_plan_actions",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "year",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "periodicity",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Diária/DSS", "Semanal", "Mensal", "Anual", "Pontual"]
+        },
+        {
+          "name": "responsible",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "target_audience",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "origin",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Interno", "Externo"]
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "SMS",
+            "Qualificação Pessoal-Sensibilização",
+            "Procedimentos-Instruções-Formulários",
+            "Outros"
+          ]
+        },
+        {
+          "name": "competence_form",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Treinamento", "Educação", "Experiência", "Empresa Parceira"]
+        },
+        {
+          "name": "planned_date",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "realized_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "requires_effectiveness_eval",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ch_hours",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "participants_count",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ch_total",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "effectiveness_due_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "effectiveness_status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Não aplicável", "Pendente", "OK", "Atrasado"]
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_tpa_company ON training_plan_actions (company_id)",
+        "CREATE INDEX idx_tpa_year ON training_plan_actions (year)",
+        "CREATE INDEX idx_tpa_type ON training_plan_actions (type)",
+        "CREATE INDEX idx_tpa_planned_date ON training_plan_actions (planned_date)"
       ]
     }
   ]
