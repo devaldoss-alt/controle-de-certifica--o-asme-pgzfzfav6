@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   AlertTriangle,
   Factory,
+  Boxes,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ModuleName } from '@/services/module-permissions'
@@ -41,6 +42,7 @@ const MODULE_PATHS: Record<ModuleName, string[]> = {
   Agenda: ['/calendar'],
   RNC: ['/rnc'],
   PCP: ['/pcp'],
+  Almoxarifado: ['/inventory'],
 }
 
 /** Reverse lookup: path → module (first match wins). */
@@ -70,6 +72,7 @@ export function getNavLinks(role?: string): NavLinkItem[] {
     { name: 'nav.masterList', path: '/master-list', icon: ListChecks, module: 'Documentos' },
     { name: 'nav.rnc', path: '/rnc', icon: AlertTriangle, module: 'RNC' },
     { name: 'nav.pcp', path: '/pcp', icon: Factory, module: 'PCP' },
+    { name: 'nav.inventory', path: '/inventory', icon: Boxes, module: 'Almoxarifado' },
     { name: 'nav.notifications', path: '/notifications', icon: Bell },
     { name: 'nav.qualifications', path: '/qualifications', icon: Award },
     { name: 'nav.indicators', path: '/indicators', icon: BarChart3, module: 'Indicadores' },

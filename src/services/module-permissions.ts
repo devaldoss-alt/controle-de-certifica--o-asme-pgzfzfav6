@@ -9,6 +9,7 @@ export type ModuleName =
   | 'Agenda'
   | 'RNC'
   | 'PCP'
+  | 'Almoxarifado'
 
 export const ALL_MODULE_NAMES: ModuleName[] = [
   'Documentos',
@@ -19,6 +20,7 @@ export const ALL_MODULE_NAMES: ModuleName[] = [
   'Agenda',
   'RNC',
   'PCP',
+  'Almoxarifado',
 ]
 
 export interface ModulePermission {

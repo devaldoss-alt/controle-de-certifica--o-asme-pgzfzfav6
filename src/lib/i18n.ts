@@ -308,6 +308,12 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'report.statusRejected': { pt: 'Rejeitado', en: 'Rejected' },
   'report.statusCompleted': { pt: 'Concluído', en: 'Completed' },
   'report.statusPending': { pt: 'Pendente', en: 'Pending' },
+  'nav.inventory': { pt: 'Almoxarifado', en: 'Inventory / Warehouse' },
+  'page.inventory.title': { pt: 'Almoxarifado', en: 'Inventory' },
+  'page.inventory.desc': {
+    pt: 'Controle de materiais, saldo por empresa e inspeção do CQ.',
+    en: 'Material control, stock by company and QC inspection.',
+  },
   'report.yes': { pt: 'Sim', en: 'Yes' },
   'report.no': { pt: 'Não', en: 'No' },
 

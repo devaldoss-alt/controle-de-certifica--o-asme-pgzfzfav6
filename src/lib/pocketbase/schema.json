@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-07T15:24:37.271Z",
+  "generatedAt": "2026-09-07T15:31:39.514Z",
   "collections": [
     {
       "name": "users",
@@ -1312,7 +1312,8 @@
             "Checklists",
             "Indicadores",
             "Ordens de Serviço",
-            "Agenda"
+            "Agenda",
+            "Almoxarifado"
           ]
         },
         {
@@ -1617,6 +1618,263 @@
         "CREATE INDEX idx_nc_company ON non_conformities (company_id)",
         "CREATE INDEX idx_nc_number ON non_conformities (number)",
         "CREATE INDEX idx_nc_status ON non_conformities (status)"
+      ]
+    },
+    {
+      "name": "inventory_items",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "description",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "category",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "Insumo",
+            "Consumível",
+            "Gás-Cilindro",
+            "Ferramenta",
+            "Equipamento",
+            "Outro"
+          ]
+        },
+        {
+          "name": "unit",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "unit_price",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "current_stock",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "minimum_stock",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "location",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Almoxarifado", "Área Externa", "Oficina", "Outro"]
+        },
+        {
+          "name": "os_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "service_orders"
+        },
+        {
+          "name": "requires_cq_inspection",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "inspection_status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Aguardando inspeção", "Liberado", "Rejeitado", "Não aplicável"]
+        },
+        {
+          "name": "is_consigned",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "supplier",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_controlled",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tracking_code",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "inspected_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "inspected_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_inv_company ON inventory_items (company_id)",
+        "CREATE INDEX idx_inv_tracking ON inventory_items (tracking_code)",
+        "CREATE INDEX idx_inv_inspection ON inventory_items (inspection_status)",
+        "CREATE INDEX idx_inv_category ON inventory_items (category)"
+      ]
+    },
+    {
+      "name": "stock_movements",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "item_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "inventory_items"
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "movement_type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Saldo Inicial", "Entrada", "Saída", "Ajuste"]
+        },
+        {
+          "name": "quantity",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "unit_price",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsible_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "responsible_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "os_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "service_orders"
+        },
+        {
+          "name": "movement_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "balance_after",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_sm_item ON stock_movements (item_id)",
+        "CREATE INDEX idx_sm_company ON stock_movements (company_id)",
+        "CREATE INDEX idx_sm_date ON stock_movements (movement_date)"
       ]
     }
   ]

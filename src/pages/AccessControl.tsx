@@ -73,11 +73,12 @@ const ROLES = [
   'Apontador',
   'Consultor',
 ]
-const MODULES: Array<'Documentos' | 'Romaneios' | 'Checklists' | 'Indicadores'> = [
+const MODULES: Array<'Documentos' | 'Romaneios' | 'Checklists' | 'Indicadores' | 'Almoxarifado'> = [
   'Documentos',
   'Romaneios',
   'Checklists',
   'Indicadores',
+  'Almoxarifado',
 ]
 
 export default function AccessControl() {
