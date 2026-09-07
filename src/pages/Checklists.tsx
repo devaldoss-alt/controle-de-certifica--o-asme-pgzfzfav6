@@ -9,6 +9,8 @@ import {
   type Checklist,
 } from '@/services/api'
 import { getServiceOrders, type ServiceOrder } from '@/services/service-orders'
+import pb from '@/lib/pocketbase/client'
+import type { TeamMember } from '@/services/team'
 import useRealtime from '@/hooks/use-realtime'
 import { useCompany } from '@/hooks/use-company'
 import { EvidenceDialog } from '@/components/EvidenceDialog'
@@ -55,7 +57,135 @@ export default function Checklists() {
         ),
         getServiceOrders(undefined, selectedCompanyId),
       ])
-      setChecklists(isApontador ? data.filter((c: any) => c.apontador_id === user?.id) : data)
+
+      if (isApontador) {
+        let apontadorChecklists = data.filter((c: any) => c.apontador_id === user?.id)
+
+        try {
+          // 2.a: Buscar na collection `team` os registros da empresa atual em que esse usuário é o Apontador
+          const teamFilters: string[] = ['is_indicator = true']
+          if (selectedCompanyId && selectedCompanyId !== 'all') {
+            teamFilters.push(`company_id = "${selectedCompanyId}"`)
+          }
+          if (user?.email) {
+            teamFilters.push(
+              `(name ~ "${user.name || ''}" || name ~ "${user.email.split('@')[0]}" || id = "${user.id}")`,
+            )
+          }
+
+          // Busca primeiro com filtro contextual do apontador logado
+          let myApontadorRecords = await pb.collection('team').getFullList<TeamMember>({
+            filter: teamFilters.join(' && '),
+          })
+
+          // Se não encontrou pelo nome/email composto, busca todos is_indicator da empresa
+          if (myApontadorRecords.length === 0) {
+            const fallbackFilters = ['is_indicator = true']
+            if (selectedCompanyId && selectedCompanyId !== 'all') {
+              fallbackFilters.push(`company_id = "${selectedCompanyId}"`)
+            }
+            const allIndicators = await pb.collection('team').getFullList<TeamMember>({
+              filter: fallbackFilters.join(' && '),
+            })
+
+            // Match por nome (ex: Roberta, Agnaldo) ou email do usuário logado
+            const userNameLower = (user?.name || '').toLowerCase().trim()
+            const userEmailLower = (user?.email || '').toLowerCase().trim()
+            const userEmailPrefix = userEmailLower.split('@')[0]
+
+            const matched = allIndicators.filter((m) => {
+              const mName = (m.name || '').toLowerCase()
+              return (
+                (userNameLower && mName.includes(userNameLower)) ||
+                (userEmailPrefix && mName.includes(userEmailPrefix)) ||
+                (userNameLower && userNameLower.includes(mName))
+              )
+            })
+
+            // Se ainda não deu match específico mas há apenas apontadores na empresa ou o usuário é 'Apontador',
+            // usa os apontadores encontrados para obter os operadores vinculados
+            myApontadorRecords = matched.length > 0 ? matched : allIndicators
+          }
+
+          // 2.b: Extrair os linked_operators (IDs ou nomes dos operadores)
+          const linkedOpIdentifiers: string[] = []
+          for (const rec of myApontadorRecords) {
+            const raw = rec.linked_operators
+            let list: string[] = []
+            if (Array.isArray(raw)) {
+              list = raw
+            } else if (typeof raw === 'string' && raw.trim()) {
+              try {
+                const parsed = JSON.parse(raw)
+                list = Array.isArray(parsed) ? parsed : [raw]
+              } catch {
+                list = raw.split(',').map((s) => s.trim())
+              }
+            }
+            for (const item of list) {
+              const str = String(item).trim()
+              if (str && !linkedOpIdentifiers.includes(str)) {
+                linkedOpIdentifiers.push(str)
+              }
+            }
+          }
+
+          // 2.c: Buscar os cargos desses operadores na collection `team`
+          const operatorRoles = new Set<string>()
+
+          if (linkedOpIdentifiers.length > 0) {
+            // Os identificadores podem ser IDs ou nomes de operadores no `team`
+            // Buscar operadores no team correspondentes
+            const idChunks = linkedOpIdentifiers.map((id) => `id = "${id}" || name = "${id}"`)
+            // Divide em lotes caso haja muitos
+            const filterExpr = `(${idChunks.join(' || ')})`
+            const operators = await pb.collection('team').getFullList<TeamMember>({
+              filter: filterExpr,
+            })
+
+            for (const op of operators) {
+              if (op.role && op.role.trim() && op.role !== 'Colaborador') {
+                operatorRoles.add(op.role.trim())
+              }
+              // Caso o cargo no team seja "Colaborador", mas o departamento indique o cargo funcional (ex: SOLDA -> Welder)
+              const dept = (op.department || '').toUpperCase().trim()
+              if (dept === 'SOLDA') {
+                operatorRoles.add('Welder')
+              }
+            }
+          }
+
+          // 2.d: Busque os checklists cujo `role_assigned` contenha QUALQUER um desses cargos,
+          // OU cujo `apontador_id` seja igual ao id do usuário logado. Exiba essa lista unificada.
+          const rolesArray = Array.from(operatorRoles)
+          const matchesOperatorRoles = (chk: Checklist) => {
+            if (rolesArray.length === 0) return false
+            const assigned = chk.role_assigned
+            const assignedList = Array.isArray(assigned)
+              ? assigned
+              : typeof assigned === 'string'
+                ? [assigned]
+                : []
+            return assignedList.some((r) =>
+              rolesArray.some((targetRole) => r.toLowerCase() === targetRole.toLowerCase()),
+            )
+          }
+
+          const unified = data.filter(
+            (c: any) => c.apontador_id === user?.id || matchesOperatorRoles(c),
+          )
+
+          // Fallback seguro: se a lista unificada tiver registros, usa ela, senão fallback para apontador_id
+          apontadorChecklists = unified.length > 0 ? unified : apontadorChecklists
+        } catch (err) {
+          console.error('Erro ao buscar checklists de operadores vinculados para Apontador:', err)
+          // 4. Se a busca de operadores vinculados falhar, fallback atual sem quebrar a tela
+        }
+
+        setChecklists(apontadorChecklists)
+      } else {
+        setChecklists(data)
+      }
       setServiceOrders(osData)
     } catch (e) {
       console.error(e)
