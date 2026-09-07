@@ -7,7 +7,16 @@ import { getIndicators, type Indicator } from '@/services/indicators'
 import { IndicatorFormDialog } from '@/components/IndicatorFormDialog'
 import { IndicatorCard } from '@/components/IndicatorCard'
 import { Button } from '@/components/ui/button'
-import { Plus, Target } from 'lucide-react'
+import { Plus, Target, RotateCw, Calendar } from 'lucide-react'
+import { recalculateTrainingIndicators } from '@/services/training-indicators'
+import { useToast } from '@/components/ui/use-toast'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 import { ShieldAlert } from 'lucide-react'
 
@@ -15,8 +24,11 @@ export default function Indicators() {
   const { user } = useAuth()
   const { lang } = useI18n()
   const { selectedCompanyId } = useCompany()
+  const { toast } = useToast()
   const [indicators, setIndicators] = useState<Indicator[]>([])
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
+  const [syncingAll, setSyncingAll] = useState(false)
   const txt = (pt: string, en: string) => (lang === 'pt' ? pt : en)
 
   const isQualityManager =
@@ -35,11 +47,40 @@ export default function Indicators() {
     setIndicators(data)
   }
 
+  const handleSyncTrainingIndicators = async () => {
+    if (!selectedCompanyId || selectedCompanyId === 'all') return
+    try {
+      setSyncingAll(true)
+      await recalculateTrainingIndicators({
+        companyId: selectedCompanyId,
+        year: selectedYear,
+      })
+      await loadData()
+      toast({
+        title: txt('Indicadores de Treinamento recalculados', 'Training indicators recalculated'),
+        description: txt(
+          'HHT mensal, % Eficácia e % Plano sincronizados com as listas de presença.',
+          'Monthly HHT, % Effectiveness and % Plan synced with attendance lists.',
+        ),
+      })
+    } catch {
+      toast({
+        title: txt('Erro ao recalcular', 'Recalculation error'),
+        variant: 'destructive',
+      })
+    } finally {
+      setSyncingAll(false)
+    }
+  }
+
   useEffect(() => {
     loadData()
   }, [selectedCompanyId])
   useRealtime('indicators', () => loadData())
   useRealtime('indicator_history', () => loadData())
+  useRealtime('training_attendance_lists', () => loadData())
+  useRealtime('training_plan_actions', () => loadData())
+  useRealtime('training_effectiveness_evaluations', () => loadData())
 
   if (!canView) {
     return (
@@ -61,29 +102,74 @@ export default function Indicators() {
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-heading font-bold text-white mb-2">
             {txt('Indicadores de Desempenho', 'Performance Indicators')}
           </h1>
           <p className="text-muted-foreground">
-            {txt('Acompanhamento de metas e KPIs estratégicos', 'Strategic goals and KPI tracking')}
+            {txt(
+              'Acompanhamento de metas e KPIs estratégicos com cálculo automático integrado',
+              'Strategic goals and KPI tracking with integrated automatic calculation',
+            )}
           </p>
         </div>
-        {canEdit && (
-          <Button
-            onClick={() => setShowCreateDialog(true)}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            {txt('Novo Indicador', 'New Indicator')}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Year selector */}
+          <div className="flex items-center gap-1.5 bg-black/30 border border-white/10 rounded-md px-2 py-1">
+            <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+            <Select
+              value={String(selectedYear)}
+              onValueChange={(v) => setSelectedYear(parseInt(v, 10))}
+            >
+              <SelectTrigger className="border-0 bg-transparent h-7 text-xs text-white focus:ring-0 focus:ring-offset-0 px-1 w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[2024, 2025, 2026, 2027, 2028].map((y) => (
+                  <SelectItem key={y} value={String(y)} className="text-xs">
+                    {y}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {canEdit && selectedCompanyId && selectedCompanyId !== 'all' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSyncTrainingIndicators}
+              disabled={syncingAll}
+              className="border-white/10 text-xs hover:bg-white/10 gap-1.5 h-9"
+              title="Recalcular HHT, Eficácia e Plano a partir das listas de presença"
+            >
+              <RotateCw className={`w-3.5 h-3.5 ${syncingAll ? 'animate-spin' : ''}`} />
+              {txt('Sincronizar Treinamentos', 'Sync Trainings')}
+            </Button>
+          )}
+
+          {canEdit && (
+            <Button
+              onClick={() => setShowCreateDialog(true)}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 text-xs h-9"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              {txt('Novo Indicador', 'New Indicator')}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {indicators.map((ind) => (
-          <IndicatorCard key={ind.id} indicator={ind} canEdit={canEdit} onUpdated={loadData} />
+          <IndicatorCard
+            key={ind.id}
+            indicator={ind}
+            canEdit={canEdit}
+            onUpdated={loadData}
+            selectedYear={selectedYear}
+          />
         ))}
       </div>
 

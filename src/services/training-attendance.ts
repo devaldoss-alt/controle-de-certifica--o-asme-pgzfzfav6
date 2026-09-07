@@ -1,6 +1,7 @@
 import pb from '@/lib/pocketbase/client'
 import { safeArray } from '@/lib/safe-data'
 import { calculateEffectivenessDueDate, normalizeDateToISO } from '@/services/trainings'
+import { recalculateTrainingIndicators } from '@/services/training-indicators'
 
 export type AttendanceListStatus =
   | 'rascunho'
@@ -324,6 +325,18 @@ export async function saveAttendanceListFull(params: {
     }
   }
 
+  // 5. Automatic recalculation of training indicators (HHT, % Eficácia, % Plano)
+  // Non-blocking: safe try/catch ensures list saving is NEVER interrupted
+  try {
+    const listYear = new Date(normDateRealizacao).getFullYear() || new Date().getFullYear()
+    recalculateTrainingIndicators({
+      companyId: params.companyId,
+      year: listYear,
+    }).catch((e) => console.warn('Silent indicator recalculation error:', e))
+  } catch (recalcErr) {
+    console.warn('Non-blocking recalculation error:', recalcErr)
+  }
+
   return savedList
 }
 
@@ -427,6 +440,21 @@ export async function saveEffectivenessEvaluations(params: {
       } catch (e) {
         console.warn('Failed to update action effectiveness_status to OK:', e)
       }
+    }
+  }
+
+  // Recalculate indicators after evaluations are saved
+  if (currentList.company_id) {
+    try {
+      const year = currentList.data_realizacao
+        ? new Date(currentList.data_realizacao).getFullYear()
+        : new Date().getFullYear()
+      recalculateTrainingIndicators({
+        companyId: currentList.company_id,
+        year,
+      }).catch((e) => console.warn('Silent recalculate on evaluations error:', e))
+    } catch (e) {
+      // Non-blocking
     }
   }
 }

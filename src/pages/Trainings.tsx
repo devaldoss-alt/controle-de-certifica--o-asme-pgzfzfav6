@@ -14,6 +14,7 @@ import {
 import { TrainingImportDialog } from '@/components/TrainingImportDialog'
 import { TrainingActionDialog, TrainingRealizeDialog } from '@/components/TrainingActionDialog'
 import { TrainingAttendanceDialog } from '@/components/TrainingAttendanceDialog'
+import { TrainingIndicatorsSection } from '@/components/TrainingIndicatorsSection'
 import { getAttendanceLists, type TrainingAttendanceList } from '@/services/training-attendance'
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -35,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   GraduationCap,
   Plus,
@@ -53,6 +55,8 @@ import {
   Filter,
   Users,
   Award,
+  BarChart3,
+  TrendingUp,
 } from 'lucide-react'
 
 export default function TrainingPage() {
@@ -64,6 +68,7 @@ export default function TrainingPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [selectedYear, setSelectedYear] = useState<number>(2026)
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'plano' | 'indicadores'>('plano')
 
   // Filters
   const [search, setSearch] = useState('')
@@ -182,6 +187,7 @@ export default function TrainingPage() {
   // Realtime subscription
   useRealtime('training_plan_actions', () => loadActions())
   useRealtime('training_attendance_lists', () => loadActions())
+  useRealtime('training_effectiveness_evaluations', () => loadActions())
 
   // Additional audience filter in memory
   const filteredActions = useMemo(() => {
@@ -379,481 +385,529 @@ export default function TrainingPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        <Card className="glass border-white/10 p-3.5">
-          <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] uppercase font-semibold">Total Ações</span>
-            <Layers className="w-4 h-4 text-blue-400" />
-          </div>
-          <p className="text-2xl font-bold text-white">{stats.total}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
-            Plano {selectedYear} (
-            {selectedCompany?.name ? selectedCompany.name.split(' ')[0] : 'Empresa'})
-          </p>
-        </Card>
+      {/* Navigation Tabs: Plano de Treinamento vs Indicadores de Desempenho */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as 'plano' | 'indicadores')}
+        className="w-full"
+      >
+        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <TabsList className="bg-black/40 border border-white/10 p-1">
+            <TabsTrigger
+              value="plano"
+              className="text-xs data-[state=active]:bg-primary data-[state=active]:text-white gap-1.5"
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              Plano de Ações (FSGQ 7.2-1)
+            </TabsTrigger>
+            <TabsTrigger
+              value="indicadores"
+              className="text-xs data-[state=active]:bg-primary data-[state=active]:text-white gap-1.5"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              Indicadores de Treinamento (HHT • Eficácia • Plano)
+            </TabsTrigger>
+          </TabsList>
 
-        <Card className="glass border-white/10 p-3.5">
-          <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] uppercase font-semibold">Realizadas</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          </div>
-          <p className="text-2xl font-bold text-emerald-400">{stats.realized}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Treinamentos executados</p>
-        </Card>
-
-        <Card className="glass border-white/10 p-3.5">
-          <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] uppercase font-semibold">Atrasadas</span>
-            <AlertCircle className="w-4 h-4 text-rose-400" />
-          </div>
-          <p className="text-2xl font-bold text-rose-400">{stats.overdue}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Prazo vencido ou fora da data</p>
-        </Card>
-
-        <Card className="glass border-white/10 p-3.5">
-          <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] uppercase font-semibold">Pendentes</span>
-            <Clock className="w-4 h-4 text-amber-400" />
-          </div>
-          <p className="text-2xl font-bold text-amber-400">{stats.pending}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Aguardando realização</p>
-        </Card>
-
-        <Card className="glass border-white/10 p-3.5">
-          <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] uppercase font-semibold">% Concluído</span>
-            <Award className="w-4 h-4 text-primary" />
-          </div>
-          <p className="text-2xl font-bold text-white">{stats.pctCompleted}%</p>
-          <div className="w-full bg-white/10 rounded-full h-1.5 mt-1.5 overflow-hidden">
-            <div
-              className="bg-primary h-full transition-all duration-500"
-              style={{ width: `${Math.min(100, stats.pctCompleted)}%` }}
-            />
-          </div>
-        </Card>
-
-        <Card className="glass border-white/10 p-3.5">
-          <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] uppercase font-semibold">Total CH</span>
-            <Users className="w-4 h-4 text-purple-400" />
-          </div>
-          <p className="text-2xl font-bold text-white">{stats.totalCH.toFixed(0)} h</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Carga horária acumulada</p>
-        </Card>
-      </div>
-
-      {/* Filters Bar */}
-      <Card className="glass border-white/10 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-          <div className="relative md:col-span-2">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por ação, responsável, público..."
-              className="pl-9 h-9 text-xs bg-black/30 border-white/10 text-white"
-            />
-          </div>
-
-          <div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="h-9 text-xs bg-black/30 border-white/10 text-white">
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Tipos</SelectItem>
-                <SelectItem value="SMS">SMS</SelectItem>
-                <SelectItem value="Qualificação Pessoal-Sensibilização">
-                  Qualificação/Sensibilização
-                </SelectItem>
-                <SelectItem value="Procedimentos-Instruções-Formulários">
-                  Procedimentos/Instruções
-                </SelectItem>
-                <SelectItem value="Outros">Outros</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Select value={originFilter} onValueChange={setOriginFilter}>
-              <SelectTrigger className="h-9 text-xs bg-black/30 border-white/10 text-white">
-                <SelectValue placeholder="Origem" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as Origens</SelectItem>
-                <SelectItem value="Interno">Interno</SelectItem>
-                <SelectItem value="Externo">Externo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-9 text-xs bg-black/30 border-white/10 text-white">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Status</SelectItem>
-                <SelectItem value="OK">OK (No Prazo)</SelectItem>
-                <SelectItem value="Atrasado">Atrasado</SelectItem>
-                <SelectItem value="Pendente">Pendente</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Select value={audienceFilter} onValueChange={setAudienceFilter}>
-              <SelectTrigger className="h-9 text-xs bg-black/30 border-white/10 text-white">
-                <SelectValue placeholder="Público-Alvo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Públicos</SelectItem>
-                {distinctAudiences.map((aud) => (
-                  <SelectItem key={aud} value={aud}>
-                    {aud}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </Card>
-
-      {/* Spreadsheet Table FSGQ 7.2-1 */}
-      <Card className="glass border-white/10 overflow-hidden">
-        <CardHeader className="py-3 px-4 bg-white/5 border-b border-white/10 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono font-bold text-primary">FSGQ 7.2-1</span>
-            <span className="text-xs text-muted-foreground">•</span>
-            <span className="text-xs font-medium text-white">
-              Tabela do Plano Anual de Treinamentos ({filteredActions.length} itens listados)
-            </span>
-          </div>
-
-          <span className="text-[11px] text-muted-foreground hidden md:inline">
-            Clique em "Marcar Realização" para registrar presença, carga horária e data efetiva.
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            {activeTab === 'plano'
+              ? `${filteredActions.length} ações no plano anual`
+              : 'Painel executivo de metas e horas de treinamento'}
           </span>
-        </CardHeader>
+        </div>
 
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table className="min-w-[1400px]">
-              <TableHeader>
-                <TableRow className="border-white/10 bg-black/40 text-[11px] uppercase text-muted-foreground">
-                  <TableHead className="w-12 text-center text-white/60">#</TableHead>
-                  <TableHead className="min-w-[260px] text-white/80 font-bold">AÇÃO</TableHead>
-                  <TableHead className="w-28 text-white/60">PERIODICIDADE</TableHead>
-                  <TableHead className="w-32 text-white/60">RESPONSÁVEL</TableHead>
-                  <TableHead className="w-32 text-white/60">PÚBLICO-ALVO</TableHead>
-                  <TableHead className="w-24 text-white/60">ORIGEM</TableHead>
-                  <TableHead className="w-36 text-white/60">TIPO</TableHead>
-                  <TableHead className="w-32 text-white/60">COMPETÊNCIA</TableHead>
-                  <TableHead className="w-28 text-center text-white/80 font-semibold">
-                    PREVISTO
-                  </TableHead>
-                  <TableHead className="w-28 text-center text-white/80 font-semibold">
-                    REALIZADO
-                  </TableHead>
-                  <TableHead className="w-24 text-center text-white/80 font-semibold">
-                    STATUS
-                  </TableHead>
-                  <TableHead className="w-32 text-center text-white/80 font-semibold">
-                    LISTA PRESENÇA
-                  </TableHead>
-                  <TableHead className="w-24 text-center text-white/60">EFICÁCIA?</TableHead>
-                  <TableHead className="w-20 text-center text-white/60">CH (h)</TableHead>
-                  <TableHead className="w-20 text-center text-white/60">PARTIC.</TableHead>
-                  <TableHead className="w-24 text-center text-white/80 font-semibold">
-                    CH TOTAL
-                  </TableHead>
-                  <TableHead className="w-28 text-center text-white/60">EFICÁCIA (+60d)</TableHead>
-                  <TableHead className="w-28 text-center text-white/60">STATUS EFIC.</TableHead>
-                  <TableHead className="w-24 text-right pr-4 text-white/60">AÇÕES</TableHead>
-                </TableRow>
-              </TableHeader>
+        {/* Tab Content: INDICADORES */}
+        <TabsContent value="indicadores" className="mt-6 space-y-6">
+          <TrainingIndicatorsSection
+            companyId={selectedCompanyId}
+            year={selectedYear}
+            canEdit={canEdit}
+          />
+        </TabsContent>
 
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={18} className="text-center py-12 text-muted-foreground">
-                      Carregando plano de treinamentos...
-                    </TableCell>
-                  </TableRow>
-                ) : filteredActions.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={18} className="text-center py-12 text-muted-foreground">
-                      Nenhuma ação encontrada para os filtros selecionados.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredActions.map((item, index) => {
-                    const isRealized = !!item.realized_date
-                    const statusDays = item.status_days
+        {/* Tab Content: PLANO DE TREINAMENTO (Fase 1 e Fase 2 intactas) */}
+        <TabsContent value="plano" className="mt-6 space-y-6">
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+            <Card className="glass border-white/10 p-3.5">
+              <div className="flex items-center justify-between text-muted-foreground mb-1">
+                <span className="text-[11px] uppercase font-semibold">Total Ações</span>
+                <Layers className="w-4 h-4 text-blue-400" />
+              </div>
+              <p className="text-2xl font-bold text-white">{stats.total}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Plano {selectedYear} (
+                {selectedCompany?.name ? selectedCompany.name.split(' ')[0] : 'Empresa'})
+              </p>
+            </Card>
 
-                    return (
-                      <TableRow
-                        key={item.id}
-                        className="border-white/5 hover:bg-white/5 text-xs transition-colors"
-                      >
-                        <TableCell className="text-center text-muted-foreground font-mono">
-                          {index + 1}
-                        </TableCell>
+            <Card className="glass border-white/10 p-3.5">
+              <div className="flex items-center justify-between text-muted-foreground mb-1">
+                <span className="text-[11px] uppercase font-semibold">Realizadas</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              </div>
+              <p className="text-2xl font-bold text-emerald-400">{stats.realized}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Treinamentos executados</p>
+            </Card>
 
-                        {/* AÇÃO */}
-                        <TableCell className="font-medium text-white max-w-[300px]">
-                          <div className="font-semibold text-white/95 leading-tight">
-                            {item.action}
-                          </div>
-                          {item.notes && (
-                            <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                              {item.notes}
-                            </p>
-                          )}
-                        </TableCell>
+            <Card className="glass border-white/10 p-3.5">
+              <div className="flex items-center justify-between text-muted-foreground mb-1">
+                <span className="text-[11px] uppercase font-semibold">Atrasadas</span>
+                <AlertCircle className="w-4 h-4 text-rose-400" />
+              </div>
+              <p className="text-2xl font-bold text-rose-400">{stats.overdue}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Prazo vencido ou fora da data
+              </p>
+            </Card>
 
-                        {/* PERIODICIDADE */}
-                        <TableCell className="text-muted-foreground whitespace-nowrap">
-                          {item.periodicity}
-                        </TableCell>
+            <Card className="glass border-white/10 p-3.5">
+              <div className="flex items-center justify-between text-muted-foreground mb-1">
+                <span className="text-[11px] uppercase font-semibold">Pendentes</span>
+                <Clock className="w-4 h-4 text-amber-400" />
+              </div>
+              <p className="text-2xl font-bold text-amber-400">{stats.pending}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Aguardando realização</p>
+            </Card>
 
-                        {/* RESPONSÁVEL */}
-                        <TableCell className="text-white/80 whitespace-nowrap font-medium">
-                          {item.responsible}
-                        </TableCell>
+            <Card className="glass border-white/10 p-3.5">
+              <div className="flex items-center justify-between text-muted-foreground mb-1">
+                <span className="text-[11px] uppercase font-semibold">% Concluído</span>
+                <Award className="w-4 h-4 text-primary" />
+              </div>
+              <p className="text-2xl font-bold text-white">{stats.pctCompleted}%</p>
+              <div className="w-full bg-white/10 rounded-full h-1.5 mt-1.5 overflow-hidden">
+                <div
+                  className="bg-primary h-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, stats.pctCompleted)}%` }}
+                />
+              </div>
+            </Card>
 
-                        {/* PÚBLICO-ALVO */}
-                        <TableCell className="text-muted-foreground whitespace-nowrap">
-                          <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/5 text-[11px]">
-                            {item.target_audience}
-                          </span>
-                        </TableCell>
+            <Card className="glass border-white/10 p-3.5">
+              <div className="flex items-center justify-between text-muted-foreground mb-1">
+                <span className="text-[11px] uppercase font-semibold">Total CH</span>
+                <Users className="w-4 h-4 text-purple-400" />
+              </div>
+              <p className="text-2xl font-bold text-white">{stats.totalCH.toFixed(0)} h</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Carga horária acumulada</p>
+            </Card>
+          </div>
 
-                        {/* ORIGEM */}
-                        <TableCell className="whitespace-nowrap">
-                          <Badge
-                            variant="outline"
-                            className={`text-[10px] ${
-                              item.origin === 'Interno'
-                                ? 'border-blue-500/30 text-blue-400 bg-blue-500/5'
-                                : 'border-purple-500/30 text-purple-400 bg-purple-500/5'
-                            }`}
-                          >
-                            {item.origin}
-                          </Badge>
-                        </TableCell>
+          {/* Filters Bar */}
+          <Card className="glass border-white/10 p-4">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+              <div className="relative md:col-span-2">
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar por ação, responsável, público..."
+                  className="pl-9 h-9 text-xs bg-black/30 border-white/10 text-white"
+                />
+              </div>
 
-                        {/* TIPO */}
-                        <TableCell className="text-muted-foreground text-[11px] max-w-[150px] truncate">
-                          {item.type}
-                        </TableCell>
+              <div>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="h-9 text-xs bg-black/30 border-white/10 text-white">
+                    <SelectValue placeholder="Tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Tipos</SelectItem>
+                    <SelectItem value="SMS">SMS</SelectItem>
+                    <SelectItem value="Qualificação Pessoal-Sensibilização">
+                      Qualificação/Sensibilização
+                    </SelectItem>
+                    <SelectItem value="Procedimentos-Instruções-Formulários">
+                      Procedimentos/Instruções
+                    </SelectItem>
+                    <SelectItem value="Outros">Outros</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                        {/* COMPETÊNCIA */}
-                        <TableCell className="text-muted-foreground text-[11px] whitespace-nowrap">
-                          {item.competence_form}
-                        </TableCell>
+              <div>
+                <Select value={originFilter} onValueChange={setOriginFilter}>
+                  <SelectTrigger className="h-9 text-xs bg-black/30 border-white/10 text-white">
+                    <SelectValue placeholder="Origem" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as Origens</SelectItem>
+                    <SelectItem value="Interno">Interno</SelectItem>
+                    <SelectItem value="Externo">Externo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                        {/* PREVISTO */}
-                        <TableCell className="text-center whitespace-nowrap font-mono text-white/80">
-                          {item.planned_date
-                            ? new Date(item.planned_date).toLocaleDateString('pt-BR')
-                            : '—'}
-                        </TableCell>
+              <div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-9 text-xs bg-black/30 border-white/10 text-white">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Status</SelectItem>
+                    <SelectItem value="OK">OK (No Prazo)</SelectItem>
+                    <SelectItem value="Atrasado">Atrasado</SelectItem>
+                    <SelectItem value="Pendente">Pendente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                        {/* REALIZADO */}
-                        <TableCell className="text-center whitespace-nowrap font-mono">
-                          {isRealized ? (
-                            <span className="text-emerald-400 font-semibold">
-                              {new Date(item.realized_date!).toLocaleDateString('pt-BR')}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-[11px]">—</span>
-                          )}
-                        </TableCell>
+              <div>
+                <Select value={audienceFilter} onValueChange={setAudienceFilter}>
+                  <SelectTrigger className="h-9 text-xs bg-black/30 border-white/10 text-white">
+                    <SelectValue placeholder="Público-Alvo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Públicos</SelectItem>
+                    {distinctAudiences.map((aud) => (
+                      <SelectItem key={aud} value={aud}>
+                        {aud}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </Card>
 
-                        {/* STATUS (DIAS) */}
-                        <TableCell className="text-center whitespace-nowrap">
-                          {statusDays === 'OK' ? (
-                            <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px]">
-                              OK
-                            </Badge>
-                          ) : statusDays === 'Atrasado' ? (
-                            <Badge className="bg-rose-500/10 text-rose-400 border border-rose-500/30 text-[10px]">
-                              Atrasado
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px]">
-                              Pendente
-                            </Badge>
-                          )}
-                        </TableCell>
+          {/* Spreadsheet Table FSGQ 7.2-1 */}
+          <Card className="glass border-white/10 overflow-hidden">
+            <CardHeader className="py-3 px-4 bg-white/5 border-b border-white/10 flex flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-bold text-primary">FSGQ 7.2-1</span>
+                <span className="text-xs text-muted-foreground">•</span>
+                <span className="text-xs font-medium text-white">
+                  Tabela do Plano Anual de Treinamentos ({filteredActions.length} itens listados)
+                </span>
+              </div>
 
-                        {/* LISTA DE PRESENÇA STATUS */}
-                        <TableCell className="text-center whitespace-nowrap">
-                          {(() => {
-                            const att = attendanceListsMap[item.id]
-                            if (!att) {
-                              return (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] border-white/10 text-muted-foreground/60"
-                                >
-                                  Sem lista
-                                </Badge>
-                              )
-                            }
-                            if (att.status === 'avaliacao_concluida') {
-                              return (
-                                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                                  Concluída
-                                </Badge>
-                              )
-                            }
-                            if (att.status === 'aguardando_avaliacao_eficacia') {
-                              return (
-                                <Badge className="text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                                  Eficácia Pend.
-                                </Badge>
-                              )
-                            }
-                            if (att.status === 'realizada') {
-                              return (
-                                <Badge className="text-[10px] bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                                  Realizada
-                                </Badge>
-                              )
-                            }
-                            return (
-                              <Badge className="text-[10px] bg-white/10 text-muted-foreground border border-white/20">
-                                Rascunho
-                              </Badge>
-                            )
-                          })()}
-                        </TableCell>
+              <span className="text-[11px] text-muted-foreground hidden md:inline">
+                Clique em "Marcar Realização" para registrar presença, carga horária e data efetiva.
+              </span>
+            </CardHeader>
 
-                        {/* REQUER EFICÁCIA? */}
-                        <TableCell className="text-center whitespace-nowrap text-muted-foreground">
-                          {item.requires_effectiveness_eval ? 'Sim' : 'Não'}
-                        </TableCell>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table className="min-w-[1400px]">
+                  <TableHeader>
+                    <TableRow className="border-white/10 bg-black/40 text-[11px] uppercase text-muted-foreground">
+                      <TableHead className="w-12 text-center text-white/60">#</TableHead>
+                      <TableHead className="min-w-[260px] text-white/80 font-bold">AÇÃO</TableHead>
+                      <TableHead className="w-28 text-white/60">PERIODICIDADE</TableHead>
+                      <TableHead className="w-32 text-white/60">RESPONSÁVEL</TableHead>
+                      <TableHead className="w-32 text-white/60">PÚBLICO-ALVO</TableHead>
+                      <TableHead className="w-24 text-white/60">ORIGEM</TableHead>
+                      <TableHead className="w-36 text-white/60">TIPO</TableHead>
+                      <TableHead className="w-32 text-white/60">COMPETÊNCIA</TableHead>
+                      <TableHead className="w-28 text-center text-white/80 font-semibold">
+                        PREVISTO
+                      </TableHead>
+                      <TableHead className="w-28 text-center text-white/80 font-semibold">
+                        REALIZADO
+                      </TableHead>
+                      <TableHead className="w-24 text-center text-white/80 font-semibold">
+                        STATUS
+                      </TableHead>
+                      <TableHead className="w-32 text-center text-white/80 font-semibold">
+                        LISTA PRESENÇA
+                      </TableHead>
+                      <TableHead className="w-24 text-center text-white/60">EFICÁCIA?</TableHead>
+                      <TableHead className="w-20 text-center text-white/60">CH (h)</TableHead>
+                      <TableHead className="w-20 text-center text-white/60">PARTIC.</TableHead>
+                      <TableHead className="w-24 text-center text-white/80 font-semibold">
+                        CH TOTAL
+                      </TableHead>
+                      <TableHead className="w-28 text-center text-white/60">
+                        EFICÁCIA (+60d)
+                      </TableHead>
+                      <TableHead className="w-28 text-center text-white/60">STATUS EFIC.</TableHead>
+                      <TableHead className="w-24 text-right pr-4 text-white/60">AÇÕES</TableHead>
+                    </TableRow>
+                  </TableHeader>
 
-                        {/* CH (h) */}
-                        <TableCell className="text-center font-mono text-muted-foreground">
-                          {item.ch_hours !== undefined && item.ch_hours !== null
-                            ? `${item.ch_hours}h`
-                            : '—'}
-                        </TableCell>
-
-                        {/* PARTICIPANTES */}
-                        <TableCell className="text-center font-mono text-muted-foreground">
-                          {item.participants_count ?? '—'}
-                        </TableCell>
-
-                        {/* CH TOTAL */}
-                        <TableCell className="text-center font-mono font-bold text-white">
-                          {item.ch_total !== undefined && item.ch_total !== null
-                            ? `${item.ch_total}h`
-                            : '—'}
-                        </TableCell>
-
-                        {/* EFICÁCIA PREVISTO (+60 dias) */}
-                        <TableCell className="text-center whitespace-nowrap font-mono text-[11px] text-muted-foreground">
-                          {item.effectiveness_due_date
-                            ? new Date(item.effectiveness_due_date).toLocaleDateString('pt-BR')
-                            : '—'}
-                        </TableCell>
-
-                        {/* STATUS EFICÁCIA */}
-                        <TableCell className="text-center whitespace-nowrap">
-                          {item.effectiveness_status === 'OK' ? (
-                            <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px]">
-                              OK
-                            </Badge>
-                          ) : item.effectiveness_status === 'Atrasado' ? (
-                            <Badge className="bg-rose-500/10 text-rose-400 border border-rose-500/30 text-[10px]">
-                              Atrasado
-                            </Badge>
-                          ) : item.effectiveness_status === 'Pendente' ? (
-                            <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px]">
-                              Pendente
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-white/5 text-muted-foreground border border-white/10 text-[10px]">
-                              Não aplicável
-                            </Badge>
-                          )}
-                        </TableCell>
-
-                        {/* AÇÕES */}
-                        <TableCell className="text-right pr-4 whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {canEdit && (
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => {
-                                  setActionForAttendance(item)
-                                  setIsAttendanceModalOpen(true)
-                                }}
-                                className="h-7 px-2 text-[11px] bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
-                                title="Abrir Lista de Presença e Avaliação digital (FSGQ 7.2-3)"
-                              >
-                                Lista de Presença
-                              </Button>
-                            )}
-
-                            {canEdit && !isRealized && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setActionToRealize(item)
-                                  setIsRealizeModalOpen(true)
-                                }}
-                                className="h-7 px-2 text-[11px] border-white/10 text-muted-foreground hover:bg-white/10"
-                                title="Marcar realização rápida (data, CH e participantes)"
-                              >
-                                Realizar
-                              </Button>
-                            )}
-
-                            {canEdit && (
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => {
-                                  setActionToEdit(item)
-                                  setIsActionModalOpen(true)
-                                }}
-                                className="h-7 w-7 text-muted-foreground hover:text-white"
-                                title="Editar ação completa"
-                              >
-                                <Edit className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-
-                            {canDelete && (
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => handleDelete(item.id, item.action)}
-                                className="h-7 w-7 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
-                                title="Excluir ação"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-                          </div>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={18} className="text-center py-12 text-muted-foreground">
+                          Carregando plano de treinamentos...
                         </TableCell>
                       </TableRow>
-                    )
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                    ) : filteredActions.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={18} className="text-center py-12 text-muted-foreground">
+                          Nenhuma ação encontrada para os filtros selecionados.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredActions.map((item, index) => {
+                        const isRealized = !!item.realized_date
+                        const statusDays = item.status_days
+
+                        return (
+                          <TableRow
+                            key={item.id}
+                            className="border-white/5 hover:bg-white/5 text-xs transition-colors"
+                          >
+                            <TableCell className="text-center text-muted-foreground font-mono">
+                              {index + 1}
+                            </TableCell>
+
+                            {/* AÇÃO */}
+                            <TableCell className="font-medium text-white max-w-[300px]">
+                              <div className="font-semibold text-white/95 leading-tight">
+                                {item.action}
+                              </div>
+                              {item.notes && (
+                                <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                                  {item.notes}
+                                </p>
+                              )}
+                            </TableCell>
+
+                            {/* PERIODICIDADE */}
+                            <TableCell className="text-muted-foreground whitespace-nowrap">
+                              {item.periodicity}
+                            </TableCell>
+
+                            {/* RESPONSÁVEL */}
+                            <TableCell className="text-white/80 whitespace-nowrap font-medium">
+                              {item.responsible}
+                            </TableCell>
+
+                            {/* PÚBLICO-ALVO */}
+                            <TableCell className="text-muted-foreground whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/5 text-[11px]">
+                                {item.target_audience}
+                              </span>
+                            </TableCell>
+
+                            {/* ORIGEM */}
+                            <TableCell className="whitespace-nowrap">
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] ${
+                                  item.origin === 'Interno'
+                                    ? 'border-blue-500/30 text-blue-400 bg-blue-500/5'
+                                    : 'border-purple-500/30 text-purple-400 bg-purple-500/5'
+                                }`}
+                              >
+                                {item.origin}
+                              </Badge>
+                            </TableCell>
+
+                            {/* TIPO */}
+                            <TableCell className="text-muted-foreground text-[11px] max-w-[150px] truncate">
+                              {item.type}
+                            </TableCell>
+
+                            {/* COMPETÊNCIA */}
+                            <TableCell className="text-muted-foreground text-[11px] whitespace-nowrap">
+                              {item.competence_form}
+                            </TableCell>
+
+                            {/* PREVISTO */}
+                            <TableCell className="text-center whitespace-nowrap font-mono text-white/80">
+                              {item.planned_date
+                                ? new Date(item.planned_date).toLocaleDateString('pt-BR')
+                                : '—'}
+                            </TableCell>
+
+                            {/* REALIZADO */}
+                            <TableCell className="text-center whitespace-nowrap font-mono">
+                              {isRealized ? (
+                                <span className="text-emerald-400 font-semibold">
+                                  {new Date(item.realized_date!).toLocaleDateString('pt-BR')}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground text-[11px]">—</span>
+                              )}
+                            </TableCell>
+
+                            {/* STATUS (DIAS) */}
+                            <TableCell className="text-center whitespace-nowrap">
+                              {statusDays === 'OK' ? (
+                                <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px]">
+                                  OK
+                                </Badge>
+                              ) : statusDays === 'Atrasado' ? (
+                                <Badge className="bg-rose-500/10 text-rose-400 border border-rose-500/30 text-[10px]">
+                                  Atrasado
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px]">
+                                  Pendente
+                                </Badge>
+                              )}
+                            </TableCell>
+
+                            {/* LISTA DE PRESENÇA STATUS */}
+                            <TableCell className="text-center whitespace-nowrap">
+                              {(() => {
+                                const att = attendanceListsMap[item.id]
+                                if (!att) {
+                                  return (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-[10px] border-white/10 text-muted-foreground/60"
+                                    >
+                                      Sem lista
+                                    </Badge>
+                                  )
+                                }
+                                if (att.status === 'avaliacao_concluida') {
+                                  return (
+                                    <Badge className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                      Concluída
+                                    </Badge>
+                                  )
+                                }
+                                if (att.status === 'aguardando_avaliacao_eficacia') {
+                                  return (
+                                    <Badge className="text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                                      Eficácia Pend.
+                                    </Badge>
+                                  )
+                                }
+                                if (att.status === 'realizada') {
+                                  return (
+                                    <Badge className="text-[10px] bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                                      Realizada
+                                    </Badge>
+                                  )
+                                }
+                                return (
+                                  <Badge className="text-[10px] bg-white/10 text-muted-foreground border border-white/20">
+                                    Rascunho
+                                  </Badge>
+                                )
+                              })()}
+                            </TableCell>
+
+                            {/* REQUER EFICÁCIA? */}
+                            <TableCell className="text-center whitespace-nowrap text-muted-foreground">
+                              {item.requires_effectiveness_eval ? 'Sim' : 'Não'}
+                            </TableCell>
+
+                            {/* CH (h) */}
+                            <TableCell className="text-center font-mono text-muted-foreground">
+                              {item.ch_hours !== undefined && item.ch_hours !== null
+                                ? `${item.ch_hours}h`
+                                : '—'}
+                            </TableCell>
+
+                            {/* PARTICIPANTES */}
+                            <TableCell className="text-center font-mono text-muted-foreground">
+                              {item.participants_count ?? '—'}
+                            </TableCell>
+
+                            {/* CH TOTAL */}
+                            <TableCell className="text-center font-mono font-bold text-white">
+                              {item.ch_total !== undefined && item.ch_total !== null
+                                ? `${item.ch_total}h`
+                                : '—'}
+                            </TableCell>
+
+                            {/* EFICÁCIA PREVISTO (+60 dias) */}
+                            <TableCell className="text-center whitespace-nowrap font-mono text-[11px] text-muted-foreground">
+                              {item.effectiveness_due_date
+                                ? new Date(item.effectiveness_due_date).toLocaleDateString('pt-BR')
+                                : '—'}
+                            </TableCell>
+
+                            {/* STATUS EFICÁCIA */}
+                            <TableCell className="text-center whitespace-nowrap">
+                              {item.effectiveness_status === 'OK' ? (
+                                <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px]">
+                                  OK
+                                </Badge>
+                              ) : item.effectiveness_status === 'Atrasado' ? (
+                                <Badge className="bg-rose-500/10 text-rose-400 border border-rose-500/30 text-[10px]">
+                                  Atrasado
+                                </Badge>
+                              ) : item.effectiveness_status === 'Pendente' ? (
+                                <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px]">
+                                  Pendente
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-white/5 text-muted-foreground border border-white/10 text-[10px]">
+                                  Não aplicável
+                                </Badge>
+                              )}
+                            </TableCell>
+
+                            {/* AÇÕES */}
+                            <TableCell className="text-right pr-4 whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {canEdit && (
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => {
+                                      setActionForAttendance(item)
+                                      setIsAttendanceModalOpen(true)
+                                    }}
+                                    className="h-7 px-2 text-[11px] bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+                                    title="Abrir Lista de Presença e Avaliação digital (FSGQ 7.2-3)"
+                                  >
+                                    Lista de Presença
+                                  </Button>
+                                )}
+
+                                {canEdit && !isRealized && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setActionToRealize(item)
+                                      setIsRealizeModalOpen(true)
+                                    }}
+                                    className="h-7 px-2 text-[11px] border-white/10 text-muted-foreground hover:bg-white/10"
+                                    title="Marcar realização rápida (data, CH e participantes)"
+                                  >
+                                    Realizar
+                                  </Button>
+                                )}
+
+                                {canEdit && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setActionToEdit(item)
+                                      setIsActionModalOpen(true)
+                                    }}
+                                    className="h-7 w-7 text-muted-foreground hover:text-white"
+                                    title="Editar ação completa"
+                                  >
+                                    <Edit className="w-3.5 h-3.5" />
+                                  </Button>
+                                )}
+
+                                {canDelete && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => handleDelete(item.id, item.action)}
+                                    className="h-7 w-7 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                                    title="Excluir ação"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Import Dialog */}
       <TrainingImportDialog
