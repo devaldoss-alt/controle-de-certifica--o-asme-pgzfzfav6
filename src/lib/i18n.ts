@@ -13,6 +13,13 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'nav.qualifications': { pt: 'Qualificações', en: 'Qualifications' },
   'nav.logout': { pt: 'Sair', en: 'Logout' },
   'nav.mainMenu': { pt: 'Menu Principal', en: 'Main Menu' },
+  'nav.group.home': { pt: 'Início', en: 'Home' },
+  'nav.group.quality': { pt: 'Qualidade', en: 'Quality' },
+  'nav.group.operation': { pt: 'Operação', en: 'Operation' },
+  'nav.group.materials': { pt: 'Materiais', en: 'Materials' },
+  'nav.group.people': { pt: 'Pessoas', en: 'People' },
+  'nav.group.management': { pt: 'Gestão', en: 'Management' },
+  'nav.group.administration': { pt: 'Administração', en: 'Administration' },
 
   'page.checklists.title': { pt: 'Checklists Operacionais', en: 'Operational Checklists' },
   'page.checklists.desc': {

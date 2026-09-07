@@ -4,7 +4,7 @@ import { Menu, LogOut } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, LanguageToggle, useI18n } from '@/hooks/use-i18n'
-import { useNavLinks } from '@/hooks/use-nav-links'
+import { useNavGroups } from '@/hooks/use-nav-links'
 import { cn } from '@/lib/utils'
 
 const navLabelMap: Record<string, { pt: string; en: string }> = {
@@ -20,7 +20,7 @@ export function MobileNav() {
   const location = useLocation()
   const { lang } = useI18n()
   const [open, setOpen] = useState(false)
-  const links = useNavLinks()
+  const groups = useNavGroups()
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -43,37 +43,43 @@ export function MobileNav() {
           </span>
         </div>
 
-        <div className="p-4 flex-1 space-y-2 overflow-y-auto">
-          <div className="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wider px-2">
-            <BilingualText k="nav.mainMenu" />
-          </div>
-          {links.map((link) => {
-            const isActive = location.pathname === link.path
-            return (
-              <Link
-                key={link.path}
-                to={link.path}
-                onClick={() => setOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors font-medium text-sm',
-                  isActive
-                    ? 'bg-primary/10 text-primary border border-primary/20'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-white/5',
-                )}
-              >
-                <link.icon className="w-4 h-4 shrink-0" />
-                {link.name === 'nav.indicators' ? (
-                  <span>{lang === 'pt' ? 'Indicadores' : 'Indicators'}</span>
-                ) : navLabelMap[link.name] ? (
-                  <span>
-                    {lang === 'pt' ? navLabelMap[link.name].pt : navLabelMap[link.name].en}
-                  </span>
-                ) : (
-                  <BilingualText k={link.name} />
-                )}
-              </Link>
-            )
-          })}
+        <div className="p-4 flex-1 space-y-5 overflow-y-auto">
+          {groups.map((group) => (
+            <div key={group.id} className="space-y-1">
+              <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1">
+                <BilingualText k={group.titleKey} />
+              </div>
+              <div className="space-y-1">
+                {group.links.map((link) => {
+                  const isActive = location.pathname === link.path
+                  return (
+                    <Link
+                      key={link.path}
+                      to={link.path}
+                      onClick={() => setOpen(false)}
+                      className={cn(
+                        'flex items-center gap-3 px-3 py-2 rounded-md transition-colors font-medium text-sm',
+                        isActive
+                          ? 'bg-primary/10 text-primary border border-primary/20'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-white/5',
+                      )}
+                    >
+                      <link.icon className="w-4 h-4 shrink-0" />
+                      {link.name === 'nav.indicators' ? (
+                        <span>{lang === 'pt' ? 'Indicadores' : 'Indicators'}</span>
+                      ) : navLabelMap[link.name] ? (
+                        <span>
+                          {lang === 'pt' ? navLabelMap[link.name].pt : navLabelMap[link.name].en}
+                        </span>
+                      ) : (
+                        <BilingualText k={link.name} />
+                      )}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className="p-4 border-t border-white/5 space-y-2">

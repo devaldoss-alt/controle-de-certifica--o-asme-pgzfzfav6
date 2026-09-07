@@ -29,6 +29,12 @@ export interface NavLinkItem {
   module?: ModuleName
 }
 
+export interface NavGroup {
+  id: string
+  titleKey: string
+  links: NavLinkItem[]
+}
+
 /**
  * Maps a module_permissions.module value to the primary nav path(s) it gates.
  * Multiple paths can map to the same module (e.g. /documents and /master-list
@@ -58,39 +64,97 @@ const PATH_TO_MODULE: Record<string, ModuleName> = (() => {
   return m
 })()
 
-export function getNavLinks(role?: string): NavLinkItem[] {
-  const links: NavLinkItem[] = [
-    { name: 'nav.dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'nav.checklists', path: '/checklists', icon: CheckSquare, module: 'Checklists' },
+/**
+ * Returns navigation items organized in visual groups according to the user's role.
+ *
+ * Groups:
+ * 1. Início: Dashboard
+ * 2. Qualidade: Documentos, Lista Mestra, Checklists, Qualificações, Aprovações
+ * 3. Operação: Ordens de Serviço, PCP, Agenda, Romaneios
+ * 4. Materiais: Almoxarifado
+ * 5. Pessoas: Treinamentos, Equipe
+ * 6. Gestão: Indicadores, RNC, Notificações
+ * 7. Administração: Empresas, Controle de Acesso
+ */
+export function getNavGroups(role?: string): NavGroup[] {
+  const isManagerOrQccOrConsultor = role === 'Manager' || role === 'QCC' || role === 'Consultor'
+  const isManager = role === 'Manager'
+
+  const groups: NavGroup[] = [
     {
-      name: 'nav.serviceOrders',
-      path: '/service-orders',
-      icon: Briefcase,
-      module: 'Ordens de Serviço',
+      id: 'home',
+      titleKey: 'nav.group.home',
+      links: [{ name: 'nav.dashboard', path: '/', icon: LayoutDashboard }],
     },
-    { name: 'nav.packingSlips', path: '/packing-slips', icon: Truck, module: 'Romaneios' },
-    { name: 'nav.calendar', path: '/calendar', icon: Calendar, module: 'Agenda' },
-    { name: 'nav.documents', path: '/documents', icon: FileText, module: 'Documentos' },
-    { name: 'nav.masterList', path: '/master-list', icon: ListChecks, module: 'Documentos' },
-    { name: 'nav.rnc', path: '/rnc', icon: AlertTriangle, module: 'RNC' },
-    { name: 'nav.pcp', path: '/pcp', icon: Factory, module: 'PCP' },
-    { name: 'nav.inventory', path: '/inventory', icon: Boxes, module: 'Almoxarifado' },
-    { name: 'nav.trainings', path: '/trainings', icon: GraduationCap, module: 'Treinamentos' },
-    { name: 'nav.notifications', path: '/notifications', icon: Bell },
-    { name: 'nav.qualifications', path: '/qualifications', icon: Award },
-    { name: 'nav.indicators', path: '/indicators', icon: BarChart3, module: 'Indicadores' },
+    {
+      id: 'quality',
+      titleKey: 'nav.group.quality',
+      links: [
+        { name: 'nav.documents', path: '/documents', icon: FileText, module: 'Documentos' },
+        { name: 'nav.masterList', path: '/master-list', icon: ListChecks, module: 'Documentos' },
+        { name: 'nav.checklists', path: '/checklists', icon: CheckSquare, module: 'Checklists' },
+        { name: 'nav.qualifications', path: '/qualifications', icon: Award },
+        ...(isManagerOrQccOrConsultor
+          ? [{ name: 'nav.approvals', path: '/approvals', icon: ClipboardCheck }]
+          : []),
+      ],
+    },
+    {
+      id: 'operation',
+      titleKey: 'nav.group.operation',
+      links: [
+        {
+          name: 'nav.serviceOrders',
+          path: '/service-orders',
+          icon: Briefcase,
+          module: 'Ordens de Serviço',
+        },
+        { name: 'nav.pcp', path: '/pcp', icon: Factory, module: 'PCP' },
+        { name: 'nav.calendar', path: '/calendar', icon: Calendar, module: 'Agenda' },
+        { name: 'nav.packingSlips', path: '/packing-slips', icon: Truck, module: 'Romaneios' },
+      ],
+    },
+    {
+      id: 'materials',
+      titleKey: 'nav.group.materials',
+      links: [{ name: 'nav.inventory', path: '/inventory', icon: Boxes, module: 'Almoxarifado' }],
+    },
+    {
+      id: 'people',
+      titleKey: 'nav.group.people',
+      links: [
+        { name: 'nav.trainings', path: '/trainings', icon: GraduationCap, module: 'Treinamentos' },
+        ...(isManager ? [{ name: 'nav.team', path: '/team', icon: Users }] : []),
+      ],
+    },
+    {
+      id: 'management',
+      titleKey: 'nav.group.management',
+      links: [
+        { name: 'nav.indicators', path: '/indicators', icon: BarChart3, module: 'Indicadores' },
+        { name: 'nav.rnc', path: '/rnc', icon: AlertTriangle, module: 'RNC' },
+        { name: 'nav.notifications', path: '/notifications', icon: Bell },
+      ],
+    },
+    {
+      id: 'administration',
+      titleKey: 'nav.group.administration',
+      links: [
+        ...(isManager ? [{ name: 'nav.companies', path: '/companies', icon: Building2 }] : []),
+        ...(isManagerOrQccOrConsultor
+          ? [{ name: 'nav.accessControl', path: '/access-control', icon: ShieldCheck }]
+          : []),
+      ],
+    },
   ]
 
-  if (role === 'Manager' || role === 'QCC' || role === 'Consultor') {
-    links.push({ name: 'nav.approvals', path: '/approvals', icon: ClipboardCheck })
-    links.push({ name: 'nav.accessControl', path: '/access-control', icon: ShieldCheck })
-  }
-  if (role === 'Manager') {
-    links.push({ name: 'nav.companies', path: '/companies', icon: Building2 })
-    links.push({ name: 'nav.team', path: '/team', icon: Users })
-  }
+  // Filter out any groups that have no links configured for this role
+  return groups.filter((g) => g.links.length > 0)
+}
 
-  return links
+/** Flattened nav links preserving group order (backward compatibility) */
+export function getNavLinks(role?: string): NavLinkItem[] {
+  return getNavGroups(role).flatMap((group) => group.links)
 }
 
 /**
@@ -108,6 +172,28 @@ export function filterLinksByModules(
     if (!link.module) return true
     return allowedModules.has(link.module)
   })
+}
+
+/**
+ * Filters navigation groups by permissions:
+ * - Each link is checked via module_permissions (or role requirements)
+ * - Empty groups (where all items were filtered out) are removed to prevent orphan headers
+ */
+export function filterGroupsByModules(
+  groups: NavGroup[],
+  allowedModules: Set<ModuleName>,
+  role?: string,
+): NavGroup[] {
+  if (!role || role === 'Manager' || role === 'Director') {
+    return groups.filter((g) => g.links.length > 0)
+  }
+
+  return groups
+    .map((group) => ({
+      ...group,
+      links: filterLinksByModules(group.links, allowedModules, role),
+    }))
+    .filter((group) => group.links.length > 0)
 }
 
 export { MODULE_PATHS, PATH_TO_MODULE }

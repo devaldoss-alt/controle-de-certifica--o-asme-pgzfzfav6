@@ -1,11 +1,57 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { useCompany } from '@/hooks/use-company'
-import { filterLinksByModules, getNavLinks, type NavLinkItem } from '@/lib/nav-config'
+import {
+  filterGroupsByModules,
+  filterLinksByModules,
+  getNavGroups,
+  getNavLinks,
+  type NavGroup,
+  type NavLinkItem,
+} from '@/lib/nav-config'
 import { getAllowedModules, type ModuleName } from '@/services/module-permissions'
 
 /**
- * Returns the nav links the current user is allowed to see, filtered by
+ * Returns the nav groups the current user is allowed to see, grouped by section
+ * and filtered by module_permissions for the selected company + the user's role.
+ * Any group whose links are all hidden will be excluded (no orphan headers).
+ */
+export function useNavGroups(): NavGroup[] {
+  const { user } = useAuth()
+  const { selectedCompanyId } = useCompany()
+  const [allowedModules, setAllowedModules] = useState<Set<ModuleName>>(new Set())
+  const [ready, setReady] = useState(false)
+
+  const role = user?.role
+
+  useEffect(() => {
+    let cancelled = false
+    setReady(false)
+    getAllowedModules(role, selectedCompanyId)
+      .then((set) => {
+        if (!cancelled) {
+          setAllowedModules(set)
+          setReady(true)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setReady(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [role, selectedCompanyId])
+
+  const groups = useMemo(() => getNavGroups(role), [role])
+
+  if (!ready || !role || role === 'Manager' || role === 'Director') {
+    return groups
+  }
+  return filterGroupsByModules(groups, allowedModules, role)
+}
+
+/**
+ * Returns the flattened nav links the current user is allowed to see, filtered by
  * module_permissions for the selected company + the user's role.
  *
  * - Manager / Director always see every link (their permissions are implicit).
