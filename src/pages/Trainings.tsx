@@ -13,6 +13,8 @@ import {
 } from '@/services/trainings'
 import { TrainingImportDialog } from '@/components/TrainingImportDialog'
 import { TrainingActionDialog, TrainingRealizeDialog } from '@/components/TrainingActionDialog'
+import { TrainingAttendanceDialog } from '@/components/TrainingAttendanceDialog'
+import { getAttendanceLists, type TrainingAttendanceList } from '@/services/training-attendance'
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -78,8 +80,17 @@ export default function TrainingPage() {
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isActionModalOpen, setIsActionModalOpen] = useState(false)
   const [isRealizeModalOpen, setIsRealizeModalOpen] = useState(false)
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false)
   const [actionToEdit, setActionToEdit] = useState<TrainingPlanActionComputed | null>(null)
   const [actionToRealize, setActionToRealize] = useState<TrainingPlanActionComputed | null>(null)
+  const [actionForAttendance, setActionForAttendance] = useState<TrainingPlanActionComputed | null>(
+    null,
+  )
+
+  // Map of attendance lists per action ID for fast status badge rendering
+  const [attendanceListsMap, setAttendanceListsMap] = useState<
+    Record<string, TrainingAttendanceList>
+  >({})
 
   const isManagerOrDirector = user?.role === 'Manager' || user?.role === 'Director'
   const canEdit =
@@ -134,6 +145,16 @@ export default function TrainingPage() {
         statusDays: statusFilter !== 'all' ? statusFilter : undefined,
       })
       setActions(data)
+
+      // Also fetch attendance lists for this company to show visual status badges
+      const lists = await getAttendanceLists({ companyId: selectedCompanyId })
+      const map: Record<string, TrainingAttendanceList> = {}
+      lists.forEach((l) => {
+        if (l.training_plan_action && !map[l.training_plan_action]) {
+          map[l.training_plan_action] = l
+        }
+      })
+      setAttendanceListsMap(map)
     } catch (e) {
       console.error(e)
       toast({
@@ -160,6 +181,7 @@ export default function TrainingPage() {
 
   // Realtime subscription
   useRealtime('training_plan_actions', () => loadActions())
+  useRealtime('training_attendance_lists', () => loadActions())
 
   // Additional audience filter in memory
   const filteredActions = useMemo(() => {
@@ -537,6 +559,9 @@ export default function TrainingPage() {
                   <TableHead className="w-24 text-center text-white/80 font-semibold">
                     STATUS
                   </TableHead>
+                  <TableHead className="w-32 text-center text-white/80 font-semibold">
+                    LISTA PRESENÇA
+                  </TableHead>
                   <TableHead className="w-24 text-center text-white/60">EFICÁCIA?</TableHead>
                   <TableHead className="w-20 text-center text-white/60">CH (h)</TableHead>
                   <TableHead className="w-20 text-center text-white/60">PARTIC.</TableHead>
@@ -664,6 +689,49 @@ export default function TrainingPage() {
                           )}
                         </TableCell>
 
+                        {/* LISTA DE PRESENÇA STATUS */}
+                        <TableCell className="text-center whitespace-nowrap">
+                          {(() => {
+                            const att = attendanceListsMap[item.id]
+                            if (!att) {
+                              return (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] border-white/10 text-muted-foreground/60"
+                                >
+                                  Sem lista
+                                </Badge>
+                              )
+                            }
+                            if (att.status === 'avaliacao_concluida') {
+                              return (
+                                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                  Concluída
+                                </Badge>
+                              )
+                            }
+                            if (att.status === 'aguardando_avaliacao_eficacia') {
+                              return (
+                                <Badge className="text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                                  Eficácia Pend.
+                                </Badge>
+                              )
+                            }
+                            if (att.status === 'realizada') {
+                              return (
+                                <Badge className="text-[10px] bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                                  Realizada
+                                </Badge>
+                              )
+                            }
+                            return (
+                              <Badge className="text-[10px] bg-white/10 text-muted-foreground border border-white/20">
+                                Rascunho
+                              </Badge>
+                            )
+                          })()}
+                        </TableCell>
+
                         {/* REQUER EFICÁCIA? */}
                         <TableCell className="text-center whitespace-nowrap text-muted-foreground">
                           {item.requires_effectiveness_eval ? 'Sim' : 'Não'}
@@ -722,15 +790,30 @@ export default function TrainingPage() {
                             {canEdit && (
                               <Button
                                 size="sm"
+                                variant="default"
+                                onClick={() => {
+                                  setActionForAttendance(item)
+                                  setIsAttendanceModalOpen(true)
+                                }}
+                                className="h-7 px-2 text-[11px] bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+                                title="Abrir Lista de Presença e Avaliação digital (FSGQ 7.2-3)"
+                              >
+                                Lista de Presença
+                              </Button>
+                            )}
+
+                            {canEdit && !isRealized && (
+                              <Button
+                                size="sm"
                                 variant="outline"
                                 onClick={() => {
                                   setActionToRealize(item)
                                   setIsRealizeModalOpen(true)
                                 }}
-                                className="h-7 px-2 text-[11px] border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-                                title="Marcar realização (data, CH e participantes)"
+                                className="h-7 px-2 text-[11px] border-white/10 text-muted-foreground hover:bg-white/10"
+                                title="Marcar realização rápida (data, CH e participantes)"
                               >
-                                {isRealized ? 'Atualizar CH' : 'Realizar'}
+                                Realizar
                               </Button>
                             )}
 
@@ -798,6 +881,15 @@ export default function TrainingPage() {
         onOpenChange={setIsRealizeModalOpen}
         onSuccess={loadActions}
         action={actionToRealize}
+      />
+
+      {/* Full Digital Attendance List Dialog FSGQ 7.2-3 */}
+      <TrainingAttendanceDialog
+        open={isAttendanceModalOpen}
+        onOpenChange={setIsAttendanceModalOpen}
+        action={actionForAttendance}
+        companyId={selectedCompanyId}
+        onSuccess={loadActions}
       />
     </div>
   )

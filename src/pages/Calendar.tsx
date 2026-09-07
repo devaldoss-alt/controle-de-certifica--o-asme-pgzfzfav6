@@ -27,6 +27,7 @@ import {
   CheckSquare,
   Search,
   Filter,
+  GraduationCap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -63,6 +64,7 @@ export default function Calendar() {
   useRealtime('checklists', () => loadData())
   useRealtime('documents', () => loadData())
   useRealtime('service_orders', () => loadData())
+  useRealtime('training_attendance_lists', () => loadData())
 
   // Calendar calculations
   const year = currentDate.getFullYear()
@@ -225,6 +227,7 @@ export default function Calendar() {
                   {ev.type === 'document_review' && '📄 '}
                   {ev.type === 'os_deadline' && '🛠 '}
                   {ev.type === 'packing_slip' && '📦 '}
+                  {ev.type === 'training_effectiveness' && '🎓 '}
                   {ev.title}
                 </div>
               )
@@ -397,6 +400,19 @@ export default function Calendar() {
             <Clock className="w-3.5 h-3.5 mr-1" />
             {lang === 'pt' ? 'Romaneios' : 'Packing Slips'}
           </Button>
+          <Button
+            variant={typeFilter === 'training_effectiveness' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setTypeFilter('training_effectiveness')}
+            className={
+              typeFilter === 'training_effectiveness'
+                ? 'bg-teal-600 text-white'
+                : 'border-white/10 text-muted-foreground'
+            }
+          >
+            <GraduationCap className="w-3.5 h-3.5 mr-1" />
+            {lang === 'pt' ? 'Eficácia Treinamento' : 'Training Effectiveness'}
+          </Button>
         </div>
 
         <div className="relative w-full sm:w-72">
@@ -469,6 +485,9 @@ export default function Calendar() {
                     )}
                     {ev.type === 'os_deadline' && (
                       <Briefcase className="w-4 h-4 text-amber-400 shrink-0" />
+                    )}
+                    {ev.type === 'training_effectiveness' && (
+                      <GraduationCap className="w-4 h-4 text-teal-400 shrink-0" />
                     )}
                     <span className="font-semibold text-sm text-white">{ev.title}</span>
                   </div>

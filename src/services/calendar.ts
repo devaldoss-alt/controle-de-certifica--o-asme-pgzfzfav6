@@ -23,14 +23,14 @@ const toDateKey = (value?: string): string => {
 export interface CalendarEvent {
   id: string
   title: string
-  type: 'checklist' | 'document_review' | 'os_deadline' | 'packing_slip'
+  type: 'checklist' | 'document_review' | 'os_deadline' | 'packing_slip' | 'training_effectiveness'
   date: string // YYYY-MM-DD
   status: 'completed' | 'pending' | 'overdue' | 'upcoming'
   priority?: 'high' | 'medium' | 'low'
   role?: string
   sector?: string
   assignedUser?: string
-  originalItem: Checklist | DocumentRecord | ServiceOrder | PackingSlip
+  originalItem: Checklist | DocumentRecord | ServiceOrder | PackingSlip | any
 }
 
 export const getCalendarEvents = async (
@@ -152,6 +152,51 @@ export const getCalendarEvents = async (
         sector: ps.sector || 'Expedição/Almoxarifado',
         assignedUser: ps.delivery_responsible || (ps.expand?.responsible_id as any)?.name,
         originalItem: ps,
+      })
+    })
+
+    // 5. Fetch Training Attendance Lists with scheduled effectiveness evaluation (+60 days)
+    const attendanceFilterParts: string[] = [
+      'programar_na_agenda = true',
+      'avaliacao_eficacia_prevista != null',
+    ]
+    if (companyId && companyId !== 'all') {
+      attendanceFilterParts.push(`company_id = "${companyId}"`)
+    }
+    const attendanceLists = await pb
+      .collection('training_attendance_lists')
+      .getFullList({
+        filter: attendanceFilterParts.join(' && '),
+        expand: 'company_id,training_plan_action',
+      })
+      .catch(() => [])
+
+    attendanceLists.forEach((al: any) => {
+      const dateKey = toDateKey(al.avaliacao_eficacia_prevista)
+      if (!dateKey) return
+      const isDone = al.status === 'avaliacao_concluida'
+      let status: CalendarEvent['status'] = isDone ? 'completed' : 'pending'
+
+      if (!isDone) {
+        const diffDays = daysFromToday(al.avaliacao_eficacia_prevista)
+        if (diffDays < 0) {
+          status = 'overdue'
+        } else if (diffDays <= 7) {
+          status = 'upcoming'
+        }
+      }
+
+      const compName = al.expand?.company_id?.name || ''
+      events.push({
+        id: `tal_${al.id}`,
+        title: `Avaliação de Eficácia — ${al.tema}${compName ? ` — ${compName}` : ''}`,
+        type: 'training_effectiveness',
+        date: dateKey,
+        status,
+        sector: 'Treinamentos / Qualidade',
+        assignedUser:
+          al.instrutor_instituicao || (al.expand?.training_plan_action as any)?.responsible,
+        originalItem: al,
       })
     })
   } catch (e) {

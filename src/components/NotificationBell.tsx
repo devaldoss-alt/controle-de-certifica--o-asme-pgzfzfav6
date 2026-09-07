@@ -46,11 +46,25 @@ export function NotificationBell() {
     }
 
     if (notification.type === 'deadline_alert') {
-      navigate('/service-orders')
-    } else if (user?.role === 'Manager' || user?.role === 'QCC') {
-      navigate(`/approvals?checklistId=${notification.checklist_id}`)
+      if (notification.checklist_id) {
+        navigate(
+          user?.role === 'Manager' || user?.role === 'QCC'
+            ? `/approvals?checklistId=${notification.checklist_id}`
+            : `/checklists?checklistId=${notification.checklist_id}`,
+        )
+      } else if (notification.service_order_id) {
+        navigate('/service-orders')
+      } else {
+        navigate('/trainings')
+      }
+    } else if (notification.checklist_id) {
+      if (user?.role === 'Manager' || user?.role === 'QCC') {
+        navigate(`/approvals?checklistId=${notification.checklist_id}`)
+      } else {
+        navigate(`/checklists?checklistId=${notification.checklist_id}`)
+      }
     } else {
-      navigate(`/checklists?checklistId=${notification.checklist_id}`)
+      navigate('/trainings')
     }
   }
 

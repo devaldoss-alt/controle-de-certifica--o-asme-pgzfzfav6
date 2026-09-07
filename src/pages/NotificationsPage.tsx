@@ -59,10 +59,25 @@ export default function NotificationsPage() {
       markAsRead(n.id)
       setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))
     }
-    if (n.type === 'deadline_alert') navigate('/service-orders')
-    else if (user?.role === 'Manager' || user?.role === 'QCC')
-      navigate(`/approvals?checklistId=${n.checklist_id}`)
-    else navigate(`/checklists?checklistId=${n.checklist_id}`)
+    if (n.type === 'deadline_alert') {
+      if (n.checklist_id) {
+        navigate(
+          user?.role === 'Manager' || user?.role === 'QCC'
+            ? `/approvals?checklistId=${n.checklist_id}`
+            : `/checklists?checklistId=${n.checklist_id}`,
+        )
+      } else if (n.service_order_id) {
+        navigate('/service-orders')
+      } else {
+        navigate('/trainings')
+      }
+    } else if (n.checklist_id) {
+      if (user?.role === 'Manager' || user?.role === 'QCC')
+        navigate(`/approvals?checklistId=${n.checklist_id}`)
+      else navigate(`/checklists?checklistId=${n.checklist_id}`)
+    } else {
+      navigate('/trainings')
+    }
   }
 
   const markAllRead = () => {
