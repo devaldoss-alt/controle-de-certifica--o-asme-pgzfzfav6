@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-07T22:41:25.389Z",
+  "generatedAt": "2026-09-08T16:41:17.206Z",
   "collections": [
     {
       "name": "users",
@@ -2290,6 +2290,289 @@
         "CREATE INDEX idx_tee_attendance ON training_effectiveness_evaluations (attendance_list)",
         "CREATE INDEX idx_tee_participant ON training_effectiveness_evaluations (participant)",
         "CREATE INDEX idx_tee_data ON training_effectiveness_evaluations (data_avaliacao)"
+      ]
+    },
+    {
+      "name": "material_requisitions",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "item_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "inventory_items"
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "quantity",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "os_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "service_orders"
+        },
+        {
+          "name": "requester_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "team"
+        },
+        {
+          "name": "requester_name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "requester_role",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "requester_company",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tool_equipment",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "requisition_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["pendente", "em_separacao", "retirado", "cancelado"]
+        },
+        {
+          "name": "separated_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "separated_by_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "confirmation_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cancel_reason",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_matreq_company ON material_requisitions (company_id)",
+        "CREATE INDEX idx_matreq_item ON material_requisitions (item_id)",
+        "CREATE INDEX idx_matreq_status ON material_requisitions (status)",
+        "CREATE INDEX idx_matreq_os ON material_requisitions (os_id)",
+        "CREATE INDEX idx_matreq_created ON material_requisitions (created)"
+      ]
+    },
+    {
+      "name": "purchase_requests",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "item_description",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "item_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "inventory_items"
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "quantity",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "unit",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "os_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "service_orders"
+        },
+        {
+          "name": "requester_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "team"
+        },
+        {
+          "name": "requester_name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "requester_role",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "requester_company",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["pendente", "cotado", "comprado", "recebido", "cancelado"]
+        },
+        {
+          "name": "supplier",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "estimated_unit_price",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "received_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "received_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "received_by_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cancel_reason",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_purreq_company ON purchase_requests (company_id)",
+        "CREATE INDEX idx_purreq_status ON purchase_requests (status)",
+        "CREATE INDEX idx_purreq_os ON purchase_requests (os_id)",
+        "CREATE INDEX idx_purreq_created ON purchase_requests (created)"
       ]
     }
   ]

@@ -13,18 +13,34 @@ import {
   generateTrackingCode,
   type InventoryItem,
   type InventoryCategory,
-  type InventoryLocation,
   type MovementType,
 } from '@/services/inventory'
 import { getCompanies, type Company } from '@/services/companies'
 import { getServiceOrders, type ServiceOrder } from '@/services/service-orders'
+import { getTeamMembers, type TeamMember } from '@/services/team'
+import {
+  getMaterialRequisitions,
+  getPurchaseRequests,
+  getItemPendingTotals,
+  computeWarehouseIndicators,
+  recalculateWarehouseIndicators,
+  type MaterialRequisition,
+  type PurchaseRequest,
+  type WarehouseIndicatorsSummary,
+} from '@/services/warehouse-phase2'
+
 import { InventoryImportDialog } from '@/components/InventoryImportDialog'
+import { TouchOrderForm } from '@/components/TouchOrderForm'
+import { WarehouseRequisitionsTab } from '@/components/WarehouseRequisitionsTab'
+import { SuppliesPurchasesTab } from '@/components/SuppliesPurchasesTab'
+import { WarehouseIndicatorsTab } from '@/components/WarehouseIndicatorsTab'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Select,
   SelectContent,
@@ -73,6 +89,10 @@ import {
   Edit,
   History,
   XCircle,
+  Sparkles,
+  ShoppingCart,
+  BarChart3,
+  Tablet,
 } from 'lucide-react'
 import { getStockMovements, type StockMovement } from '@/services/inventory'
 
@@ -90,12 +110,30 @@ export default function InventoryPage() {
   const { selectedCompanyId, companies: contextCompanies } = useCompany()
   const { toast } = useToast()
 
+  // Tab State
+  const [activeTab, setActiveTab] = useState<
+    'catalog' | 'touch' | 'requisitions' | 'supplies' | 'indicators'
+  >('catalog')
+
+  // Data states
   const [items, setItems] = useState<InventoryItem[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([])
-  const [loading, setLoading] = useState(true)
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [requisitions, setRequisitions] = useState<MaterialRequisition[]>([])
+  const [purchases, setPurchases] = useState<PurchaseRequest[]>([])
+  const [pendingWithdrawalsByItem, setPendingWithdrawalsByItem] = useState<Record<string, number>>(
+    {},
+  )
+  const [pendingPurchasesByItem, setPendingPurchasesByItem] = useState<Record<string, number>>({})
+  const [indicatorsSummary, setIndicatorsSummary] = useState<WarehouseIndicatorsSummary | null>(
+    null,
+  )
 
-  // Filters
+  const [loading, setLoading] = useState(true)
+  const [isRecalculating, setIsRecalculating] = useState(false)
+
+  // Filters for catalog tab
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -156,25 +194,49 @@ export default function InventoryPage() {
     user?.role === 'Supervisor' ||
     user?.role === 'Apontador'
 
+  const effectiveCompanyId =
+    selectedCompanyId && selectedCompanyId !== 'all' ? selectedCompanyId : companies[0]?.id || ''
+
+  const currentCompanyName = useMemo(() => {
+    return (
+      companies.find((c) => c.id === effectiveCompanyId)?.name ||
+      contextCompanies.find((c) => c.id === effectiveCompanyId)?.name ||
+      'PSC'
+    )
+  }, [companies, contextCompanies, effectiveCompanyId])
+
   const loadData = async () => {
     try {
       setLoading(true)
-      const [itemList, compList, soList] = await Promise.all([
-        getInventoryItems({
-          companyId: selectedCompanyId,
-          search,
-          category: categoryFilter,
-          status: statusFilter,
-          lowStockOnly: lowStockFilter,
-        }),
-        getCompanies(),
-        getServiceOrders(selectedCompanyId),
-      ])
+      const [itemList, compList, soList, teamList, reqList, purList, pendingTotals, indSummary] =
+        await Promise.all([
+          getInventoryItems({
+            companyId: selectedCompanyId,
+            search,
+            category: categoryFilter,
+            status: statusFilter,
+            lowStockOnly: lowStockFilter,
+          }),
+          getCompanies(),
+          getServiceOrders(selectedCompanyId),
+          getTeamMembers({ companyId: selectedCompanyId }),
+          getMaterialRequisitions({ companyId: selectedCompanyId }),
+          getPurchaseRequests({ companyId: selectedCompanyId }),
+          getItemPendingTotals(effectiveCompanyId),
+          computeWarehouseIndicators(effectiveCompanyId),
+        ])
+
       setItems(itemList)
       setCompanies(compList)
       setServiceOrders(soList)
+      setTeamMembers(teamList)
+      setRequisitions(reqList)
+      setPurchases(purList)
+      setPendingWithdrawalsByItem(pendingTotals.pendingWithdrawalsByItem)
+      setPendingPurchasesByItem(pendingTotals.pendingPurchasesByItem)
+      setIndicatorsSummary(indSummary)
     } catch (e) {
-      console.error('Error loading inventory:', e)
+      console.error('Error loading inventory data:', e)
       toast({
         title: 'Erro ao carregar dados do almoxarifado',
         variant: 'destructive',
@@ -188,14 +250,18 @@ export default function InventoryPage() {
     loadData()
   }, [selectedCompanyId, search, categoryFilter, statusFilter, lowStockFilter])
 
+  // Realtime subscriptions
   useRealtime('inventory_items', () => loadData())
+  useRealtime('material_requisitions', () => loadData())
+  useRealtime('purchase_requests', () => loadData())
   useRealtime('stock_movements', () => {
     if (isHistoryOpen && selectedItem) {
       loadHistory(selectedItem.id)
     }
+    loadData()
   })
 
-  // Metrics
+  // Metrics for catalog
   const metrics = useMemo(() => {
     const totalItems = items.length
     const lowStockCount = items.filter(
@@ -214,6 +280,37 @@ export default function InventoryPage() {
     )
     return { totalItems, lowStockCount, pendingCQCount, controlledCount, totalValue }
   }, [items])
+
+  const pendingRequisitionsCount = useMemo(() => {
+    return requisitions.filter((r) => r.status === 'pendente').length
+  }, [requisitions])
+
+  const pendingPurchasesCount = useMemo(() => {
+    return purchases.filter((p) => p.status === 'pendente' || p.status === 'cotado').length
+  }, [purchases])
+
+  const handleRecalculateIndicators = async () => {
+    if (!effectiveCompanyId) return
+    try {
+      setIsRecalculating(true)
+      const res = await recalculateWarehouseIndicators({ companyId: effectiveCompanyId })
+      if (res) {
+        setIndicatorsSummary(res)
+        toast({
+          title: 'Indicadores atualizados com sucesso',
+          description: 'Sincronizados com a matriz de indicadores da empresa.',
+        })
+      }
+    } catch (e: any) {
+      toast({
+        title: 'Erro ao recalcular indicadores',
+        description: e?.message,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsRecalculating(false)
+    }
+  }
 
   const handleOpenItemForm = (item?: InventoryItem) => {
     if (item) {
@@ -412,11 +509,11 @@ export default function InventoryPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Boxes className="w-7 h-7 text-primary" /> Almoxarifado e Estoque
+            <Boxes className="w-7 h-7 text-primary" /> Almoxarifado & Estoque
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Gestão física de materiais, rastreabilidade por empresa e inspeção do Controle de
-            Qualidade (CQ).
+            Gestão física, modo touch para chão de fábrica, requisição com trava CQ e controle de
+            estoque mínimo inteligente.
           </p>
         </div>
 
@@ -424,14 +521,14 @@ export default function InventoryPage() {
           <Button
             variant="outline"
             onClick={() => setIsImportOpen(true)}
-            className="border-white/10 hover:bg-white/10 text-white gap-1.5"
+            className="border-white/10 hover:bg-white/10 text-white gap-1.5 text-xs sm:text-sm"
           >
             <Upload className="w-4 h-4" /> Importar Planilha
           </Button>
           {canEdit && (
             <Button
               onClick={() => handleOpenItemForm()}
-              className="bg-primary hover:bg-primary/90 text-white gap-1.5"
+              className="bg-primary hover:bg-primary/90 text-white gap-1.5 text-xs sm:text-sm"
             >
               <Plus className="w-4 h-4" /> Novo Item
             </Button>
@@ -439,416 +536,517 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-card border-white/10">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Itens em Catálogo</p>
-              <p className="text-2xl font-bold text-white mt-1">{metrics.totalItems}</p>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <Package className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
+      {/* Navigation Tabs (Fase 1 + Fase 2) */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(v: any) => setActiveTab(v)}
+        className="w-full space-y-4"
+      >
+        <TabsList className="bg-card border border-white/10 p-1 w-full justify-start overflow-x-auto flex-nowrap h-auto gap-1">
+          <TabsTrigger
+            value="catalog"
+            className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs sm:text-sm py-2 px-3 sm:px-4 gap-1.5 shrink-0"
+          >
+            <Package className="w-4 h-4" />
+            Catálogo & Saldo
+          </TabsTrigger>
 
-        <Card
-          className={`border-white/10 ${
-            metrics.lowStockCount > 0 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-card'
-          }`}
-        >
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Estoque Baixo / Mínimo</p>
-              <p
-                className={`text-2xl font-bold mt-1 ${
-                  metrics.lowStockCount > 0 ? 'text-amber-400' : 'text-white'
-                }`}
-              >
-                {metrics.lowStockCount}
-              </p>
-            </div>
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                metrics.lowStockCount > 0
-                  ? 'bg-amber-500/20 text-amber-400'
-                  : 'bg-white/5 text-muted-foreground'
-              }`}
-            >
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
+          <TabsTrigger
+            value="touch"
+            className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs sm:text-sm py-2 px-3 sm:px-4 gap-1.5 shrink-0"
+          >
+            <Tablet className="w-4 h-4 text-amber-300" />
+            Modo Touch (Solicitação)
+          </TabsTrigger>
 
-        <Card
-          className={`border-white/10 ${
-            metrics.pendingCQCount > 0 ? 'bg-blue-500/10 border-blue-500/30' : 'bg-card'
-          }`}
-        >
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Aguardando Inspeção CQ</p>
-              <p
-                className={`text-2xl font-bold mt-1 ${
-                  metrics.pendingCQCount > 0 ? 'text-blue-400' : 'text-white'
-                }`}
-              >
-                {metrics.pendingCQCount}
-              </p>
-            </div>
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                metrics.pendingCQCount > 0
-                  ? 'bg-blue-500/20 text-blue-400'
-                  : 'bg-white/5 text-muted-foreground'
-              }`}
-            >
-              <ShieldAlert className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-white/10">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Itens Controlados</p>
-              <p className="text-2xl font-bold text-white mt-1">{metrics.controlledCount}</p>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <Card className="bg-card border-white/10">
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div className="relative md:col-span-2">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por descrição, rastreio (ex: PSC-EST-000001) ou fornecedor..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-black/20 border-white/10 text-white placeholder:text-muted-foreground"
-              />
-            </div>
-
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="bg-black/20 border-white/10 text-white">
-                <SelectValue placeholder="Categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as Categorias</SelectItem>
-                {CATEGORIES.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="bg-black/20 border-white/10 text-white">
-                <SelectValue placeholder="Status CQ" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Status da Inspeção (Todos)</SelectItem>
-                <SelectItem value="Aguardando inspeção">Aguardando inspeção</SelectItem>
-                <SelectItem value="Liberado">Liberado CQ</SelectItem>
-                <SelectItem value="Rejeitado">Rejeitado</SelectItem>
-                <SelectItem value="Não aplicável">Não aplicável</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="mt-3 flex items-center gap-2">
-            <Button
-              variant={lowStockFilter ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setLowStockFilter(!lowStockFilter)}
-              className={`text-xs gap-1.5 ${
-                lowStockFilter
-                  ? 'bg-amber-500 hover:bg-amber-600 text-black font-medium'
-                  : 'border-white/10 text-muted-foreground hover:text-white'
-              }`}
-            >
-              <AlertTriangle className="w-3.5 h-3.5" />
-              Apenas Itens com Estoque Baixo / Mínimo
-            </Button>
-
-            {selectedCompanyId === 'all' && (
-              <Badge variant="outline" className="text-xs text-white/60 border-white/10">
-                <Building2 className="w-3 h-3 mr-1" /> Visão Consolidada (Todas as Empresas)
+          <TabsTrigger
+            value="requisitions"
+            className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs sm:text-sm py-2 px-3 sm:px-4 gap-1.5 shrink-0 relative"
+          >
+            <Layers className="w-4 h-4" />
+            Atendimento Almoxarifado
+            {pendingRequisitionsCount > 0 && (
+              <Badge className="ml-1 px-1.5 py-0 text-[10px] bg-amber-500 text-black font-bold h-4">
+                {pendingRequisitionsCount}
               </Badge>
             )}
+          </TabsTrigger>
+
+          <TabsTrigger
+            value="supplies"
+            className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs sm:text-sm py-2 px-3 sm:px-4 gap-1.5 shrink-0"
+          >
+            <ShoppingCart className="w-4 h-4" />
+            Suprimentos & Compras
+            {pendingPurchasesCount > 0 && (
+              <Badge className="ml-1 px-1.5 py-0 text-[10px] bg-blue-500 text-white font-bold h-4">
+                {pendingPurchasesCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+
+          <TabsTrigger
+            value="indicators"
+            className="data-[state=active]:bg-primary data-[state=active]:text-white text-xs sm:text-sm py-2 px-3 sm:px-4 gap-1.5 shrink-0"
+          >
+            <BarChart3 className="w-4 h-4" />
+            Indicadores & Estoque Mínimo
+          </TabsTrigger>
+        </TabsList>
+
+        {/* TAB 1: CATALOG & INVENTORY (Fase 1 original mantida) */}
+        <TabsContent value="catalog" className="space-y-4 m-0">
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="bg-card border-white/10">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Itens em Catálogo</p>
+                  <p className="text-2xl font-bold text-white mt-1">{metrics.totalItems}</p>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <Package className="w-5 h-5" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card
+              className={`border-white/10 ${
+                metrics.lowStockCount > 0 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-card'
+              }`}
+            >
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Estoque Baixo / Mínimo</p>
+                  <p
+                    className={`text-2xl font-bold mt-1 ${
+                      metrics.lowStockCount > 0 ? 'text-amber-400' : 'text-white'
+                    }`}
+                  >
+                    {metrics.lowStockCount}
+                  </p>
+                </div>
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    metrics.lowStockCount > 0
+                      ? 'bg-amber-500/20 text-amber-400'
+                      : 'bg-white/5 text-muted-foreground'
+                  }`}
+                >
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card
+              className={`border-white/10 ${
+                metrics.pendingCQCount > 0 ? 'bg-blue-500/10 border-blue-500/30' : 'bg-card'
+              }`}
+            >
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Aguardando CQ</p>
+                  <p
+                    className={`text-2xl font-bold mt-1 ${
+                      metrics.pendingCQCount > 0 ? 'text-blue-400' : 'text-white'
+                    }`}
+                  >
+                    {metrics.pendingCQCount}
+                  </p>
+                </div>
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    metrics.pendingCQCount > 0
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : 'bg-white/5 text-muted-foreground'
+                  }`}
+                >
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card border-white/10">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Itens Controlados</p>
+                  <p className="text-2xl font-bold text-white mt-1">{metrics.controlledCount}</p>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Main Inventory Items Table */}
-      <Card className="bg-card border-white/10">
-        <CardHeader className="p-4 border-b border-white/10 flex flex-row items-center justify-between">
-          <CardTitle className="text-base text-white font-medium flex items-center gap-2">
-            <Layers className="w-4 h-4 text-primary" />
-            Catálogo de Itens ({items.length})
-          </CardTitle>
-          <span className="text-xs text-muted-foreground">
-            Empresa atual:{' '}
-            <strong className="text-white">
-              {companies.find((c) => c.id === selectedCompanyId)?.name || 'Todas'}
-            </strong>
-          </span>
-        </CardHeader>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="p-12 text-center text-muted-foreground text-sm">
-              Carregando itens do almoxarifado...
-            </div>
-          ) : items.length === 0 ? (
-            <div className="p-12 text-center space-y-3">
-              <Package className="w-12 h-12 text-muted-foreground/40 mx-auto" />
-              <p className="text-white font-medium">Nenhum item cadastrado no almoxarifado</p>
-              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                Utilize o botão &quot;Importar Planilha&quot; para carregar os registros da empresa
-                ou adicione um novo item manualmente.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsImportOpen(true)}
-                className="border-white/10 text-white gap-1.5"
-              >
-                <Upload className="w-3.5 h-3.5" /> Importar Planilha Agora
-              </Button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-white/10 bg-white/5">
-                    <TableHead className="text-xs text-white/70">Rastreio</TableHead>
-                    <TableHead className="text-xs text-white/70">Descrição</TableHead>
-                    <TableHead className="text-xs text-white/70">Categoria</TableHead>
-                    <TableHead className="text-xs text-white/70">Localização</TableHead>
-                    <TableHead className="text-xs text-white/70 text-right">Saldo Atual</TableHead>
-                    <TableHead className="text-xs text-white/70 text-right">Est. Mín.</TableHead>
-                    <TableHead className="text-xs text-white/70">Inspeção CQ</TableHead>
-                    <TableHead className="text-xs text-white/70">Atributos</TableHead>
-                    <TableHead className="text-xs text-white/70 text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((item) => {
-                    const isLowStock =
-                      item.minimum_stock !== undefined &&
-                      item.minimum_stock !== null &&
-                      (item.current_stock ?? 0) <= item.minimum_stock
-                    const isPendingCQ =
-                      item.requires_cq_inspection &&
-                      item.inspection_status === 'Aguardando inspeção'
+          {/* Filter and Search Bar */}
+          <Card className="bg-card border-white/10">
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="relative md:col-span-2">
+                  <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por descrição, rastreio (ex: PSC-EST-000001) ou fornecedor..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 bg-black/20 border-white/10 text-white placeholder:text-muted-foreground"
+                  />
+                </div>
 
-                    return (
-                      <TableRow
-                        key={item.id}
-                        className={`border-white/5 hover:bg-white/[0.02] ${
-                          isLowStock ? 'bg-amber-500/[0.03]' : ''
-                        }`}
-                      >
-                        {/* Tracking Code */}
-                        <TableCell className="text-xs font-mono text-primary font-medium py-3">
-                          {item.tracking_code || '—'}
-                        </TableCell>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="bg-black/20 border-white/10 text-white">
+                    <SelectValue placeholder="Categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as Categorias</SelectItem>
+                    {CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-                        {/* Description */}
-                        <TableCell className="text-xs text-white py-3">
-                          <div className="font-medium">{item.description}</div>
-                          {item.supplier && (
-                            <div className="text-[11px] text-muted-foreground">
-                              Fornec: {item.supplier}
-                            </div>
-                          )}
-                          {item.notes && (
-                            <div className="text-[10px] text-muted-foreground/70 italic line-clamp-1">
-                              {item.notes}
-                            </div>
-                          )}
-                        </TableCell>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="bg-black/20 border-white/10 text-white">
+                    <SelectValue placeholder="Status CQ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Status da Inspeção (Todos)</SelectItem>
+                    <SelectItem value="Aguardando inspeção">Aguardando inspeção</SelectItem>
+                    <SelectItem value="Liberado">Liberado CQ</SelectItem>
+                    <SelectItem value="Rejeitado">Rejeitado</SelectItem>
+                    <SelectItem value="Não aplicável">Não aplicável</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                        {/* Category */}
-                        <TableCell className="text-xs text-muted-foreground py-3">
-                          <Badge
-                            variant="outline"
-                            className="border-white/10 text-white/80 font-normal"
-                          >
-                            {item.category}
-                          </Badge>
-                        </TableCell>
+              <div className="mt-3 flex items-center gap-2">
+                <Button
+                  variant={lowStockFilter ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setLowStockFilter(!lowStockFilter)}
+                  className={`text-xs gap-1.5 ${
+                    lowStockFilter
+                      ? 'bg-amber-500 hover:bg-amber-600 text-black font-medium'
+                      : 'border-white/10 text-muted-foreground hover:text-white'
+                  }`}
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Apenas Itens com Estoque Baixo / Mínimo
+                </Button>
 
-                        {/* Location */}
-                        <TableCell className="text-xs text-muted-foreground py-3">
-                          {item.location || 'Almoxarifado'}
-                        </TableCell>
+                {selectedCompanyId === 'all' && (
+                  <Badge variant="outline" className="text-xs text-white/60 border-white/10">
+                    <Building2 className="w-3 h-3 mr-1" /> Visão Consolidada (Todas as Empresas)
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-                        {/* Current Stock */}
-                        <TableCell className="text-xs text-right py-3">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <span
-                              className={`font-semibold text-sm ${
-                                isLowStock ? 'text-amber-400 flex items-center gap-1' : 'text-white'
-                              }`}
-                            >
-                              {isLowStock && (
-                                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                              )}
-                              {item.current_stock ?? 0}
-                            </span>
-                            <span className="text-[11px] text-muted-foreground font-mono">
-                              {item.unit}
-                            </span>
-                          </div>
-                        </TableCell>
-
-                        {/* Minimum Stock */}
-                        <TableCell className="text-xs text-right text-muted-foreground py-3">
-                          {item.minimum_stock !== undefined && item.minimum_stock !== null
-                            ? `${item.minimum_stock} ${item.unit}`
-                            : '—'}
-                        </TableCell>
-
-                        {/* CQ Inspection Status */}
-                        <TableCell className="text-xs py-3">
-                          {!item.requires_cq_inspection ? (
-                            <span className="text-[11px] text-muted-foreground">Dispensada</span>
-                          ) : item.inspection_status === 'Liberado' ? (
-                            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 gap-1 text-[11px]">
-                              <CheckCircle2 className="w-3 h-3" /> Liberado CQ
-                            </Badge>
-                          ) : item.inspection_status === 'Rejeitado' ? (
-                            <Badge className="bg-rose-500/20 text-rose-400 border-rose-500/30 gap-1 text-[11px]">
-                              <XCircle className="w-3 h-3" /> Rejeitado
-                            </Badge>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
-                              <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 gap-1 text-[11px]">
-                                <Clock className="w-3 h-3" /> Aguardando CQ
-                              </Badge>
-                              {isQCC && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleOpenCQDialog(item)}
-                                  className="h-6 px-1.5 text-[10px] bg-primary/20 hover:bg-primary/30 text-primary border-primary/40"
-                                >
-                                  Liberar
-                                </Button>
-                              )}
-                            </div>
-                          )}
-                        </TableCell>
-
-                        {/* Badges / Flags */}
-                        <TableCell className="text-xs py-3">
-                          <div className="flex flex-wrap gap-1">
-                            {item.is_controlled && (
-                              <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-[10px]">
-                                Controlado
-                              </Badge>
-                            )}
-                            {item.is_consigned && (
-                              <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-[10px]">
-                                Consignado
-                              </Badge>
-                            )}
-                            {item.os_id && (
-                              <Badge className="bg-white/10 text-white/80 border-white/20 text-[10px]">
-                                OS Vinculada
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-
-                        {/* Actions */}
-                        <TableCell className="text-right py-3">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleOpenMovement(item, 'Entrada')}
-                              className="h-7 px-2 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 gap-1"
-                              title="Dar Entrada"
-                            >
-                              <ArrowDownRight className="w-3.5 h-3.5" /> +
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleOpenMovement(item, 'Saída')}
-                              className="h-7 px-2 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 gap-1"
-                              title="Dar Baixa / Saída"
-                            >
-                              <ArrowUpRight className="w-3.5 h-3.5" /> -
-                            </Button>
-
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-white"
-                                >
-                                  <MoreVertical className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="bg-card border-white/10">
-                                <DropdownMenuItem
-                                  onClick={() => handleOpenHistory(item)}
-                                  className="gap-2 text-xs"
-                                >
-                                  <History className="w-3.5 h-3.5" /> Histórico de Movimentos
-                                </DropdownMenuItem>
-
-                                {isQCC && item.requires_cq_inspection && (
-                                  <DropdownMenuItem
-                                    onClick={() => handleOpenCQDialog(item)}
-                                    className="gap-2 text-xs text-blue-400"
-                                  >
-                                    <ShieldCheck className="w-3.5 h-3.5" /> Avaliação CQ
-                                  </DropdownMenuItem>
-                                )}
-
-                                {canEdit && (
-                                  <DropdownMenuItem
-                                    onClick={() => handleOpenItemForm(item)}
-                                    className="gap-2 text-xs"
-                                  >
-                                    <Edit className="w-3.5 h-3.5" /> Editar Item
-                                  </DropdownMenuItem>
-                                )}
-
-                                {user?.role === 'Manager' && (
-                                  <DropdownMenuItem
-                                    onClick={() => handleDeleteItem(item)}
-                                    className="gap-2 text-xs text-rose-400 focus:text-rose-400"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" /> Excluir
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
+          {/* Main Inventory Items Table */}
+          <Card className="bg-card border-white/10">
+            <CardHeader className="p-4 border-b border-white/10 flex flex-row items-center justify-between">
+              <CardTitle className="text-base text-white font-medium flex items-center gap-2">
+                <Layers className="w-4 h-4 text-primary" />
+                Catálogo de Itens ({items.length})
+              </CardTitle>
+              <span className="text-xs text-muted-foreground">
+                Empresa atual: <strong className="text-white">{currentCompanyName}</strong>
+              </span>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="p-12 text-center text-muted-foreground text-sm">
+                  Carregando itens do almoxarifado...
+                </div>
+              ) : items.length === 0 ? (
+                <div className="p-12 text-center space-y-3">
+                  <Package className="w-12 h-12 text-muted-foreground/40 mx-auto" />
+                  <p className="text-white font-medium">Nenhum item cadastrado no almoxarifado</p>
+                  <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                    Utilize o botão &quot;Importar Planilha&quot; para carregar os registros da
+                    empresa ou adicione um novo item manualmente.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsImportOpen(true)}
+                    className="border-white/10 text-white gap-1.5"
+                  >
+                    <Upload className="w-3.5 h-3.5" /> Importar Planilha Agora
+                  </Button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-white/10 bg-white/5">
+                        <TableHead className="text-xs text-white/70">Rastreio</TableHead>
+                        <TableHead className="text-xs text-white/70">Descrição</TableHead>
+                        <TableHead className="text-xs text-white/70">Categoria</TableHead>
+                        <TableHead className="text-xs text-white/70">Localização</TableHead>
+                        <TableHead className="text-xs text-white/70 text-right">
+                          Saldo Físico
+                        </TableHead>
+                        <TableHead className="text-xs text-white/70 text-right">
+                          Est. Mín.
+                        </TableHead>
+                        <TableHead className="text-xs text-white/70">Inspeção CQ</TableHead>
+                        <TableHead className="text-xs text-white/70">Atributos</TableHead>
+                        <TableHead className="text-xs text-white/70 text-right">Ações</TableHead>
                       </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {items.map((item) => {
+                        const isLowStock =
+                          item.minimum_stock !== undefined &&
+                          item.minimum_stock !== null &&
+                          (item.current_stock ?? 0) <= item.minimum_stock
+
+                        return (
+                          <TableRow
+                            key={item.id}
+                            className={`border-white/5 hover:bg-white/[0.02] ${
+                              isLowStock ? 'bg-amber-500/[0.03]' : ''
+                            }`}
+                          >
+                            <TableCell className="text-xs font-mono text-primary font-medium py-3">
+                              {item.tracking_code || '—'}
+                            </TableCell>
+
+                            <TableCell className="text-xs text-white py-3">
+                              <div className="font-medium">{item.description}</div>
+                              {item.supplier && (
+                                <div className="text-[11px] text-muted-foreground">
+                                  Fornec: {item.supplier}
+                                </div>
+                              )}
+                              {item.notes && (
+                                <div className="text-[10px] text-muted-foreground/70 italic line-clamp-1">
+                                  {item.notes}
+                                </div>
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-xs text-muted-foreground py-3">
+                              <Badge
+                                variant="outline"
+                                className="border-white/10 text-white/80 font-normal"
+                              >
+                                {item.category}
+                              </Badge>
+                            </TableCell>
+
+                            <TableCell className="text-xs text-muted-foreground py-3">
+                              {item.location || 'Almoxarifado'}
+                            </TableCell>
+
+                            <TableCell className="text-xs text-right py-3">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <span
+                                  className={`font-semibold text-sm ${
+                                    isLowStock
+                                      ? 'text-amber-400 flex items-center gap-1'
+                                      : 'text-white'
+                                  }`}
+                                >
+                                  {isLowStock && (
+                                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                                  )}
+                                  {item.current_stock ?? 0}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground font-mono">
+                                  {item.unit}
+                                </span>
+                              </div>
+                            </TableCell>
+
+                            <TableCell className="text-xs text-right text-muted-foreground py-3">
+                              {item.minimum_stock !== undefined && item.minimum_stock !== null
+                                ? `${item.minimum_stock} ${item.unit}`
+                                : '—'}
+                            </TableCell>
+
+                            <TableCell className="text-xs py-3">
+                              {!item.requires_cq_inspection ? (
+                                <span className="text-[11px] text-muted-foreground">
+                                  Dispensada
+                                </span>
+                              ) : item.inspection_status === 'Liberado' ? (
+                                <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 gap-1 text-[11px]">
+                                  <CheckCircle2 className="w-3 h-3" /> Liberado CQ
+                                </Badge>
+                              ) : item.inspection_status === 'Rejeitado' ? (
+                                <Badge className="bg-rose-500/20 text-rose-400 border-rose-500/30 gap-1 text-[11px]">
+                                  <XCircle className="w-3 h-3" /> Rejeitado
+                                </Badge>
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 gap-1 text-[11px]">
+                                    <Clock className="w-3 h-3" /> Aguardando CQ
+                                  </Badge>
+                                  {isQCC && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleOpenCQDialog(item)}
+                                      className="h-6 px-1.5 text-[10px] bg-primary/20 hover:bg-primary/30 text-primary border-primary/40"
+                                    >
+                                      Liberar
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-xs py-3">
+                              <div className="flex flex-wrap gap-1">
+                                {item.is_controlled && (
+                                  <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-[10px]">
+                                    Controlado
+                                  </Badge>
+                                )}
+                                {item.is_consigned && (
+                                  <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-[10px]">
+                                    Consignado
+                                  </Badge>
+                                )}
+                                {item.os_id && (
+                                  <Badge className="bg-white/10 text-white/80 border-white/20 text-[10px]">
+                                    OS Vinculada
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+
+                            <TableCell className="text-right py-3">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleOpenMovement(item, 'Entrada')}
+                                  className="h-7 px-2 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 gap-1"
+                                  title="Dar Entrada"
+                                >
+                                  <ArrowDownRight className="w-3.5 h-3.5" /> +
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleOpenMovement(item, 'Saída')}
+                                  className="h-7 px-2 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 gap-1"
+                                  title="Dar Baixa / Saída"
+                                >
+                                  <ArrowUpRight className="w-3.5 h-3.5" /> -
+                                </Button>
+
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0 text-muted-foreground hover:text-white"
+                                    >
+                                      <MoreVertical className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="end"
+                                    className="bg-card border-white/10"
+                                  >
+                                    <DropdownMenuItem
+                                      onClick={() => handleOpenHistory(item)}
+                                      className="gap-2 text-xs"
+                                    >
+                                      <History className="w-3.5 h-3.5" /> Histórico de Movimentos
+                                    </DropdownMenuItem>
+
+                                    {isQCC && item.requires_cq_inspection && (
+                                      <DropdownMenuItem
+                                        onClick={() => handleOpenCQDialog(item)}
+                                        className="gap-2 text-xs text-blue-400"
+                                      >
+                                        <ShieldCheck className="w-3.5 h-3.5" /> Avaliação CQ
+                                      </DropdownMenuItem>
+                                    )}
+
+                                    {canEdit && (
+                                      <DropdownMenuItem
+                                        onClick={() => handleOpenItemForm(item)}
+                                        className="gap-2 text-xs"
+                                      >
+                                        <Edit className="w-3.5 h-3.5" /> Editar Item
+                                      </DropdownMenuItem>
+                                    )}
+
+                                    {user?.role === 'Manager' && (
+                                      <DropdownMenuItem
+                                        onClick={() => handleDeleteItem(item)}
+                                        className="gap-2 text-xs text-rose-400 focus:text-rose-400"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" /> Excluir
+                                      </DropdownMenuItem>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB 2: TOUCH MODE (Solicitação Inteligente com +/- grandes) */}
+        <TabsContent value="touch" className="m-0 pt-2">
+          <TouchOrderForm
+            companyId={effectiveCompanyId}
+            companyName={currentCompanyName}
+            inventoryItems={items}
+            teamMembers={teamMembers}
+            serviceOrders={serviceOrders}
+            pendingPurchasesByItem={pendingPurchasesByItem}
+            onOrderCreated={() => {
+              loadData()
+            }}
+          />
+        </TabsContent>
+
+        {/* TAB 3: WAREHOUSE REQUISITIONS (Atendimento com Trava CQ) */}
+        <TabsContent value="requisitions" className="m-0">
+          <WarehouseRequisitionsTab
+            requisitions={requisitions}
+            inventoryItems={items}
+            loading={loading}
+            onRefresh={loadData}
+            onOpenCQDialog={(item) => handleOpenCQDialog(item)}
+          />
+        </TabsContent>
+
+        {/* TAB 4: SUPPLIES & PURCHASES (Fila de Compras e Recebimento com notificação) */}
+        <TabsContent value="supplies" className="m-0">
+          <SuppliesPurchasesTab purchases={purchases} loading={loading} onRefresh={loadData} />
+        </TabsContent>
+
+        {/* TAB 5: SMART MINIMUM STOCK & PERFORMANCE INDICATORS */}
+        <TabsContent value="indicators" className="m-0">
+          <WarehouseIndicatorsTab
+            indicatorsSummary={indicatorsSummary}
+            inventoryItems={items}
+            pendingWithdrawalsByItem={pendingWithdrawalsByItem}
+            pendingPurchasesByItem={pendingPurchasesByItem}
+            onRecalculate={handleRecalculateIndicators}
+            isRecalculating={isRecalculating}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Item Form Dialog (Create / Edit) */}
       <Dialog open={isItemFormOpen} onOpenChange={setIsItemFormOpen}>
@@ -1069,7 +1267,7 @@ export default function InventoryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Stock Movement Dialog (Entrada, Saída, Ajuste) */}
+      {/* Stock Movement Dialog */}
       <Dialog open={isMovementOpen} onOpenChange={setIsMovementOpen}>
         <DialogContent className="max-w-md bg-card border-white/10">
           <DialogHeader>
@@ -1302,7 +1500,7 @@ export default function InventoryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* CQ Inspection Clearance Dialog (QCC Role) */}
+      {/* CQ Inspection Clearance Dialog */}
       <Dialog open={isCQDialogOpen} onOpenChange={setIsCQDialogOpen}>
         <DialogContent className="max-w-md bg-card border-white/10">
           <DialogHeader>

@@ -9,6 +9,7 @@ import { IndicatorCard } from '@/components/IndicatorCard'
 import { Button } from '@/components/ui/button'
 import { Plus, Target, RotateCw, Calendar } from 'lucide-react'
 import { recalculateTrainingIndicators } from '@/services/training-indicators'
+import { recalculateWarehouseIndicators } from '@/services/warehouse-phase2'
 import { useToast } from '@/components/ui/use-toast'
 import {
   Select,
@@ -81,6 +82,8 @@ export default function Indicators() {
   useRealtime('training_attendance_lists', () => loadData())
   useRealtime('training_plan_actions', () => loadData())
   useRealtime('training_effectiveness_evaluations', () => loadData())
+  useRealtime('material_requisitions', () => loadData())
+  useRealtime('purchase_requests', () => loadData())
 
   if (!canView) {
     return (
@@ -136,17 +139,56 @@ export default function Indicators() {
           </div>
 
           {canEdit && selectedCompanyId && selectedCompanyId !== 'all' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSyncTrainingIndicators}
-              disabled={syncingAll}
-              className="border-white/10 text-xs hover:bg-white/10 gap-1.5 h-9"
-              title="Recalcular HHT, Eficácia e Plano a partir das listas de presença"
-            >
-              <RotateCw className={`w-3.5 h-3.5 ${syncingAll ? 'animate-spin' : ''}`} />
-              {txt('Sincronizar Treinamentos', 'Sync Trainings')}
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncTrainingIndicators}
+                disabled={syncingAll}
+                className="border-white/10 text-xs hover:bg-white/10 gap-1.5 h-9"
+                title="Recalcular HHT, Eficácia e Plano a partir das listas de presença"
+              >
+                <RotateCw className={`w-3.5 h-3.5 ${syncingAll ? 'animate-spin' : ''}`} />
+                {txt('Sincronizar Treinamentos', 'Sync Trainings')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    setSyncingAll(true)
+                    await recalculateWarehouseIndicators({ companyId: selectedCompanyId })
+                    await loadData()
+                    toast({
+                      title: txt(
+                        'Indicadores do Almoxarifado sincronizados',
+                        'Warehouse indicators synced',
+                      ),
+                      description: txt(
+                        'Taxa de Atendimento, Itens em Ruptura e Valor Consumido recalculados.',
+                        'Fulfillment Rate, Stock Rupture and Value Consumed recalculated.',
+                      ),
+                    })
+                  } catch {
+                    toast({
+                      title: txt(
+                        'Erro ao recalcular almoxarifado',
+                        'Warehouse recalculation error',
+                      ),
+                      variant: 'destructive',
+                    })
+                  } finally {
+                    setSyncingAll(false)
+                  }
+                }}
+                disabled={syncingAll}
+                className="border-white/10 text-xs hover:bg-white/10 gap-1.5 h-9"
+                title="Recalcular Taxa de Atendimento, Ruptura e Valor Consumido"
+              >
+                <RotateCw className={`w-3.5 h-3.5 ${syncingAll ? 'animate-spin' : ''}`} />
+                {txt('Sincronizar Almoxarifado', 'Sync Warehouse')}
+              </Button>
+            </>
           )}
 
           {canEdit && (

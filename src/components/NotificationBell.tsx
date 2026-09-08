@@ -63,6 +63,13 @@ export function NotificationBell() {
       } else {
         navigate(`/checklists?checklistId=${notification.checklist_id}`)
       }
+    } else if (
+      notification.message.toLowerCase().includes('almoxarifado') ||
+      notification.message.toLowerCase().includes('retirada') ||
+      notification.message.toLowerCase().includes('estoque') ||
+      notification.message.toLowerCase().includes('compra')
+    ) {
+      navigate('/inventory')
     } else {
       navigate('/trainings')
     }
