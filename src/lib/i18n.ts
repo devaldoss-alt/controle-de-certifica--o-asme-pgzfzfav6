@@ -11,6 +11,7 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'nav.team': { pt: 'Equipe', en: 'Team' },
   'nav.companies': { pt: 'Empresas', en: 'Companies' },
   'nav.qualifications': { pt: 'Qualificações', en: 'Qualifications' },
+  'nav.help': { pt: 'Ajuda', en: 'Help' },
   'nav.logout': { pt: 'Sair', en: 'Logout' },
   'nav.mainMenu': { pt: 'Menu Principal', en: 'Main Menu' },
   'nav.group.home': { pt: 'Início', en: 'Home' },
@@ -326,6 +327,11 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'page.trainings.desc': {
     pt: 'Controle rigoroso do Plano Anual de Treinamentos (FSGQ 7.2-1 Rev.03).',
     en: 'Strict control of the Annual Training Plan (FSGQ 7.2-1 Rev.03).',
+  },
+  'page.help.title': { pt: 'Central de Ajuda & Tutoriais', en: 'Help Center & Tutorials' },
+  'page.help.desc': {
+    pt: 'Passo a passo detalhado de cada tela e recurso do sistema.',
+    en: 'Detailed step-by-step guides for every screen and system feature.',
   },
   'report.yes': { pt: 'Sim', en: 'Yes' },
   'report.no': { pt: 'Não', en: 'No' },

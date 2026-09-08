@@ -23,6 +23,7 @@ import Calendar from '@/pages/Calendar'
 import AccessControl from '@/pages/AccessControl'
 import InventoryPage from '@/pages/Inventory'
 import TrainingPage from '@/pages/Trainings'
+import HelpCenter from '@/pages/HelpCenter'
 import NotFound from '@/pages/NotFound'
 
 const App = () => (
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/indicators" element={<Indicators />} />
               <Route path="/companies" element={<Companies />} />
               <Route path="/team" element={<Team />} />
+              <Route path="/help" element={<HelpCenter />} />
             </Route>
           </Route>
 

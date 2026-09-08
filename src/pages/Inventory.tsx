@@ -31,6 +31,7 @@ import {
 
 import { InventoryImportDialog } from '@/components/InventoryImportDialog'
 import { TouchOrderForm } from '@/components/TouchOrderForm'
+import { ContextualHelpButton } from '@/components/ContextualHelpButton'
 import { WarehouseRequisitionsTab } from '@/components/WarehouseRequisitionsTab'
 import { SuppliesPurchasesTab } from '@/components/SuppliesPurchasesTab'
 import { WarehouseIndicatorsTab } from '@/components/WarehouseIndicatorsTab'
@@ -518,6 +519,7 @@ export default function InventoryPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <ContextualHelpButton subTab={activeTab} variant="button" />
           <Button
             variant="outline"
             onClick={() => setIsImportOpen(true)}

@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { NotificationBell } from '@/components/NotificationBell'
 import { CompanySelector } from '@/components/CompanySelector'
 import { MobileNav } from '@/components/MobileNav'
+import { ContextualHelpButton } from '@/components/ContextualHelpButton'
 
 export default function Header() {
   const { user } = useAuth()
@@ -28,6 +29,7 @@ export default function Header() {
         <CompanySelector />
         <LanguageToggle />
         <NotificationBell />
+        <ContextualHelpButton variant="header" />
 
         <div className="flex items-center gap-3 pl-4 border-l border-white/10">
           <div className="text-right hidden sm:block">

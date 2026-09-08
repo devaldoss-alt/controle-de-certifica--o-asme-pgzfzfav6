@@ -17,6 +17,7 @@ import {
   Factory,
   Boxes,
   GraduationCap,
+  HelpCircle,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ModuleName } from '@/services/module-permissions'
@@ -144,6 +145,7 @@ export function getNavGroups(role?: string): NavGroup[] {
         ...(isManagerOrQccOrConsultor
           ? [{ name: 'nav.accessControl', path: '/access-control', icon: ShieldCheck }]
           : []),
+        { name: 'nav.help', path: '/help', icon: HelpCircle },
       ],
     },
   ]

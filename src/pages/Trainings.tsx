@@ -16,6 +16,7 @@ import { TrainingActionDialog, TrainingRealizeDialog } from '@/components/Traini
 import { TrainingAttendanceDialog } from '@/components/TrainingAttendanceDialog'
 import { TrainingIndicatorsSection } from '@/components/TrainingIndicatorsSection'
 import { getAttendanceLists, type TrainingAttendanceList } from '@/services/training-attendance'
+import { ContextualHelpButton } from '@/components/ContextualHelpButton'
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -351,6 +352,8 @@ export default function TrainingPage() {
               </SelectContent>
             </Select>
           </div>
+
+          <ContextualHelpButton subTab={activeTab} variant="button" />
 
           <Button
             variant="outline"

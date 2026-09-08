@@ -13,6 +13,7 @@ const navLabelMap: Record<string, { pt: string; en: string }> = {
   'nav.packingSlips': { pt: 'Romaneios', en: 'Packing Slips' },
   'nav.calendar': { pt: 'Agenda', en: 'Calendar' },
   'nav.accessControl': { pt: 'Controle de Acesso', en: 'Access Control' },
+  'nav.help': { pt: 'Ajuda', en: 'Help' },
 }
 
 export function MobileNav() {

@@ -54,6 +54,7 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import { Plus, Upload, Search, Trash2, FileText, Pencil } from 'lucide-react'
+import { ContextualHelpButton } from '@/components/ContextualHelpButton'
 import { safeFormatDate } from '@/lib/safe-data'
 import pb from '@/lib/pocketbase/client'
 import {
@@ -263,6 +264,7 @@ export default function MasterList() {
         </div>
         {canEdit && (
           <div className="flex gap-2">
+            <ContextualHelpButton variant="button" />
             <Button
               variant="outline"
               onClick={() => setImportOpen(true)}

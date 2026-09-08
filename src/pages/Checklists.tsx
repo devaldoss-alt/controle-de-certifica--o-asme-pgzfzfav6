@@ -15,6 +15,7 @@ import useRealtime from '@/hooks/use-realtime'
 import { useCompany } from '@/hooks/use-company'
 import { EvidenceDialog } from '@/components/EvidenceDialog'
 import { HowToDialog } from '@/components/HowToDialog'
+import { ContextualHelpButton } from '@/components/ContextualHelpButton'
 import {
   Select,
   SelectContent,
@@ -315,13 +316,16 @@ export default function Checklists() {
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
-      <div>
-        <h1 className="text-3xl font-heading font-bold text-white mb-2">
-          <BilingualText k="page.checklists.title" />
-        </h1>
-        <p className="text-muted-foreground">
-          <BilingualText k="page.checklists.desc" />
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-white mb-2">
+            <BilingualText k="page.checklists.title" />
+          </h1>
+          <p className="text-muted-foreground">
+            <BilingualText k="page.checklists.desc" />
+          </p>
+        </div>
+        <ContextualHelpButton variant="button" />
       </div>
 
       <div className="flex flex-wrap gap-4 items-center">
