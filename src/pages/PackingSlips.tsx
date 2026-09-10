@@ -13,7 +13,6 @@ import {
   deletePackingSlip,
   type PackingSlip,
   type PackingSlipItem,
-  type PackingSlipGRV,
 } from '@/services/packing-slips'
 import { getServiceOrders, type ServiceOrder } from '@/services/service-orders'
 import { getUsers, type User } from '@/services/api'
@@ -73,15 +72,6 @@ const EMPTY_ITEM: PackingSlipItem = {
   observation: '',
 }
 
-const EMPTY_GRV: PackingSlipGRV = {
-  code: '',
-  description: '',
-  value: '',
-  type: 'MATERIAL',
-  sector: '',
-  requester: '',
-}
-
 export default function PackingSlips() {
   const { user } = useAuth()
   const { selectedCompanyId, companies } = useCompany()
@@ -127,7 +117,6 @@ export default function PackingSlips() {
   })
 
   const [items, setItems] = useState<PackingSlipItem[]>([{ ...EMPTY_ITEM, item: 1 }])
-  const [grvItems, setGrvItems] = useState<PackingSlipGRV[]>([{ ...EMPTY_GRV }])
 
   const canManage = ['Manager', 'QCC', 'Consultor', 'Apontador'].includes(user?.role || '')
 
@@ -136,7 +125,10 @@ export default function PackingSlips() {
       setLoading(true)
       const [slipsData, osData, uData] = await Promise.all([
         getPackingSlips(selectedCompanyId),
-        getServiceOrders('all', selectedCompanyId),
+        getServiceOrders(
+          'all',
+          selectedCompanyId && selectedCompanyId !== 'all' ? selectedCompanyId : undefined,
+        ),
         getUsers(selectedCompanyId),
       ])
       setPackingSlips(slipsData)
@@ -160,17 +152,20 @@ export default function PackingSlips() {
 
   useRealtime('packing_slips', () => loadData())
 
-  const handleOpenCreate = async (forcedType?: 'Entrada' | 'Saída' | 'Cancelamento') => {
+  const handleOpenCreate = async () => {
     setEditingId(null)
     setFieldErrors({})
     const effectiveCompany =
       selectedCompanyId !== 'all' ? selectedCompanyId : user?.primary_company_id || ''
     const nextNum = await getNextPackingSlipNumber(effectiveCompany)
 
+    const now = new Date()
+    const nowIsoDate = now.toISOString().split('T')[0]
+
     setFormData({
       number: nextNum,
-      issue_date: new Date().toISOString().split('T')[0],
-      type: forcedType || 'Entrada',
+      issue_date: nowIsoDate,
+      type: 'Entrada',
       recipient_origin: '',
       origin_location: '',
       destination_location: '',
@@ -184,13 +179,12 @@ export default function PackingSlips() {
       contact_phone: '',
       warehouse_responsible: user?.name || '',
       cq_pcp_responsible: '',
-      sector: '',
+      sector: 'Almoxarifado',
       requester: '',
       in_charge: '',
-      status: forcedType === 'Cancelamento' ? 'Cancelled' : 'Finalized',
+      status: 'Finalized',
     })
     setItems([{ ...EMPTY_ITEM, item: 1 }])
-    setGrvItems([{ ...EMPTY_GRV }])
     setIsOpen(true)
   }
 
@@ -224,7 +218,6 @@ export default function PackingSlips() {
         status: full.status || 'Finalized',
       })
       setItems(full.items && full.items.length > 0 ? full.items : [{ ...EMPTY_ITEM, item: 1 }])
-      setGrvItems(full.grv_info && full.grv_info.length > 0 ? full.grv_info : [{ ...EMPTY_GRV }])
       setIsOpen(true)
     } catch (e) {
       toast({
@@ -253,22 +246,6 @@ export default function PackingSlips() {
     })
   }
 
-  const handleAddGrv = () => {
-    setGrvItems((prev) => [...prev, { ...EMPTY_GRV }])
-  }
-
-  const handleRemoveGrv = (index: number) => {
-    setGrvItems((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const handleGrvChange = (index: number, key: keyof PackingSlipGRV, val: any) => {
-    setGrvItems((prev) => {
-      const copy = [...prev]
-      copy[index] = { ...copy[index], [key]: val }
-      return copy
-    })
-  }
-
   const handleSave = async () => {
     setFieldErrors({})
     const effectiveCompany =
@@ -288,7 +265,6 @@ export default function PackingSlips() {
       ...formData,
       company_id: effectiveCompany,
       items: items.filter((i) => i.description.trim() !== ''),
-      grv_info: grvItems.filter((g) => g.code.trim() !== '' || g.description.trim() !== ''),
     }
 
     setIsSaving(true)
@@ -373,32 +349,11 @@ export default function PackingSlips() {
         {canManage && (
           <div className="flex items-center gap-2 flex-wrap">
             <Button
-              onClick={() => handleOpenCreate('Entrada')}
+              onClick={() => handleOpenCreate()}
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg"
             >
               <Plus className="w-4 h-4 mr-1.5" />
               {lang === 'pt' ? '+ Novo Romaneio' : '+ New Packing Slip'}
-            </Button>
-            <Button
-              onClick={() => handleOpenCreate('Entrada')}
-              variant="outline"
-              className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 font-medium"
-            >
-              {lang === 'pt' ? 'Entrada' : 'Inbound'}
-            </Button>
-            <Button
-              onClick={() => handleOpenCreate('Saída')}
-              variant="outline"
-              className="border-rose-500/40 text-rose-400 hover:bg-rose-500/10 font-medium"
-            >
-              {lang === 'pt' ? 'Saída' : 'Outbound'}
-            </Button>
-            <Button
-              onClick={() => handleOpenCreate('Cancelamento')}
-              variant="outline"
-              className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 font-medium"
-            >
-              {lang === 'pt' ? 'Cancelamento' : 'Cancel'}
             </Button>
           </div>
         )}
@@ -665,12 +620,17 @@ export default function PackingSlips() {
                 <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">
                   DATA DE EMISSÃO
                 </label>
-                <Input
-                  type="date"
-                  value={formData.issue_date}
-                  onChange={(e) => setFormData((p) => ({ ...p, issue_date: e.target.value }))}
-                  className="bg-black/30 border-white/10 text-white h-9"
-                />
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="date"
+                    value={formData.issue_date}
+                    readOnly
+                    className="bg-black/30 border-white/10 text-white h-9 cursor-not-allowed opacity-90 font-mono"
+                  />
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
               </div>
 
               <div>
@@ -678,14 +638,16 @@ export default function PackingSlips() {
                   O.S. VINCULADA
                 </label>
                 <Select
-                  value={formData.os_id}
-                  onValueChange={(val) => setFormData((p) => ({ ...p, os_id: val }))}
+                  value={formData.os_id || '_none'}
+                  onValueChange={(val) =>
+                    setFormData((p) => ({ ...p, os_id: val === '_none' ? '' : val }))
+                  }
                 >
                   <SelectTrigger className="bg-black/30 border-white/10 text-white h-9">
                     <SelectValue placeholder="Selecione a O.S." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhuma / N/A</SelectItem>
+                    <SelectItem value="_none">Nenhuma / N/A</SelectItem>
                     {serviceOrders.map((so) => (
                       <SelectItem key={so.id} value={so.id}>
                         O.S. #{so.number} - {so.client}
@@ -805,9 +767,9 @@ export default function PackingSlips() {
                     <tr>
                       <th className="p-2 text-center w-12">Item</th>
                       <th className="p-2 w-20">Qtde</th>
-                      <th className="p-2 w-20">UND</th>
+                      <th className="p-2 w-24">UND</th>
                       <th className="p-2">Descrição</th>
-                      <th className="p-2">Observação</th>
+                      <th className="p-2">Observações</th>
                       <th className="p-2 text-center w-10">Ação</th>
                     </tr>
                   </thead>
@@ -826,11 +788,21 @@ export default function PackingSlips() {
                           />
                         </td>
                         <td className="p-2">
-                          <Input
-                            value={it.unit}
-                            onChange={(e) => handleItemChange(idx, 'unit', e.target.value)}
-                            className="bg-black/20 border-white/10 text-white h-8 text-xs text-center"
-                          />
+                          <Select
+                            value={it.unit || 'UND'}
+                            onValueChange={(val) => handleItemChange(idx, 'unit', val)}
+                          >
+                            <SelectTrigger className="bg-black/20 border-white/10 text-white h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="UND">UND</SelectItem>
+                              <SelectItem value="KG">KG</SelectItem>
+                              <SelectItem value="PC">PC</SelectItem>
+                              <SelectItem value="M">M</SelectItem>
+                              <SelectItem value="L">L</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </td>
                         <td className="p-2">
                           <Input
@@ -844,7 +816,7 @@ export default function PackingSlips() {
                           <Input
                             value={it.observation}
                             onChange={(e) => handleItemChange(idx, 'observation', e.target.value)}
-                            placeholder="Obs. do item"
+                            placeholder="Observações do item"
                             className="bg-black/20 border-white/10 text-white h-8 text-xs"
                           />
                         </td>
@@ -855,106 +827,6 @@ export default function PackingSlips() {
                             variant="ghost"
                             onClick={() => handleRemoveItem(idx)}
                             disabled={items.length <= 1}
-                            className="h-7 w-7 text-muted-foreground hover:text-rose-400"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Informacoes Adicionais / Custo GRV */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-heading font-bold text-sm text-amber-400 uppercase tracking-wide">
-                  Informações Adicionais (Código GRV / Custos)
-                </h3>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={handleAddGrv}
-                  className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 h-7 text-xs"
-                >
-                  <Plus className="w-3 h-3 mr-1" /> Adicionar GRV
-                </Button>
-              </div>
-
-              <div className="border border-white/10 rounded-lg overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-black/40 text-[10px] uppercase text-muted-foreground border-b border-white/10">
-                    <tr>
-                      <th className="p-2 w-28">Código GRV</th>
-                      <th className="p-2">Descrição GRV</th>
-                      <th className="p-2 w-28">Valor (R$)</th>
-                      <th className="p-2 w-24">Tipo</th>
-                      <th className="p-2 w-28">Setor</th>
-                      <th className="p-2 w-28">Solicitante</th>
-                      <th className="p-2 text-center w-10">Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {grvItems.map((g, idx) => (
-                      <tr key={idx} className="hover:bg-white/5 transition-colors">
-                        <td className="p-2">
-                          <Input
-                            value={g.code}
-                            onChange={(e) => handleGrvChange(idx, 'code', e.target.value)}
-                            placeholder="GRV-001"
-                            className="bg-black/20 border-white/10 text-white h-8 text-xs font-mono"
-                          />
-                        </td>
-                        <td className="p-2">
-                          <Input
-                            value={g.description}
-                            onChange={(e) => handleGrvChange(idx, 'description', e.target.value)}
-                            placeholder="Descrição adicional"
-                            className="bg-black/20 border-white/10 text-white h-8 text-xs"
-                          />
-                        </td>
-                        <td className="p-2">
-                          <Input
-                            type="number"
-                            value={g.value}
-                            onChange={(e) => handleGrvChange(idx, 'value', e.target.value)}
-                            placeholder="0.00"
-                            className="bg-black/20 border-white/10 text-white h-8 text-xs text-right"
-                          />
-                        </td>
-                        <td className="p-2">
-                          <Input
-                            value={g.type}
-                            onChange={(e) => handleGrvChange(idx, 'type', e.target.value)}
-                            placeholder="Material"
-                            className="bg-black/20 border-white/10 text-white h-8 text-xs"
-                          />
-                        </td>
-                        <td className="p-2">
-                          <Input
-                            value={g.sector}
-                            onChange={(e) => handleGrvChange(idx, 'sector', e.target.value)}
-                            placeholder="CQ/PCP"
-                            className="bg-black/20 border-white/10 text-white h-8 text-xs"
-                          />
-                        </td>
-                        <td className="p-2">
-                          <Input
-                            value={g.requester}
-                            onChange={(e) => handleGrvChange(idx, 'requester', e.target.value)}
-                            placeholder="Nome"
-                            className="bg-black/20 border-white/10 text-white h-8 text-xs"
-                          />
-                        </td>
-                        <td className="p-2 text-center">
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => handleRemoveGrv(idx)}
                             className="h-7 w-7 text-muted-foreground hover:text-rose-400"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1013,12 +885,23 @@ export default function PackingSlips() {
                 <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">
                   SETOR
                 </label>
-                <Input
-                  value={formData.sector}
-                  onChange={(e) => setFormData((p) => ({ ...p, sector: e.target.value }))}
-                  placeholder="Ex: Qualidade / Produção"
-                  className="bg-black/30 border-white/10 text-white h-9"
-                />
+                <Select
+                  value={formData.sector || 'Almoxarifado'}
+                  onValueChange={(val) => setFormData((p) => ({ ...p, sector: val }))}
+                >
+                  <SelectTrigger className="bg-black/30 border-white/10 text-white h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Almoxarifado">Almoxarifado</SelectItem>
+                    <SelectItem value="Produção">Produção</SelectItem>
+                    <SelectItem value="Qualidade">Qualidade (CQ)</SelectItem>
+                    <SelectItem value="PCP">PCP</SelectItem>
+                    <SelectItem value="Engenharia">Engenharia</SelectItem>
+                    <SelectItem value="Manutenção">Manutenção</SelectItem>
+                    <SelectItem value="Logística">Logística</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>

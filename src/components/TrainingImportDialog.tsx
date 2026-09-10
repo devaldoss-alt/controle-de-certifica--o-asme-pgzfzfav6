@@ -104,6 +104,8 @@ const FIELD_SYNONYMS: Record<string, string[]> = {
     'prazo previsto',
     'previsao',
     'previsão',
+    'dias para realizacao',
+    'dias para realização',
   ],
   realized_date: [
     'data realizada',
@@ -122,6 +124,7 @@ const FIELD_SYNONYMS: Record<string, string[]> = {
     'eficácia',
   ],
   ch_hours: [
+    'ch de treinamento',
     'ch realizada (h)',
     'ch realizada',
     'carga horaria',
@@ -293,6 +296,18 @@ export function TrainingImportDialog({
             obj[field] = val
           }
         }
+
+        // Se CH Total não foi preenchida ou calculada, calcular: CH Total = CH Realizada × Qtd. Participantes
+        const ch =
+          typeof obj.ch_hours === 'number' ? obj.ch_hours : parseFloat(obj.ch_hours || '0') || 0
+        const qtd =
+          typeof obj.participants_count === 'number'
+            ? obj.participants_count
+            : parseFloat(obj.participants_count || '0') || 0
+        if (ch > 0 && qtd > 0) {
+          obj.ch_total = Number((ch * qtd).toFixed(2))
+        }
+
         return obj as TrainingImportRow
       })
 

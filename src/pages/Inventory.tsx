@@ -219,8 +219,11 @@ export default function InventoryPage() {
             lowStockOnly: lowStockFilter,
           }),
           getCompanies(),
-          getServiceOrders(selectedCompanyId),
-          getTeamMembers({ companyId: selectedCompanyId }),
+          getServiceOrders(
+            'all',
+            selectedCompanyId && selectedCompanyId !== 'all' ? selectedCompanyId : undefined,
+          ),
+          getTeamMembers(),
           getMaterialRequisitions({ companyId: selectedCompanyId }),
           getPurchaseRequests({ companyId: selectedCompanyId }),
           getItemPendingTotals(effectiveCompanyId),

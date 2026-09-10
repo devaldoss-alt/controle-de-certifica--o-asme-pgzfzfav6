@@ -19,6 +19,7 @@ import {
 import { RichTextEditor } from '@/components/RichTextEditor'
 import { DMS_PREFIXES, type DocumentFormData } from '@/lib/dms-codes'
 import { Upload, FileText, X, Loader2 } from 'lucide-react'
+import { HybridDatePicker } from '@/components/HybridDatePicker'
 
 export interface InternalDocFormData extends DocumentFormData {
   documentType: string
@@ -146,15 +147,19 @@ export function InternalDocumentForm({
           </div>
 
           <div className="flex gap-3 flex-wrap items-end">
-            <Field label="Tipo">
-              <Select value={data.prefix} onValueChange={(v) => onChange('prefix', v)}>
-                <SelectTrigger className="bg-black/20 border-white/10 text-white w-36">
-                  <SelectValue placeholder="—" />
+            <Field label="Tipo de Documento">
+              <Select
+                value={data.prefix || '_none'}
+                onValueChange={(v) => onChange('prefix', v === '_none' ? '' : v)}
+              >
+                <SelectTrigger className="bg-black/20 border-white/10 text-white w-40">
+                  <SelectValue placeholder="Selecione o tipo..." />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="_none">— Não definido —</SelectItem>
                   {DMS_PREFIXES.map((p) => (
                     <SelectItem key={p.prefix} value={p.prefix}>
-                      {p.prefix}
+                      {p.prefix} - {p.label_pt}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -177,7 +182,10 @@ export function InternalDocumentForm({
               />
             </Field>
             <Field label="Categoria">
-              <Select value={data.documentType} onValueChange={(v) => onChange('documentType', v)}>
+              <Select
+                value={data.documentType || 'Internal'}
+                onValueChange={(v) => onChange('documentType', v)}
+              >
                 <SelectTrigger className="bg-black/20 border-white/10 text-white w-36">
                   <SelectValue />
                 </SelectTrigger>
@@ -189,7 +197,10 @@ export function InternalDocumentForm({
               </Select>
             </Field>
             <Field label="Status">
-              <Select value={data.docStatus} onValueChange={(v) => onChange('docStatus', v)}>
+              <Select
+                value={data.docStatus || 'Active'}
+                onValueChange={(v) => onChange('docStatus', v)}
+              >
                 <SelectTrigger className="bg-black/20 border-white/10 text-white w-36">
                   <SelectValue />
                 </SelectTrigger>
@@ -204,31 +215,53 @@ export function InternalDocumentForm({
 
           <div className="flex gap-3 flex-wrap items-end">
             <Field label="Data de Aprovação/Reaprovação">
-              <Input
-                type="date"
+              <HybridDatePicker
                 value={data.effectiveDate}
-                onChange={(e) => onChange('effectiveDate', e.target.value)}
-                className="bg-black/20 border-white/10 text-white"
+                onChange={(iso) => {
+                  onChange('effectiveDate', iso)
+                  if (data.nextReviewDate && iso) {
+                    const diff = Math.round(
+                      (new Date(data.nextReviewDate).getTime() - new Date(iso).getTime()) /
+                        86400000,
+                    )
+                    onChange('reviewDeadlineDays', diff >= 0 ? String(diff) : '0')
+                  }
+                }}
               />
             </Field>
             <Field label="Próxima Revisão">
-              <Input
-                type="date"
+              <HybridDatePicker
                 value={data.nextReviewDate}
-                onChange={(e) => onChange('nextReviewDate', e.target.value)}
-                className="bg-black/20 border-white/10 text-white"
+                onChange={(iso) => {
+                  onChange('nextReviewDate', iso)
+                  const base = data.effectiveDate
+                  if (base && iso) {
+                    const diff = Math.round(
+                      (new Date(iso).getTime() - new Date(base).getTime()) / 86400000,
+                    )
+                    onChange('reviewDeadlineDays', diff >= 0 ? String(diff) : '0')
+                  }
+                }}
               />
             </Field>
             <Field label="Origem">
-              <Input
-                value={data.origin}
-                onChange={(e) => onChange('origin', e.target.value)}
-                placeholder="ISO, ASME, Cliente"
-                className="bg-black/20 border-white/10 text-white"
-              />
+              <Select value={data.origin || 'Interna'} onValueChange={(v) => onChange('origin', v)}>
+                <SelectTrigger className="bg-black/20 border-white/10 text-white w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ASME">ASME</SelectItem>
+                  <SelectItem value="ISO">ISO</SelectItem>
+                  <SelectItem value="Interna">Norma Interna / Geral</SelectItem>
+                  <SelectItem value="Cliente">Cliente</SelectItem>
+                </SelectContent>
+              </Select>
             </Field>
             <Field label="Idioma">
-              <Select value={data.language} onValueChange={(v) => onChange('language', v)}>
+              <Select
+                value={data.language || 'Portuguese'}
+                onValueChange={(v) => onChange('language', v)}
+              >
                 <SelectTrigger className="bg-black/20 border-white/10 text-white w-36">
                   <SelectValue />
                 </SelectTrigger>
@@ -250,17 +283,35 @@ export function InternalDocumentForm({
               />
             </Field>
             <Field label="Setor">
-              <Input
-                value={data.sector}
-                onChange={(e) => onChange('sector', e.target.value)}
-                className="bg-black/20 border-white/10 text-white"
-              />
+              <Select
+                value={data.sector || '_none'}
+                onValueChange={(v) => onChange('sector', v === '_none' ? '' : v)}
+              >
+                <SelectTrigger className="bg-black/20 border-white/10 text-white w-48">
+                  <SelectValue placeholder="Selecione o setor..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">— Não especificado —</SelectItem>
+                  <SelectItem value="Qualidade">Qualidade</SelectItem>
+                  <SelectItem value="Engenharia">Engenharia</SelectItem>
+                  <SelectItem value="Produção">Produção</SelectItem>
+                  <SelectItem value="SMS">SMS / Segurança</SelectItem>
+                  <SelectItem value="Almoxarifado">Almoxarifado / Logística</SelectItem>
+                  <SelectItem value="PCP">PCP</SelectItem>
+                  <SelectItem value="Manutenção">Manutenção</SelectItem>
+                  <SelectItem value="RH">RH / Treinamento</SelectItem>
+                  <SelectItem value="Diretoria">Diretoria</SelectItem>
+                  <SelectItem value="Comercial">Comercial</SelectItem>
+                  <SelectItem value="Geral">Geral / Todos</SelectItem>
+                </SelectContent>
+              </Select>
             </Field>
             <Field label="Prazo de Revisão (Dias)">
               <Input
                 type="number"
                 value={data.reviewDeadlineDays}
                 onChange={(e) => onChange('reviewDeadlineDays', e.target.value)}
+                placeholder="Calculado automaticamente"
                 className="bg-black/20 border-white/10 text-white w-36"
               />
             </Field>

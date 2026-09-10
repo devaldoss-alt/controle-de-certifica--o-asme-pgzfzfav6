@@ -50,6 +50,7 @@ export function TrainingActionDialog({
 }: ActionDialogProps) {
   const [action, setAction] = useState('')
   const [periodicity, setPeriodicity] = useState<TrainingPeriodicity>('Pontual')
+  const [customPeriodicity, setCustomPeriodicity] = useState('')
   const [responsible, setResponsible] = useState('')
   const [targetAudience, setTargetAudience] = useState('')
   const [origin, setOrigin] = useState<TrainingOrigin>('Interno')
@@ -70,7 +71,17 @@ export function TrainingActionDialog({
     if (open) {
       if (actionToEdit) {
         setAction(actionToEdit.action || '')
-        setPeriodicity(actionToEdit.periodicity || 'Pontual')
+        const p = actionToEdit.periodicity || 'Pontual'
+        const standardPeriodicities = ['Pontual', 'Diária/DSS', 'Semanal', 'Mensal', 'Anual']
+        if (p === 'Outro' || !standardPeriodicities.includes(p)) {
+          setPeriodicity('Outro')
+          // Extract custom periodicity from notes if stored as [Periodicidade: XXX]
+          const noteMatch = (actionToEdit.notes || '').match(/\[Periodicidade:\s*([^\]]+)\]/)
+          setCustomPeriodicity(noteMatch ? noteMatch[1].trim() : p === 'Outro' ? '' : p)
+        } else {
+          setPeriodicity(p as TrainingPeriodicity)
+          setCustomPeriodicity('')
+        }
         setResponsible(actionToEdit.responsible || '')
         setTargetAudience(actionToEdit.target_audience || '')
         setOrigin(actionToEdit.origin || 'Interno')
@@ -96,6 +107,7 @@ export function TrainingActionDialog({
       } else {
         setAction('')
         setPeriodicity('Pontual')
+        setCustomPeriodicity('')
         setResponsible('')
         setTargetAudience('TODOS')
         setOrigin('Interno')
@@ -143,6 +155,15 @@ export function TrainingActionDialog({
     const ch = chHours ? parseFloat(chHours.replace(',', '.')) : null
     const parts = participantsCount ? parseInt(participantsCount, 10) : null
 
+    let finalNotes = notes.trim()
+    if (periodicity === 'Outro' && customPeriodicity.trim()) {
+      // Remove any prior periodicidade tag and append updated one
+      finalNotes = finalNotes.replace(/\[Periodicidade:\s*[^\]]+\]\s*/g, '').trim()
+      finalNotes = finalNotes
+        ? `[Periodicidade: ${customPeriodicity.trim()}] ${finalNotes}`
+        : `[Periodicidade: ${customPeriodicity.trim()}]`
+    }
+
     try {
       if (actionToEdit) {
         await updateTrainingPlanAction(actionToEdit.id, {
@@ -159,7 +180,7 @@ export function TrainingActionDialog({
           ch_hours: ch,
           participants_count: parts,
           effectiveness_status: requiresEffectiveness ? effectivenessStatus : 'Não aplicável',
-          notes: notes.trim(),
+          notes: finalNotes,
         })
       } else {
         await createTrainingPlanAction({
@@ -178,7 +199,7 @@ export function TrainingActionDialog({
           ch_hours: ch,
           participants_count: parts,
           effectiveness_status: requiresEffectiveness ? effectivenessStatus : 'Não aplicável',
-          notes: notes.trim(),
+          notes: finalNotes,
         })
       }
 
@@ -230,8 +251,17 @@ export function TrainingActionDialog({
                   <SelectItem value="Semanal">Semanal</SelectItem>
                   <SelectItem value="Mensal">Mensal</SelectItem>
                   <SelectItem value="Anual">Anual</SelectItem>
+                  <SelectItem value="Outro">Outro (especificar)</SelectItem>
                 </SelectContent>
               </Select>
+              {periodicity === 'Outro' && (
+                <Input
+                  value={customPeriodicity}
+                  onChange={(e) => setCustomPeriodicity(e.target.value)}
+                  placeholder="Ex: Bienal, Trimestral..."
+                  className="bg-black/30 border-white/10 text-white text-xs mt-1"
+                />
+              )}
             </div>
 
             <div className="space-y-1.5">

@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
 import { BilingualText, useI18n } from '@/hooks/use-i18n'
 import { useCompany } from '@/hooks/use-company'
-import { getServiceOrders, createServiceOrder, type ServiceOrder } from '@/services/service-orders'
+import {
+  getServiceOrders,
+  createServiceOrder,
+  updateServiceOrder,
+  type ServiceOrder,
+} from '@/services/service-orders'
 import { getCompanies, type Company } from '@/services/companies'
 import { getChecklists, type Checklist } from '@/services/api'
 import { getMaxOS } from '@/lib/plans'
@@ -26,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Briefcase, Calendar, Factory, ClipboardCheck, Building2 } from 'lucide-react'
+import { Plus, Briefcase, Calendar, Factory, ClipboardCheck, Building2, Pencil } from 'lucide-react'
 import { safeFormatDate } from '@/lib/safe-data'
 import { cn } from '@/lib/utils'
 import { localizedField } from '@/lib/i18n-content'
@@ -45,14 +50,48 @@ export default function ServiceOrders() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [statusFilter, setStatusFilter] = useState('all')
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState({
     number: '',
     client: '',
     equipment: '',
     standard: 'ASME',
     deadline: '',
+    status: 'Active' as 'Active' | 'Completed' | 'Paused',
+    sector: '',
     owner_company_id: '',
   })
+
+  const handleOpenCreate = () => {
+    setEditingId(null)
+    setForm({
+      number: '',
+      client: '',
+      equipment: '',
+      standard: 'ASME',
+      deadline: '',
+      status: 'Active',
+      sector: 'Produção',
+      owner_company_id: selectedCompanyId || companies[0]?.id || '',
+    })
+    setDialogOpen(true)
+  }
+
+  const handleOpenEdit = (os: ServiceOrder) => {
+    setEditingId(os.id)
+    const deadlineVal = os.deadline ? os.deadline.split('T')[0] : ''
+    setForm({
+      number: os.number,
+      client: os.client || '',
+      equipment: os.equipment || '',
+      standard: os.standard || 'ASME',
+      deadline: deadlineVal,
+      status: (os.status as any) || 'Active',
+      sector: os.sector || 'Produção',
+      owner_company_id: os.owner_company_id || '',
+    })
+    setDialogOpen(true)
+  }
 
   const loadData = async () => {
     try {
@@ -77,19 +116,32 @@ export default function ServiceOrders() {
   const maxOS = getMaxOS(undefined)
   const canCreate = orders.length < maxOS
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     if (!form.number || !form.client || !form.equipment || !form.owner_company_id) return
     try {
-      await createServiceOrder(form)
-      setForm({
-        number: '',
-        client: '',
-        equipment: '',
-        standard: 'ASME',
-        deadline: '',
-        owner_company_id: '',
-      })
+      if (editingId) {
+        await updateServiceOrder(editingId, {
+          number: form.number,
+          client: form.client,
+          equipment: form.equipment,
+          standard: form.standard,
+          deadline: form.deadline ? `${form.deadline} 00:00:00.000Z` : undefined,
+          status: form.status,
+          sector: form.sector,
+          owner_company_id: form.owner_company_id,
+        })
+      } else {
+        await createServiceOrder({
+          number: form.number,
+          client: form.client,
+          equipment: form.equipment,
+          standard: form.standard,
+          deadline: form.deadline,
+          owner_company_id: form.owner_company_id,
+        })
+      }
       setDialogOpen(false)
+      setEditingId(null)
       loadData()
     } catch (e) {
       console.error(e)
@@ -108,7 +160,7 @@ export default function ServiceOrders() {
           </p>
         </div>
         <Button
-          onClick={() => setDialogOpen(true)}
+          onClick={handleOpenCreate}
           disabled={!canCreate}
           className="bg-primary hover:bg-primary/90"
         >
@@ -148,9 +200,20 @@ export default function ServiceOrders() {
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-sm text-primary font-semibold">{os.number}</span>
-                <Badge variant="outline" className={cn('text-xs', STATUS_STYLES[os.status])}>
-                  {t(`status.${os.status.toLowerCase()}`)}
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                  <Badge variant="outline" className={cn('text-xs', STATUS_STYLES[os.status])}>
+                    {t(`status.${os.status.toLowerCase()}`)}
+                  </Badge>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => handleOpenEdit(os)}
+                    className="h-6 w-6 text-muted-foreground hover:text-white hover:bg-white/10"
+                    title="Editar Ordem de Serviço"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -226,10 +289,26 @@ export default function ServiceOrders() {
         <DialogContent className="bg-card border-white/10">
           <DialogHeader>
             <DialogTitle className="text-white">
-              <BilingualText k="os.new" />
+              {editingId ? (
+                lang === 'pt' ? (
+                  'Editar Ordem de Serviço'
+                ) : (
+                  'Edit Service Order'
+                )
+              ) : (
+                <BilingualText k="os.new" />
+              )}
             </DialogTitle>
             <DialogDescription>
-              <BilingualText k="page.serviceOrders.desc" />
+              {editingId ? (
+                lang === 'pt' ? (
+                  'Atualize os dados da Ordem de Serviço selecionada.'
+                ) : (
+                  'Update selected service order details.'
+                )
+              ) : (
+                <BilingualText k="page.serviceOrders.desc" />
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -294,6 +373,47 @@ export default function ServiceOrders() {
                 />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-white/80 mb-1 block">
+                  {lang === 'pt' ? 'Status' : 'Status'}
+                </Label>
+                <Select
+                  value={form.status}
+                  onValueChange={(v: any) => setForm({ ...form, status: v })}
+                >
+                  <SelectTrigger className="bg-black/20 border-white/10 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">{t('status.active')}</SelectItem>
+                    <SelectItem value="Completed">{t('status.completed')}</SelectItem>
+                    <SelectItem value="Paused">{t('status.paused')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-white/80 mb-1 block">
+                  {lang === 'pt' ? 'Setor' : 'Sector'}
+                </Label>
+                <Select
+                  value={form.sector || 'Produção'}
+                  onValueChange={(v) => setForm({ ...form, sector: v })}
+                >
+                  <SelectTrigger className="bg-black/20 border-white/10 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Produção">Produção</SelectItem>
+                    <SelectItem value="Qualidade">Qualidade</SelectItem>
+                    <SelectItem value="Engenharia">Engenharia</SelectItem>
+                    <SelectItem value="Almoxarifado">Almoxarifado</SelectItem>
+                    <SelectItem value="Manutenção">Manutenção</SelectItem>
+                    <SelectItem value="PCP">PCP</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div>
               <Label className="text-white/80 mb-1 block">
                 <BilingualText k="os.ownerCompany" />
@@ -323,8 +443,16 @@ export default function ServiceOrders() {
             >
               <BilingualText k="common.cancel" />
             </Button>
-            <Button onClick={handleCreate} className="bg-primary hover:bg-primary/90">
-              <BilingualText k="common.create" />
+            <Button onClick={handleSave} className="bg-primary hover:bg-primary/90">
+              {editingId ? (
+                lang === 'pt' ? (
+                  'Salvar Alterações'
+                ) : (
+                  'Save Changes'
+                )
+              ) : (
+                <BilingualText k="common.create" />
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

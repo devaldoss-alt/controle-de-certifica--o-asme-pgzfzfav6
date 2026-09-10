@@ -93,7 +93,6 @@ export default function MasterList() {
   const { selectedCompanyId, companies, availableCompanyIds } = useCompany()
   const [documents, setDocuments] = useState<InternalDocument[]>([])
   const [search, setSearch] = useState('')
-  const [filterRevision, setFilterRevision] = useState('all')
   const [filterType, setFilterType] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [formOpen, setFormOpen] = useState(false)
@@ -106,17 +105,11 @@ export default function MasterList() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const canEdit = ['QCC', 'Manager'].includes(user?.role || '')
 
-  const revisions = useMemo(
-    () => [...new Set(documents.map((d) => d.revision).filter(Boolean))].sort(),
-    [documents],
-  )
-
   const loadData = async () => {
     const dbStatus = filterStatus !== 'all' ? STATUS_FILTER_TO_DB[filterStatus] || 'all' : 'all'
     const docs = await getInternalDocuments({
       companyId: selectedCompanyId,
       search,
-      revision: filterRevision,
       documentType: filterType,
       status: dbStatus,
     })
@@ -125,7 +118,7 @@ export default function MasterList() {
 
   useEffect(() => {
     loadData()
-  }, [selectedCompanyId, search, filterRevision, filterType, filterStatus])
+  }, [selectedCompanyId, search, filterType, filterStatus])
   useRealtime('documents', () => loadData())
 
   const handleChange = (field: keyof InternalDocFormData, value: string | File | null) => {
@@ -291,19 +284,6 @@ export default function MasterList() {
                 className="bg-black/20 border-white/10 text-white pl-9"
               />
             </div>
-            <Select value={filterRevision} onValueChange={setFilterRevision}>
-              <SelectTrigger className="bg-black/20 border-white/10 text-white w-32 h-9">
-                <SelectValue placeholder="Revisão" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Revisão</SelectItem>
-                {revisions.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {r}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="bg-black/20 border-white/10 text-white w-36 h-9">
                 <SelectValue placeholder="Tipo" />

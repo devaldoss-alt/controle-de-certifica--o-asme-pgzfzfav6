@@ -262,7 +262,7 @@ export function generatePackingSlipPDF(slip: PackingSlip, companyName: string = 
             <th style="width: 10%;">QTDE</th>
             <th style="width: 8%;">UND</th>
             <th style="width: 46%;">DESCRIÇÃO</th>
-            <th style="width: 30%;">OBSERVATIVO</th>
+            <th style="width: 30%;">OBSERVAÇÕES</th>
           </tr>
         </thead>
         <tbody>

@@ -416,11 +416,30 @@ export function findPeopleSheet(
 /* Date / text helpers                                                 */
 /* ------------------------------------------------------------------ */
 
-export function normalizeDate(value: string): string | null {
-  const trimmed = value.trim()
+export function normalizeDate(value: string | number): string | null {
+  if (value === null || value === undefined) return null
+  const trimmed = String(value).trim()
   if (!trimmed) return null
-  const brMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-  if (brMatch) return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`
+
+  // Excel serial number (e.g. 45312)
+  if (/^\d{5}(\.\d+)?$/.test(trimmed)) {
+    const serial = parseFloat(trimmed)
+    if (!isNaN(serial) && serial > 0) {
+      const utcMillis = (serial - 25569) * 86400 * 1000
+      const d = new Date(utcMillis)
+      if (!isNaN(d.getTime())) {
+        return d.toISOString().split('T')[0]
+      }
+    }
+  }
+
+  const brMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (brMatch) {
+    const d = brMatch[1].padStart(2, '0')
+    const m = brMatch[2].padStart(2, '0')
+    const y = brMatch[3]
+    return `${y}-${m}-${d}`
+  }
   const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (isoMatch) return trimmed
   const parsed = new Date(trimmed)
@@ -449,6 +468,12 @@ const KNOWN_HEADER_KEYWORDS = [
   'data de aprovacao',
   'prazo de revisao',
   'observacao',
+  'acao',
+  'periodicidade',
+  'publico-alvo',
+  'responsavel',
+  'competencia',
+  'carga horaria',
 ]
 
 export function findHeaderRow(rows: string[][], maxScan = 20): number {

@@ -220,6 +220,7 @@ export function DocumentEditor({
             <SelectContent>
               <SelectItem value="ASME">ASME</SelectItem>
               <SelectItem value="ISO">ISO</SelectItem>
+              <SelectItem value="Norma Interna">Norma Interna / Geral</SelectItem>
             </SelectContent>
           </Select>
           {fieldErrors.category && (

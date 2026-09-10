@@ -80,7 +80,7 @@ export function TouchOrderForm({
   // Filter team members by search
   const filteredTeamMembers = useMemo(() => {
     const q = requesterSearch.trim().toLowerCase()
-    if (!q) return teamMembers.slice(0, 10)
+    if (!q) return teamMembers.slice(0, 15)
     return teamMembers
       .filter(
         (m) =>
@@ -88,7 +88,7 @@ export function TouchOrderForm({
           (m.department && m.department.toLowerCase().includes(q)) ||
           (m.role && m.role.toLowerCase().includes(q)),
       )
-      .slice(0, 10)
+      .slice(0, 20)
   }, [teamMembers, requesterSearch])
 
   // Selected requester member object
@@ -648,7 +648,7 @@ export function TouchOrderForm({
                     setSelectedRequesterId('')
                   }
                 }}
-                placeholder="Buscar colaborador da empresa..."
+                placeholder="Buscar colaborador (todas as empresas: PSC, KOALA, GENTI)..."
                 className="pl-9 h-11 bg-black/30 border-white/10 text-white rounded-lg text-sm"
               />
             </div>

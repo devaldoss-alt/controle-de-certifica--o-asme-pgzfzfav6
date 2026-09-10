@@ -1,7 +1,13 @@
 import pb from '@/lib/pocketbase/client'
 import { safeArray } from '@/lib/safe-data'
 
-export type TrainingPeriodicity = 'Diária/DSS' | 'Semanal' | 'Mensal' | 'Anual' | 'Pontual'
+export type TrainingPeriodicity =
+  | 'Diária/DSS'
+  | 'Semanal'
+  | 'Mensal'
+  | 'Anual'
+  | 'Pontual'
+  | 'Outro'
 export type TrainingOrigin = 'Interno' | 'Externo'
 export type TrainingType =
   | 'SMS'
@@ -126,10 +132,22 @@ export function withComputedFields(item: TrainingPlanAction): TrainingPlanAction
 /**
  * Normalizes input date to ISO string for PocketBase
  */
-export function normalizeDateToISO(val?: string | null): string | null {
-  if (!val) return null
+export function normalizeDateToISO(val?: string | number | null): string | null {
+  if (val === null || val === undefined) return null
   const str = String(val).trim()
   if (!str) return null
+
+  // Excel serial number (e.g. 45312)
+  if (/^\d{5}(\.\d+)?$/.test(str)) {
+    const serial = parseFloat(str)
+    if (!isNaN(serial) && serial > 0) {
+      const utcMillis = (serial - 25569) * 86400 * 1000
+      const d = new Date(utcMillis)
+      if (!isNaN(d.getTime())) {
+        return d.toISOString()
+      }
+    }
+  }
 
   // Already ISO or includes T/Z
   if (str.includes('T') || str.endsWith('Z')) {
