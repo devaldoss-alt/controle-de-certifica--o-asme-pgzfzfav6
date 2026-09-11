@@ -182,6 +182,36 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'company.noAllocations': { pt: 'Nenhuma alocação registrada.', en: 'No allocations registered.' },
   'company.addAllocation': { pt: 'Adicionar empresa', en: 'Add company' },
   'company.assign': { pt: 'Alocar', en: 'Allocate' },
+  'company.logoSectionTitle': {
+    pt: 'Logomarca da Empresa (Cabeçalho do PDF)',
+    en: 'Company Logo (PDF Header)',
+  },
+  'company.logoSectionDesc': {
+    pt: 'Usada no cabeçalho de todos os procedimentos impressos em PDF (PSGQ, FSGQ, ITSGQ, CDE).',
+    en: 'Used in the header of all documents printed in PDF (PSGQ, FSGQ, ITSGQ, CDE).',
+  },
+  'company.currentLogo': { pt: 'Logo atual', en: 'Current logo' },
+  'company.noLogo': { pt: 'Nenhuma logo enviada', en: 'No logo uploaded' },
+  'company.selectImage': { pt: 'Selecionar Imagem', en: 'Select Image' },
+  'company.removeLogo': { pt: 'Remover imagem selecionada', en: 'Remove selected image' },
+  'company.saveSuccess': { pt: 'Empresa salva com sucesso!', en: 'Company saved successfully!' },
+  'company.saveError': { pt: 'Erro ao salvar empresa.', en: 'Error saving company.' },
+  'company.permissionDenied': {
+    pt: 'Você não tem permissão para editar empresas.',
+    en: 'You do not have permission to edit companies.',
+  },
+  'company.invalidFormat': {
+    pt: 'Formato inválido. Apenas imagens PNG ou JPEG/JPG são aceitas.',
+    en: 'Invalid format. Only PNG or JPEG/JPG images are accepted.',
+  },
+  'company.fileTooLarge': {
+    pt: 'Arquivo muito grande. O tamanho máximo permitido para a logo é 5 MB.',
+    en: 'File too large. Maximum allowed size for the logo is 5 MB.',
+  },
+  'company.fileRejected': {
+    pt: 'Arquivo de logo recusado pelo servidor.',
+    en: 'Logo file rejected by the server.',
+  },
 
   'qualifications.noDate': { pt: 'Sem data', en: 'No date' },
   'qualifications.expired': { pt: 'Expirada', en: 'Expired' },

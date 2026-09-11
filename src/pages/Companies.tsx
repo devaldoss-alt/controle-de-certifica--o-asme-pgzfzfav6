@@ -21,15 +21,21 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Building2, Plus, Pencil, Trash2, Award, Upload, Image, X } from 'lucide-react'
+import { Building2, Plus, Pencil, Trash2, Award, Upload, Image, X, AlertCircle } from 'lucide-react'
 import { localizedField } from '@/lib/i18n-content'
 import pb from '@/lib/pocketbase/client'
+import { useToast } from '@/components/ui/use-toast'
+import { extractFieldErrors } from '@/lib/pocketbase/errors'
 
 export default function Companies() {
   const { t, lang } = useI18n()
+  const { toast } = useToast()
   const [companies, setCompanies] = useState<Company[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Company | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [logoValidationError, setLogoValidationError] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: '',
     tax_id: '',
@@ -51,8 +57,55 @@ export default function Companies() {
   }, [])
   useRealtime('companies', () => loadData())
 
+  const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024 // 5 MB (PocketBase limit on companies.logo)
+  const ACCEPTED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg']
+
+  const validateAndSetLogoFile = (file: File | null) => {
+    setLogoValidationError(null)
+    if (!file) {
+      setForm((prev) => ({ ...prev, logoFile: null }))
+      return
+    }
+
+    // Format validation
+    const fileType = (file.type || '').toLowerCase()
+    const fileName = (file.name || '').toLowerCase()
+    const isValidExtension =
+      fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')
+    const isValidMime = ACCEPTED_MIME_TYPES.includes(fileType) || (!fileType && isValidExtension)
+
+    if (!isValidMime) {
+      const msg = t('company.invalidFormat')
+      setLogoValidationError(msg)
+      toast({
+        title: t('common.error'),
+        description: msg,
+        variant: 'destructive',
+      })
+      if (logoInputRef.current) logoInputRef.current.value = ''
+      return
+    }
+
+    // Size validation (Max 5 MB)
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      const msg = t('company.fileTooLarge')
+      setLogoValidationError(msg)
+      toast({
+        title: t('common.error'),
+        description: msg,
+        variant: 'destructive',
+      })
+      if (logoInputRef.current) logoInputRef.current.value = ''
+      return
+    }
+
+    setForm((prev) => ({ ...prev, logoFile: file }))
+  }
+
   const openNew = () => {
     setEditing(null)
+    setErrorMessage(null)
+    setLogoValidationError(null)
     setForm({
       name: '',
       tax_id: '',
@@ -67,6 +120,8 @@ export default function Companies() {
 
   const openEdit = (c: Company) => {
     setEditing(c)
+    setErrorMessage(null)
+    setLogoValidationError(null)
     setForm({
       name: c.name,
       tax_id: c.tax_id || '',
@@ -80,14 +135,24 @@ export default function Companies() {
   }
 
   const handleSave = async () => {
-    if (!form.name.trim()) return
+    if (!form.name.trim()) {
+      setErrorMessage(t('user.errorRequired'))
+      return
+    }
+    if (logoValidationError) {
+      return
+    }
+
+    setErrorMessage(null)
+    setIsSaving(true)
+
     try {
       const fd = new FormData()
-      fd.append('name', form.name)
-      fd.append('tax_id', form.tax_id)
-      fd.append('iso_certs', form.iso_certs)
-      fd.append('asme_certs', form.asme_certs)
-      fd.append('nbic_certs', form.nbic_certs)
+      fd.append('name', form.name.trim())
+      fd.append('tax_id', form.tax_id.trim())
+      fd.append('iso_certs', form.iso_certs.trim())
+      fd.append('asme_certs', form.asme_certs.trim())
+      fd.append('nbic_certs', form.nbic_certs.trim())
       if (form.logoFile) {
         fd.append('logo', form.logoFile)
       }
@@ -97,10 +162,43 @@ export default function Companies() {
       } else {
         await createCompany(fd)
       }
+
+      toast({
+        title: t('common.save'),
+        description: t('company.saveSuccess'),
+      })
       setDialogOpen(false)
       loadData()
-    } catch (e) {
-      console.error(e)
+    } catch (e: any) {
+      console.error('Save company error:', e)
+      const status = e?.status || e?.response?.status
+
+      let detailedMessage = t('company.saveError')
+      if (status === 403 || (status === 400 && e?.message?.includes('permission'))) {
+        detailedMessage = t('company.permissionDenied')
+      } else {
+        const fieldErrors = extractFieldErrors(e)
+        if (fieldErrors.logo) {
+          detailedMessage = `${t('company.fileRejected')}: ${fieldErrors.logo}`
+        } else if (Object.keys(fieldErrors).length > 0) {
+          detailedMessage = Object.entries(fieldErrors)
+            .map(([field, msg]) => `${field}: ${msg}`)
+            .join('; ')
+        } else if (e?.response?.message) {
+          detailedMessage = e.response.message
+        } else if (e?.message) {
+          detailedMessage = e.message
+        }
+      }
+
+      setErrorMessage(detailedMessage)
+      toast({
+        title: t('common.error'),
+        description: detailedMessage,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -268,24 +366,26 @@ export default function Companies() {
             {/* Upload da Logomarca para o Cabeçalho do PDF */}
             <div className="space-y-2 border border-white/10 rounded-lg p-3 bg-black/20">
               <Label className="text-white text-xs block font-semibold flex items-center gap-1.5">
-                <Image className="w-3.5 h-3.5 text-primary" /> Logomarca da Empresa (Cabeçalho do
-                PDF)
+                <Image className="w-3.5 h-3.5 text-primary" /> {t('company.logoSectionTitle')}
               </Label>
-              <p className="text-[11px] text-muted-foreground">
-                Usada no cabeçalho de todos os procedimentos impressos em PDF (PSGQ, FSGQ, ITSGQ,
-                CDE).
-              </p>
+              <p className="text-[11px] text-muted-foreground">{t('company.logoSectionDesc')}</p>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 {form.logoFile ? (
                   <div className="flex items-center gap-2 p-1.5 rounded bg-primary/10 border border-primary/30 text-xs text-white">
-                    <span className="truncate max-w-[150px]">{form.logoFile.name}</span>
+                    <span className="truncate max-w-[150px] font-mono text-[11px]">
+                      {form.logoFile.name}
+                    </span>
                     <Button
                       type="button"
                       size="icon"
                       variant="ghost"
                       className="h-5 w-5 text-muted-foreground hover:text-white"
-                      onClick={() => setForm({ ...form, logoFile: null })}
+                      title={t('company.removeLogo')}
+                      onClick={() => {
+                        validateAndSetLogoFile(null)
+                        if (logoInputRef.current) logoInputRef.current.value = ''
+                      }}
                     >
                       <X className="w-3 h-3" />
                     </Button>
@@ -297,20 +397,23 @@ export default function Companies() {
                       alt="Logo"
                       className="h-7 max-w-[100px] object-contain"
                     />
-                    <span className="text-[10px] text-muted-foreground">Logo atual</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {t('company.currentLogo')}
+                    </span>
                   </div>
                 ) : (
-                  <span className="text-xs text-muted-foreground italic">Nenhuma logo enviada</span>
+                  <span className="text-xs text-muted-foreground italic">
+                    {t('company.noLogo')}
+                  </span>
                 )}
 
                 <input
                   ref={logoInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/jpg"
                   onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      setForm({ ...form, logoFile: e.target.files[0] })
-                    }
+                    const file = e.target.files && e.target.files[0] ? e.target.files[0] : null
+                    validateAndSetLogoFile(file)
                   }}
                   className="hidden"
                 />
@@ -319,23 +422,42 @@ export default function Companies() {
                   variant="outline"
                   size="sm"
                   onClick={() => logoInputRef.current?.click()}
-                  className="text-xs border-white/10 text-white"
+                  className="text-xs border-white/10 text-white hover:bg-white/5"
                 >
-                  <Upload className="w-3 h-3 mr-1" /> Selecionar Imagem
+                  <Upload className="w-3 h-3 mr-1" /> {t('company.selectImage')}
                 </Button>
               </div>
+
+              {logoValidationError && (
+                <div className="flex items-center gap-1.5 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-2 rounded">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{logoValidationError}</span>
+                </div>
+              )}
             </div>
+
+            {errorMessage && (
+              <div className="flex items-start gap-2 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-lg">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span className="leading-tight">{errorMessage}</span>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
               variant="outline"
+              disabled={isSaving}
               onClick={() => setDialogOpen(false)}
               className="border-white/10 text-white hover:bg-white/5"
             >
               {t('common.cancel')}
             </Button>
-            <Button onClick={handleSave} className="bg-primary hover:bg-primary/90">
-              {t('common.save')}
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || !!logoValidationError}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {isSaving ? t('common.loading') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
