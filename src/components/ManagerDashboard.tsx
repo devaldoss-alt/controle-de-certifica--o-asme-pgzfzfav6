@@ -143,12 +143,11 @@ export function ManagerDashboard() {
             <CardContent className="p-6 flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">
-                  {lang === 'pt' ? 'Índice Eficiência Tarefas' : 'Task Efficiency Index'}
+                  <BilingualText k="dashboard.taskEfficiency" />
                 </p>
                 <h3 className="text-3xl font-bold text-primary">{taskEfficiencyIndex}%</h3>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  {completedTasks} / {totalTasks}{' '}
-                  {lang === 'pt' ? 'tarefas concluídas' : 'tasks done'}
+                  {completedTasks} / {totalTasks} <BilingualText k="dashboard.tasksDone" />
                 </p>
               </div>
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -161,11 +160,11 @@ export function ManagerDashboard() {
             <CardContent className="p-6 flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">
-                  {lang === 'pt' ? 'Lead Time de Resposta' : 'Response Lead Time'}
+                  <BilingualText k="dashboard.leadTime" />
                 </p>
                 <h3 className="text-3xl font-bold text-emerald-400">{leadTimeHours}</h3>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  {lang === 'pt' ? 'Tempo médio de aprovação' : 'Avg approval time'}
+                  <BilingualText k="dashboard.avgApprovalTime" />
                 </p>
               </div>
               <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">

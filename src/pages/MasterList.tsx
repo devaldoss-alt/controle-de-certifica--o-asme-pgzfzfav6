@@ -88,7 +88,7 @@ const EMPTY_FORM: InternalDocFormData = {
 
 export default function MasterList() {
   const { user } = useAuth()
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const { toast } = useToast()
   const { selectedCompanyId, companies, availableCompanyIds } = useCompany()
   const [documents, setDocuments] = useState<InternalDocument[]>([])
@@ -258,15 +258,13 @@ export default function MasterList() {
         <div>
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-3xl font-heading font-bold text-white mb-1">
-              Lista Mestra de Documentos Internos
+              {t('masterList.title')}
             </h1>
             <Badge variant="outline" className="border-primary/30 text-primary text-sm font-medium">
-              Total: {documents.length} documentos
+              {t('masterList.totalPrefix')} {documents.length} {t('masterList.totalSuffix')}
             </Badge>
           </div>
-          <p className="text-muted-foreground">
-            Controle de versões e revisões de documentos internos
-          </p>
+          <p className="text-muted-foreground">{t('masterList.subtitle')}</p>
         </div>
         {canEdit && (
           <div className="flex gap-2">
@@ -276,10 +274,10 @@ export default function MasterList() {
               onClick={() => setImportOpen(true)}
               className="border-white/10 text-muted-foreground hover:text-primary"
             >
-              <Upload className="w-4 h-4 mr-2" /> Importar Planilha
+              <Upload className="w-4 h-4 mr-2" /> {t('masterList.importSheet')}
             </Button>
             <Button onClick={openNew} className="bg-primary hover:bg-primary/90">
-              <Plus className="w-4 h-4 mr-2" /> Adicionar
+              <Plus className="w-4 h-4 mr-2" /> {t('masterList.add')}
             </Button>
           </div>
         )}
@@ -293,16 +291,16 @@ export default function MasterList() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por código ou título..."
+                placeholder={t('masterList.searchPlaceholder')}
                 className="bg-black/20 border-white/10 text-white pl-9"
               />
             </div>
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="bg-black/20 border-white/10 text-white w-36 h-9">
-                <SelectValue placeholder="Tipo" />
+                <SelectValue placeholder={t('masterList.filterCategory')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Categoria</SelectItem>
+                <SelectItem value="all">{t('masterList.filterCategory')}</SelectItem>
                 <SelectItem value="Internal">Internal</SelectItem>
                 <SelectItem value="External">External</SelectItem>
                 <SelectItem value="Record">Record</SelectItem>
@@ -310,13 +308,13 @@ export default function MasterList() {
             </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="bg-black/20 border-white/10 text-white w-36 h-9">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={t('masterList.filterStatus')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="APROVADO">APROVADO</SelectItem>
-                <SelectItem value="EM REVISÃO">EM REVISÃO</SelectItem>
-                <SelectItem value="OBSOLETO">OBSOLETO</SelectItem>
+                <SelectItem value="all">{t('masterList.filterAll')}</SelectItem>
+                <SelectItem value="APROVADO">{displayStatus('Active', lang)}</SelectItem>
+                <SelectItem value="EM REVISÃO">{displayStatus('Under Review', lang)}</SelectItem>
+                <SelectItem value="OBSOLETO">{displayStatus('Obsolete', lang)}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -325,20 +323,36 @@ export default function MasterList() {
             <Table>
               <TableHeader>
                 <TableRow className="border-white/10">
-                  <TableHead className="text-xs text-white/60">Categoria</TableHead>
-                  <TableHead className="text-xs text-white/60">Tipo</TableHead>
-                  <TableHead className="text-xs text-white/60">Código</TableHead>
-                  <TableHead className="text-xs text-white/60">Identificação</TableHead>
-                  <TableHead className="text-xs text-white/60">Revisão</TableHead>
-                  <TableHead className="text-xs text-white/60">Status</TableHead>
-                  <TableHead className="text-xs text-white/60">Documento que se Aplica</TableHead>
-                  <TableHead className="text-xs text-white/60">Setor</TableHead>
                   <TableHead className="text-xs text-white/60">
-                    Data de Aprovação/Reaprovação
+                    {t('masterList.colCategory')}
                   </TableHead>
-                  <TableHead className="text-xs text-white/60">Prazo de Revisão (Dias)</TableHead>
-                  <TableHead className="text-xs text-white/60">Observação</TableHead>
-                  <TableHead className="text-xs text-white/60">Arquivo</TableHead>
+                  <TableHead className="text-xs text-white/60">{t('masterList.colType')}</TableHead>
+                  <TableHead className="text-xs text-white/60">{t('masterList.colCode')}</TableHead>
+                  <TableHead className="text-xs text-white/60">
+                    {t('masterList.colTitle')}
+                  </TableHead>
+                  <TableHead className="text-xs text-white/60">
+                    {t('masterList.colRevision')}
+                  </TableHead>
+                  <TableHead className="text-xs text-white/60">
+                    {t('masterList.colStatus')}
+                  </TableHead>
+                  <TableHead className="text-xs text-white/60">
+                    {t('masterList.colApplicableDoc')}
+                  </TableHead>
+                  <TableHead className="text-xs text-white/60">
+                    {t('masterList.colSector')}
+                  </TableHead>
+                  <TableHead className="text-xs text-white/60">
+                    {t('masterList.colEffectiveDate')}
+                  </TableHead>
+                  <TableHead className="text-xs text-white/60">
+                    {t('masterList.colReviewDeadline')}
+                  </TableHead>
+                  <TableHead className="text-xs text-white/60">
+                    {t('masterList.colNotes')}
+                  </TableHead>
+                  <TableHead className="text-xs text-white/60">{t('masterList.colFile')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -356,12 +370,12 @@ export default function MasterList() {
                       {doc.code || extractCodeFromTitle(doc.title) || '—'}
                     </TableCell>
                     <TableCell className="text-xs text-white/90 max-w-48 truncate">
-                      {doc.title}
+                      {lang === 'en' && doc.title_en ? doc.title_en : doc.title}
                     </TableCell>
                     <TableCell className="text-xs text-white/70">{doc.revision || '—'}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`text-[10px] ${statusColor(doc.status)}`}>
-                        {displayStatus(doc.status)}
+                        {displayStatus(doc.status, lang)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs text-white/70 max-w-32 truncate">
@@ -399,7 +413,7 @@ export default function MasterList() {
           {documents.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
               <FileText className="w-10 h-10 mx-auto mb-3 opacity-20" />
-              <p className="text-sm">Nenhum documento encontrado.</p>
+              <p className="text-sm">{t('masterList.noDocuments')}</p>
             </div>
           )}
         </CardContent>
@@ -427,58 +441,62 @@ export default function MasterList() {
       <Dialog open={!!detailDoc} onOpenChange={(v) => !v && setDetailDoc(null)}>
         <DialogContent className="max-w-2xl bg-card border-white/10">
           <DialogHeader>
-            <DialogTitle className="text-white">{detailDoc?.title}</DialogTitle>
+            <DialogTitle className="text-white">
+              {lang === 'en' && detailDoc?.title_en ? detailDoc.title_en : detailDoc?.title}
+            </DialogTitle>
           </DialogHeader>
           {detailDoc && (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Categoria:</span>{' '}
+                  <span className="text-muted-foreground">{t('masterList.colCategory')}:</span>{' '}
                   <span className="text-white">{detailDoc.document_type || '—'}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Tipo:</span>{' '}
+                  <span className="text-muted-foreground">{t('masterList.colType')}:</span>{' '}
                   <span className="text-white">{detailDoc.prefix || '—'}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Código:</span>{' '}
+                  <span className="text-muted-foreground">{t('masterList.colCode')}:</span>{' '}
                   <span className="text-white font-mono">{detailDoc.code || '—'}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Revisão:</span>{' '}
+                  <span className="text-muted-foreground">{t('masterList.colRevision')}:</span>{' '}
                   <span className="text-white">{detailDoc.revision || '—'}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Status:</span>{' '}
+                  <span className="text-muted-foreground">{t('masterList.colStatus')}:</span>{' '}
                   <Badge
                     variant="outline"
                     className={`text-[10px] ${statusColor(detailDoc.status)}`}
                   >
-                    {displayStatus(detailDoc.status)}
+                    {displayStatus(detailDoc.status, lang)}
                   </Badge>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Documento que se Aplica:</span>{' '}
+                  <span className="text-muted-foreground">{t('masterList.colApplicableDoc')}:</span>{' '}
                   <span className="text-white">{detailDoc.applicable_document || '—'}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Setor:</span>{' '}
+                  <span className="text-muted-foreground">{t('masterList.colSector')}:</span>{' '}
                   <span className="text-white">{detailDoc.sector || '—'}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Data de Aprovação/Reaprovação:</span>{' '}
+                  <span className="text-muted-foreground">{t('masterList.colEffectiveDate')}:</span>{' '}
                   <span className="text-white">
                     {safeFormatDate(detailDoc.effective_date, 'dd/MM/yyyy')}
                   </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Próxima Revisão:</span>{' '}
+                  <span className="text-muted-foreground">{t('masterList.nextReview')}:</span>{' '}
                   <span className="text-white">
                     {safeFormatDate(detailDoc.next_review_date, 'dd/MM/yyyy')}
                   </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Prazo de Revisão (Dias):</span>{' '}
+                  <span className="text-muted-foreground">
+                    {t('masterList.colReviewDeadline')}:
+                  </span>{' '}
                   <span className="text-white">
                     {detailDoc.review_deadline_days != null
                       ? String(detailDoc.review_deadline_days)
@@ -486,14 +504,19 @@ export default function MasterList() {
                   </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Observação:</span>{' '}
+                  <span className="text-muted-foreground">{t('masterList.colNotes')}:</span>{' '}
                   <span className="text-white">{detailDoc.notes || '—'}</span>
                 </div>
               </div>
               {detailDoc.content && (
                 <div
                   className="border border-white/10 rounded-md p-3 max-h-48 overflow-y-auto text-sm text-white/80"
-                  dangerouslySetInnerHTML={{ __html: detailDoc.content }}
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      lang === 'en' && detailDoc.content_en
+                        ? detailDoc.content_en
+                        : detailDoc.content,
+                  }}
                 />
               )}
               {fileUrl(detailDoc) && (
@@ -503,7 +526,7 @@ export default function MasterList() {
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
                 >
-                  <FileText className="w-4 h-4" /> Ver arquivo
+                  <FileText className="w-4 h-4" /> {t('masterList.viewFile')}
                 </a>
               )}
             </div>
@@ -518,10 +541,10 @@ export default function MasterList() {
                 }}
                 className="border-white/10 text-muted-foreground hover:text-primary"
               >
-                <Pencil className="w-4 h-4 mr-2" /> Editar
+                <Pencil className="w-4 h-4 mr-2" /> {t('common.edit')}
               </Button>
               <Button variant="destructive" onClick={() => setDeleteTarget(detailDoc.id)}>
-                <Trash2 className="w-4 h-4 mr-2" /> Excluir
+                <Trash2 className="w-4 h-4 mr-2" /> {t('common.delete')}
               </Button>
             </DialogFooter>
           )}
@@ -531,15 +554,13 @@ export default function MasterList() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir este documento?
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t('masterList.confirmDeleteTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('masterList.confirmDeleteDesc')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={() => deleteTarget && handleDelete(deleteTarget)}>
-              Excluir
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

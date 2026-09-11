@@ -404,11 +404,21 @@ export default function ServiceOrders() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Produção">Produção</SelectItem>
-                    <SelectItem value="Qualidade">Qualidade</SelectItem>
-                    <SelectItem value="Engenharia">Engenharia</SelectItem>
-                    <SelectItem value="Almoxarifado">Almoxarifado</SelectItem>
-                    <SelectItem value="Manutenção">Manutenção</SelectItem>
+                    <SelectItem value="Produção">
+                      {lang === 'en' ? 'Production' : 'Produção'}
+                    </SelectItem>
+                    <SelectItem value="Qualidade">
+                      {lang === 'en' ? 'Quality' : 'Qualidade'}
+                    </SelectItem>
+                    <SelectItem value="Engenharia">
+                      {lang === 'en' ? 'Engineering' : 'Engenharia'}
+                    </SelectItem>
+                    <SelectItem value="Almoxarifado">
+                      {lang === 'en' ? 'Warehouse' : 'Almoxarifado'}
+                    </SelectItem>
+                    <SelectItem value="Manutenção">
+                      {lang === 'en' ? 'Maintenance' : 'Manutenção'}
+                    </SelectItem>
                     <SelectItem value="PCP">PCP</SelectItem>
                   </SelectContent>
                 </Select>

@@ -182,7 +182,7 @@ export function DocumentFolderView({
                   title="Abrir procedimento com cronômetro de leitura rastreada e prova"
                 >
                   <BookOpen className="w-3.5 h-3.5 mr-1" />
-                  Ler Procedimento
+                  {lang === 'en' ? 'Read Procedure' : 'Ler Procedimento'}
                 </Button>
 
                 {isGQUser && (
@@ -192,17 +192,25 @@ export function DocumentFolderView({
                       variant="outline"
                       onClick={() => onManageQuiz?.(doc)}
                       className="border-primary/40 text-primary hover:bg-primary/10 text-xs h-7 px-2"
-                      title="Cadastrar ou editar prova de leitura deste documento"
+                      title={
+                        lang === 'en'
+                          ? 'Register or edit quiz for this document'
+                          : 'Cadastrar ou editar prova de leitura deste documento'
+                      }
                     >
                       <Award className="w-3.5 h-3.5 mr-1" />
-                      Prova
+                      {lang === 'en' ? 'Quiz' : 'Prova'}
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => onViewReport?.(doc)}
                       className="text-muted-foreground hover:text-white text-xs h-7 px-1.5"
-                      title="Relatório de quem leu, tempos e notas das provas"
+                      title={
+                        lang === 'en'
+                          ? 'Reading report, times and quiz scores'
+                          : 'Relatório de quem leu, tempos e notas das provas'
+                      }
                     >
                       <BarChart3 className="w-3.5 h-3.5" />
                     </Button>

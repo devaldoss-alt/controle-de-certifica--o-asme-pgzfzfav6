@@ -335,7 +335,7 @@ export default function Documents() {
               title="Migração em lote dos procedimentos originais para dentro do sistema"
             >
               <Sparkles className="w-4 h-4 mr-2" />
-              Migração em Lote (Onda B)
+              {txt('Migração em Lote (Onda B)', 'Batch Migration (Wave B)')}
             </Button>
           )}
           {canEdit ? (

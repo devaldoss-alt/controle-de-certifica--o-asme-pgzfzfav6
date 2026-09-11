@@ -64,7 +64,7 @@ export function Header() {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Pesquisar..."
+            placeholder={txt('Pesquisar...', 'Search...')}
             className="bg-card/50 border border-white/10 rounded-full pl-9 pr-4 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary w-64 transition-all"
           />
         </div>

@@ -255,12 +255,17 @@ export default function PCPPage() {
 
                     <div className="pt-2 border-t border-white/5 space-y-2">
                       <p className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
-                        <Briefcase className="w-3.5 h-3.5 text-primary" /> Ordens de Serviço (OSs)
-                        Vinculadas ({sc.activeOrdersCount}):
+                        <Briefcase className="w-3.5 h-3.5 text-primary" />{' '}
+                        {lang === 'en'
+                          ? 'Linked Service Orders (SO)'
+                          : 'Ordens de Serviço (OSs) Vinculadas'}{' '}
+                        ({sc.activeOrdersCount}):
                       </p>
                       {sc.orders.length === 0 ? (
                         <p className="text-xs text-white/40 italic">
-                          Nenhuma OS atribuída a este setor.
+                          {lang === 'en'
+                            ? 'No SO assigned to this department.'
+                            : 'Nenhuma OS atribuída a este setor.'}
                         </p>
                       ) : (
                         <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
@@ -292,7 +297,9 @@ export default function PCPPage() {
               <div>
                 <CardTitle className="text-lg text-white capitalize">{calendarMonthYear}</CardTitle>
                 <CardDescription className="text-xs text-muted-foreground">
-                  Datas de entrega previstas para as Ordens de Serviço (OSs)
+                  {lang === 'en'
+                    ? 'Estimated delivery dates for Service Orders (SO)'
+                    : 'Datas de entrega previstas para as Ordens de Serviço (OSs)'}
                 </CardDescription>
               </div>
 
@@ -319,13 +326,13 @@ export default function PCPPage() {
             <CardContent>
               {/* Day headers */}
               <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-muted-foreground mb-2">
-                <div>Dom</div>
-                <div>Seg</div>
-                <div>Ter</div>
-                <div>Qua</div>
-                <div>Qui</div>
-                <div>Sex</div>
-                <div>Sáb</div>
+                <div>{lang === 'en' ? 'Sun' : 'Dom'}</div>
+                <div>{lang === 'en' ? 'Mon' : 'Seg'}</div>
+                <div>{lang === 'en' ? 'Tue' : 'Ter'}</div>
+                <div>{lang === 'en' ? 'Wed' : 'Qua'}</div>
+                <div>{lang === 'en' ? 'Thu' : 'Qui'}</div>
+                <div>{lang === 'en' ? 'Fri' : 'Sex'}</div>
+                <div>{lang === 'en' ? 'Sat' : 'Sáb'}</div>
               </div>
 
               {/* Grid */}

@@ -51,15 +51,18 @@ export default function Sidebar() {
 
   const groups = useNavGroups()
 
+  const { t } = useI18n()
+
   const getLinkLabel = (name: string) => {
-    if (name === 'nav.indicators') return lang === 'pt' ? 'Indicadores' : 'Indicators'
     if (navLabelMap[name]) return lang === 'pt' ? navLabelMap[name].pt : navLabelMap[name].en
-    return name
+    const translated = t(name)
+    return translated !== name ? translated : name
   }
 
   const getGroupLabel = (key: string) => {
     if (groupLabelMap[key]) return lang === 'pt' ? groupLabelMap[key].pt : groupLabelMap[key].en
-    return key
+    const translated = t(key)
+    return translated !== key ? translated : key
   }
 
   return (

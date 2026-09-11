@@ -4,14 +4,26 @@ const STATUS_DISPLAY: Record<string, string> = {
   Obsolete: 'OBSOLETO',
 }
 
+const STATUS_DISPLAY_EN: Record<string, string> = {
+  Active: 'APPROVED',
+  'Under Review': 'IN REVISION',
+  Obsolete: 'OBSOLETE',
+}
+
 const STATUS_FILTER_TO_DB: Record<string, string> = {
   APROVADO: 'Active',
   'EM REVISÃO': 'Under Review',
   OBSOLETO: 'Obsolete',
+  APPROVED: 'Active',
+  'IN REVISION': 'Under Review',
+  OBSOLETE: 'Obsolete',
 }
 
-export function displayStatus(status?: string): string {
+export function displayStatus(status?: string, lang: 'pt' | 'en' = 'pt'): string {
   if (!status) return '—'
+  if (lang === 'en') {
+    return STATUS_DISPLAY_EN[status] || STATUS_DISPLAY[status] || status
+  }
   return STATUS_DISPLAY[status] || status
 }
 

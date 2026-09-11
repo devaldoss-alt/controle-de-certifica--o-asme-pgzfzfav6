@@ -24,6 +24,7 @@ import { Upload, FileText, X, Loader2, Edit3, Code2, Printer } from 'lucide-reac
 import { HybridDatePicker } from '@/components/HybridDatePicker'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useState } from 'react'
+import { useI18n } from '@/hooks/use-i18n'
 
 export interface InternalDocFormData extends DocumentFormData {
   documentType: string
@@ -55,14 +56,14 @@ export function InternalDocumentForm({
   data,
   onChange,
   onSave,
-  isEdit,
-  isSaving,
+  isEdit = false,
+  isSaving = false,
   existingFileName,
 }: Props) {
+  const { lang, t } = useI18n()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [contentMode, setContentMode] = useState<'visual' | 'markdown'>('visual')
   const [contentEnMode, setContentEnMode] = useState<'visual' | 'markdown'>('visual')
-
   const Field = ({
     label,
     children,
@@ -86,13 +87,13 @@ export function InternalDocumentForm({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-white/10">
         <DialogHeader>
           <DialogTitle className="text-white">
-            {isEdit ? 'Editar Documento Interno' : 'Novo Documento Interno'}
+            {isEdit ? t('doc.editInternal') : t('doc.newInternal')}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
-            <Label className="text-white/80 mb-1 block">Arquivo</Label>
+            <Label className="text-white/80 mb-1 block">{t('masterList.colFile')}</Label>
             <div className="flex items-center gap-3">
               <input
                 ref={fileInputRef}
@@ -107,7 +108,7 @@ export function InternalDocumentForm({
                 onClick={() => fileInputRef.current?.click()}
                 className="border-white/10 text-muted-foreground hover:text-primary"
               >
-                <Upload className="w-4 h-4 mr-2" /> Selecionar
+                <Upload className="w-4 h-4 mr-2" /> {t('common.select')}
               </Button>
               {data.file ? (
                 <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-md px-3 py-1.5">
@@ -136,14 +137,14 @@ export function InternalDocumentForm({
           </div>
 
           <div className="flex gap-3 flex-wrap">
-            <Field label="Identificação" required>
+            <Field label={t('masterList.colTitle')} required>
               <Input
                 value={data.title}
                 onChange={(e) => onChange('title', e.target.value)}
                 className="bg-black/20 border-white/10 text-white"
               />
             </Field>
-            <Field label="Identificação (EN)">
+            <Field label={`${t('masterList.colTitle')} (EN)`}>
               <Input
                 value={data.titleEn}
                 onChange={(e) => onChange('titleEn', e.target.value)}
@@ -153,25 +154,25 @@ export function InternalDocumentForm({
           </div>
 
           <div className="flex gap-3 flex-wrap items-end">
-            <Field label="Tipo de Documento">
+            <Field label={t('masterList.colType')}>
               <Select
                 value={data.prefix || '_none'}
                 onValueChange={(v) => onChange('prefix', v === '_none' ? '' : v)}
               >
                 <SelectTrigger className="bg-black/20 border-white/10 text-white w-40">
-                  <SelectValue placeholder="Selecione o tipo..." />
+                  <SelectValue placeholder={t('doc.selectType')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="_none">— Não definido —</SelectItem>
+                  <SelectItem value="_none">{t('doc.notDefined')}</SelectItem>
                   {DMS_PREFIXES.map((p) => (
                     <SelectItem key={p.prefix} value={p.prefix}>
-                      {p.prefix} - {p.label_pt}
+                      {p.prefix} - {lang === 'en' ? p.label_en : p.label_pt}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Código">
+            <Field label={t('masterList.colCode')}>
               <Input
                 value={data.code}
                 onChange={(e) => onChange('code', e.target.value)}
@@ -179,7 +180,7 @@ export function InternalDocumentForm({
                 className="bg-black/20 border-white/10 text-white w-32 font-mono"
               />
             </Field>
-            <Field label="Revisão">
+            <Field label={t('masterList.colRevision')}>
               <Input
                 value={data.revision}
                 onChange={(e) => onChange('revision', e.target.value)}
@@ -187,7 +188,7 @@ export function InternalDocumentForm({
                 className="bg-black/20 border-white/10 text-white w-20 font-mono"
               />
             </Field>
-            <Field label="Categoria">
+            <Field label={t('masterList.colCategory')}>
               <Select
                 value={data.documentType || 'Internal'}
                 onValueChange={(v) => onChange('documentType', v)}
@@ -202,7 +203,7 @@ export function InternalDocumentForm({
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Status">
+            <Field label={t('masterList.colStatus')}>
               <Select
                 value={data.docStatus || 'Active'}
                 onValueChange={(v) => onChange('docStatus', v)}
@@ -211,16 +212,20 @@ export function InternalDocumentForm({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Active">APROVADO</SelectItem>
-                  <SelectItem value="Under Review">EM REVISÃO</SelectItem>
-                  <SelectItem value="Obsolete">OBSOLETO</SelectItem>
+                  <SelectItem value="Active">{lang === 'en' ? 'APPROVED' : 'APROVADO'}</SelectItem>
+                  <SelectItem value="Under Review">
+                    {lang === 'en' ? 'IN REVISION' : 'EM REVISÃO'}
+                  </SelectItem>
+                  <SelectItem value="Obsolete">
+                    {lang === 'en' ? 'OBSOLETE' : 'OBSOLETO'}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </Field>
           </div>
 
           <div className="flex gap-3 flex-wrap items-end">
-            <Field label="Data de Aprovação/Reaprovação">
+            <Field label={t('masterList.colEffectiveDate')}>
               <HybridDatePicker
                 value={data.effectiveDate}
                 onChange={(iso) => {
@@ -235,7 +240,7 @@ export function InternalDocumentForm({
                 }}
               />
             </Field>
-            <Field label="Próxima Revisão">
+            <Field label={t('masterList.nextReview')}>
               <HybridDatePicker
                 value={data.nextReviewDate}
                 onChange={(iso) => {
@@ -250,7 +255,7 @@ export function InternalDocumentForm({
                 }}
               />
             </Field>
-            <Field label="Origem">
+            <Field label={t('doc.origin')}>
               <Select value={data.origin || 'Interna'} onValueChange={(v) => onChange('origin', v)}>
                 <SelectTrigger className="bg-black/20 border-white/10 text-white w-40">
                   <SelectValue />
@@ -258,12 +263,14 @@ export function InternalDocumentForm({
                 <SelectContent>
                   <SelectItem value="ASME">ASME</SelectItem>
                   <SelectItem value="ISO">ISO</SelectItem>
-                  <SelectItem value="Interna">Norma Interna / Geral</SelectItem>
-                  <SelectItem value="Cliente">Cliente</SelectItem>
+                  <SelectItem value="Interna">
+                    {lang === 'en' ? 'Internal Standard / General' : 'Norma Interna / Geral'}
+                  </SelectItem>
+                  <SelectItem value="Cliente">{lang === 'en' ? 'Client' : 'Cliente'}</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Idioma">
+            <Field label={t('doc.language')}>
               <Select
                 value={data.language || 'Portuguese'}
                 onValueChange={(v) => onChange('language', v)}
@@ -272,56 +279,78 @@ export function InternalDocumentForm({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Portuguese">Portuguese</SelectItem>
-                  <SelectItem value="English">English</SelectItem>
-                  <SelectItem value="Spanish">Spanish</SelectItem>
+                  <SelectItem value="Portuguese">
+                    {lang === 'en' ? 'Portuguese' : 'Português'}
+                  </SelectItem>
+                  <SelectItem value="English">{lang === 'en' ? 'English' : 'Inglês'}</SelectItem>
+                  <SelectItem value="Spanish">{lang === 'en' ? 'Spanish' : 'Espanhol'}</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
           </div>
 
           <div className="flex gap-3 flex-wrap items-end">
-            <Field label="Documento que se Aplica">
+            <Field label={t('masterList.colApplicableDoc')}>
               <Input
                 value={data.applicableDocument}
                 onChange={(e) => onChange('applicableDocument', e.target.value)}
                 className="bg-black/20 border-white/10 text-white"
               />
             </Field>
-            <Field label="Setor">
+            <Field label={t('masterList.colSector')}>
               <Select
                 value={data.sector || '_none'}
                 onValueChange={(v) => onChange('sector', v === '_none' ? '' : v)}
               >
                 <SelectTrigger className="bg-black/20 border-white/10 text-white w-48">
-                  <SelectValue placeholder="Selecione o setor..." />
+                  <SelectValue placeholder={t('doc.selectSector')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="_none">— Não especificado —</SelectItem>
-                  <SelectItem value="Qualidade">Qualidade</SelectItem>
-                  <SelectItem value="Engenharia">Engenharia</SelectItem>
-                  <SelectItem value="Produção">Produção</SelectItem>
-                  <SelectItem value="SMS">SMS / Segurança</SelectItem>
-                  <SelectItem value="Almoxarifado">Almoxarifado / Logística</SelectItem>
+                  <SelectItem value="_none">{t('doc.notSpecified')}</SelectItem>
+                  <SelectItem value="Qualidade">
+                    {lang === 'en' ? 'Quality' : 'Qualidade'}
+                  </SelectItem>
+                  <SelectItem value="Engenharia">
+                    {lang === 'en' ? 'Engineering' : 'Engenharia'}
+                  </SelectItem>
+                  <SelectItem value="Produção">
+                    {lang === 'en' ? 'Production' : 'Produção'}
+                  </SelectItem>
+                  <SelectItem value="SMS">
+                    {lang === 'en' ? 'EHS / Safety' : 'SMS / Segurança'}
+                  </SelectItem>
+                  <SelectItem value="Almoxarifado">
+                    {lang === 'en' ? 'Warehouse / Logistics' : 'Almoxarifado / Logística'}
+                  </SelectItem>
                   <SelectItem value="PCP">PCP</SelectItem>
-                  <SelectItem value="Manutenção">Manutenção</SelectItem>
-                  <SelectItem value="RH">RH / Treinamento</SelectItem>
-                  <SelectItem value="Diretoria">Diretoria</SelectItem>
-                  <SelectItem value="Comercial">Comercial</SelectItem>
-                  <SelectItem value="Geral">Geral / Todos</SelectItem>
+                  <SelectItem value="Manutenção">
+                    {lang === 'en' ? 'Maintenance' : 'Manutenção'}
+                  </SelectItem>
+                  <SelectItem value="RH">
+                    {lang === 'en' ? 'HR / Training' : 'RH / Treinamento'}
+                  </SelectItem>
+                  <SelectItem value="Diretoria">
+                    {lang === 'en' ? 'Board of Directors' : 'Diretoria'}
+                  </SelectItem>
+                  <SelectItem value="Comercial">
+                    {lang === 'en' ? 'Commercial' : 'Comercial'}
+                  </SelectItem>
+                  <SelectItem value="Geral">
+                    {lang === 'en' ? 'General / All' : 'Geral / Todos'}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Prazo de Revisão (Dias)">
+            <Field label={t('masterList.colReviewDeadline')}>
               <Input
                 type="number"
                 value={data.reviewDeadlineDays}
                 onChange={(e) => onChange('reviewDeadlineDays', e.target.value)}
-                placeholder="Calculado automaticamente"
+                placeholder={lang === 'en' ? 'Auto-calculated' : 'Calculado automaticamente'}
                 className="bg-black/20 border-white/10 text-white w-36"
               />
             </Field>
-            <Field label="Observação">
+            <Field label={t('masterList.colNotes')}>
               <Input
                 value={data.notes}
                 onChange={(e) => onChange('notes', e.target.value)}
@@ -330,7 +359,7 @@ export function InternalDocumentForm({
             </Field>
           </div>
 
-          <Field label="Caminho do Arquivo">
+          <Field label={t('doc.filePath')}>
             <Input
               value={data.filePath}
               onChange={(e) => onChange('filePath', e.target.value)}
@@ -482,7 +511,7 @@ export function InternalDocumentForm({
             onClick={() => onOpenChange(false)}
             className="border-white/10 text-muted-foreground"
           >
-            Cancelar
+            {t('common.cancel')}
           </Button>
           <Button
             onClick={onSave}
@@ -490,7 +519,7 @@ export function InternalDocumentForm({
             className="bg-primary hover:bg-primary/90"
           >
             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {isEdit ? 'Atualizar' : 'Adicionar'}
+            {isEdit ? t('common.update') : t('masterList.add')}
           </Button>
         </DialogFooter>
       </DialogContent>
