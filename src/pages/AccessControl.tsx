@@ -74,8 +74,14 @@ const ROLES = [
   'Consultor',
 ]
 const MODULES: Array<
-  'Documentos' | 'Romaneios' | 'Checklists' | 'Indicadores' | 'Almoxarifado' | 'Treinamentos'
-> = ['Documentos', 'Romaneios', 'Checklists', 'Indicadores', 'Almoxarifado', 'Treinamentos']
+  | 'Documentos'
+  | 'Romaneios'
+  | 'Checklists'
+  | 'Indicadores'
+  | 'Almoxarifado'
+  | 'Treinamentos'
+  | 'RNC'
+> = ['Documentos', 'Romaneios', 'Checklists', 'Indicadores', 'Almoxarifado', 'Treinamentos', 'RNC']
 
 export default function AccessControl() {
   const { user } = useAuth()

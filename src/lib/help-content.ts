@@ -1101,53 +1101,80 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
     path: '/rnc',
     groupId: 'management',
     groupTitle: 'Gestão',
-    title: 'RNC (Relatório de Não Conformidade)',
-    subtitle: 'Abertura, contenção, causa raiz (Ishikawa/5 Porquês) e ação corretiva',
+    title: 'RNC (Controle e Relatório de Não Conformidade)',
+    subtitle: 'Módulo oficial fiel aos formulários FSGQ 8.7-1 (Livro) e FSGQ 8.7-2 (Relatório)',
     summary:
-      'Tratamento estruturado de falhas, desvios de processo e reclamações de clientes segundo a norma ISO 9001. Guia a equipe através das etapas de contenção imediata, análise de causa raiz e plano de ação 5W2H.',
+      'Tratamento estruturado de desvios, falhas e reclamações de clientes rigorosamente fiel aos formulários FSGQ 8.7-1 e FSGQ 8.7-2 da empresa. Inclui cálculo automático do Custo da Não Qualidade, ferramentas de 5 Por Quês e Diagrama de Ishikawa (6M), avaliação de riscos, verificação de eficácia com abertura automática de RNC filha e recálculo tolerante dos indicadores IRPI e INCF.',
     features: [
       {
-        name: 'Numeração Sequencial Automática',
-        description: 'Geração do código de rastreabilidade único no formato RNC-ANO-XXXX.',
+        name: 'Numeração no Padrão da Empresa',
+        description:
+          'Geração automática de numeração no formato oficial RNC 015-26 e rastreabilidade total.',
       },
       {
-        name: 'Análise de Causa Raiz Integrada',
+        name: '8 Seções Sequenciais FSGQ 8.7-2',
         description:
-          'Ferramentas estruturadas de 5 Porquês e Diagrama de Ishikawa (Espinha de Peixe).',
+          'Descrição, Correção imediata com cálculo de custos, Reinspeção, Causa Raiz (Ishikawa e 5 Por Quês), Ação Corretiva, Avaliação de Riscos, Eficácia e Evidências.',
       },
       {
-        name: 'Disposição e Ações Corretivas',
+        name: 'Cálculo Automático do Custo da Não Qualidade',
         description:
-          'Registro de ações imediatas (reparo, refugo, concessão) e planos de longo prazo para prevenir reincidência.',
+          'Soma em tempo real: Matéria-Prima + Insumos + Serviços Terceirizados = Custo Total da Não Qualidade.',
+      },
+      {
+        name: 'Verificação de Eficácia e RNC Filha',
+        description:
+          'Se a eficácia for declarada NÃO pelo auditor CQ, o sistema abre automaticamente uma RNC Filha vinculada à RNC Pai.',
+      },
+      {
+        name: 'Alimentação Automática de Indicadores',
+        description:
+          'Atualização dinâmica de IRPI (Índice de Reclamações de Produtos) e INCF (Índice de NC por Fornecedor), sem risco de travar operações.',
       },
     ],
     steps: [
       {
         step: 1,
-        title: 'Abrir uma nova Não Conformidade',
+        title: 'Acessar o Livro de RNCs (FSGQ 8.7-1)',
         instruction:
-          'Clique em "Nova RNC", selecione a empresa, a OS e descreva o desvio detectado com evidências fotográficas.',
+          'Consulte a listagem geral com filtros rápidos por empresa (PSC/KOALA/GENTI), status, origem da notificação, processo e severidade.',
       },
       {
         step: 2,
-        title: 'Definir a disposição imediata',
+        title: 'Emitir Nova RNC (FSGQ 8.7-2)',
         instruction:
-          'Estabeleça a contenção (ex: segregação do lote, parada de máquina ou retrabalho emergencial).',
+          'Clique em "Emitir Nova RNC", preencha o cabeçalho oficial (origem, OS vinculada, processo, grau de desvio e emitente) e avance pelas seções sequenciais.',
       },
       {
         step: 3,
-        title: 'Conduzir a análise de causa raiz',
+        title: 'Registrar Disposição e Custos da Não Qualidade',
         instruction:
-          'Reúna os responsáveis pelo processo para preencher os 5 Porquês e determinar a causa fundamental.',
+          'Indique se a peça será retrabalhada, reparada ou rejeitada e preencha os valores de matéria-prima, insumos e serviços.',
       },
       {
         step: 4,
-        title: 'Validar eficácia da ação corretiva',
+        title: 'Conduzir a análise de 5 Por Quês e Ishikawa',
         instruction:
-          'Após o período acordado, o CQ audita se a não conformidade voltou a ocorrer e conclui a RNC.',
+          'Utilize as ferramentas de análise integradas na aba Causa Raiz para documentar os fatores Método, Máquina, Mão de Obra, Material, Meio Ambiente e Medição.',
+      },
+      {
+        step: 5,
+        title: 'Auditar Eficácia e Gerar RNC Filha',
+        instruction:
+          'Na data estipulada, realize a auditoria. Se o problema reincidir e a eficácia for "NÃO", uma RNC Filha será criada automaticamente para nova tratativa.',
       },
     ],
-    tags: ['rnc', 'não conformidade', '5 porquês', 'causa raiz', 'ação corretiva'],
+    tags: [
+      'rnc',
+      'não conformidade',
+      'fsgq 8.7-1',
+      'fsgq 8.7-2',
+      '5 porquês',
+      'ishikawa',
+      'irpi',
+      'incf',
+      'ação corretiva',
+    ],
   },
 
   // 6. Gestão: Notificações
