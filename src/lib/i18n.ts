@@ -17,7 +17,8 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'nav.group.home': { pt: 'Início', en: 'Home' },
   'nav.group.quality': { pt: 'Qualidade', en: 'Quality' },
   'nav.group.operation': { pt: 'Operação', en: 'Operation' },
-  'nav.group.materials': { pt: 'Materiais', en: 'Materials' },
+  'nav.group.materials': { pt: 'Suprimentos', en: 'Supplies' },
+  'nav.suppliers': { pt: 'Fornecedores', en: 'Suppliers' },
   'nav.group.people': { pt: 'Pessoas', en: 'People' },
   'nav.group.management': { pt: 'Gestão', en: 'Management' },
   'nav.group.administration': { pt: 'Administração', en: 'Administration' },
@@ -318,6 +319,7 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'report.statusPending': { pt: 'Pendente', en: 'Pending' },
   'nav.inventory': { pt: 'Almoxarifado', en: 'Inventory / Warehouse' },
   'page.inventory.title': { pt: 'Almoxarifado', en: 'Inventory' },
+  'page.suppliers.title': { pt: 'Fornecedores', en: 'Suppliers' },
   'page.inventory.desc': {
     pt: 'Controle de materiais, saldo por empresa e inspeção do CQ.',
     en: 'Material control, stock by company and QC inspection.',

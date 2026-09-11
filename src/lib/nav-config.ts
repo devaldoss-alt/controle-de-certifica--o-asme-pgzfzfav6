@@ -52,6 +52,7 @@ const MODULE_PATHS: Record<ModuleName, string[]> = {
   PCP: ['/pcp'],
   Almoxarifado: ['/inventory'],
   Treinamentos: ['/trainings'],
+  Suprimentos: ['/suppliers'],
 }
 
 /** Reverse lookup: path → module (first match wins). */
@@ -72,7 +73,7 @@ const PATH_TO_MODULE: Record<string, ModuleName> = (() => {
  * 1. Início: Dashboard
  * 2. Qualidade: Documentos, Lista Mestra, Checklists, Qualificações, Aprovações
  * 3. Operação: Ordens de Serviço, PCP, Agenda, Romaneios
- * 4. Materiais: Almoxarifado
+ * 4. Suprimentos: Almoxarifado, Fornecedores
  * 5. Pessoas: Treinamentos, Equipe
  * 6. Gestão: Indicadores, RNC, Notificações
  * 7. Administração: Empresas, Controle de Acesso
@@ -118,7 +119,10 @@ export function getNavGroups(role?: string): NavGroup[] {
     {
       id: 'materials',
       titleKey: 'nav.group.materials',
-      links: [{ name: 'nav.inventory', path: '/inventory', icon: Boxes, module: 'Almoxarifado' }],
+      links: [
+        { name: 'nav.inventory', path: '/inventory', icon: Boxes, module: 'Almoxarifado' },
+        { name: 'nav.suppliers', path: '/suppliers', icon: Truck, module: 'Suprimentos' },
+      ],
     },
     {
       id: 'people',

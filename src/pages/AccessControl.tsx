@@ -81,7 +81,17 @@ const MODULES: Array<
   | 'Almoxarifado'
   | 'Treinamentos'
   | 'RNC'
-> = ['Documentos', 'Romaneios', 'Checklists', 'Indicadores', 'Almoxarifado', 'Treinamentos', 'RNC']
+  | 'Suprimentos'
+> = [
+  'Documentos',
+  'Romaneios',
+  'Checklists',
+  'Indicadores',
+  'Almoxarifado',
+  'Treinamentos',
+  'RNC',
+  'Suprimentos',
+]
 
 export default function AccessControl() {
   const { user } = useAuth()

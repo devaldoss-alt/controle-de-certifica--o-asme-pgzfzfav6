@@ -22,6 +22,7 @@ import PackingSlips from '@/pages/PackingSlips'
 import Calendar from '@/pages/Calendar'
 import AccessControl from '@/pages/AccessControl'
 import InventoryPage from '@/pages/Inventory'
+import SuppliersPage from '@/pages/Suppliers'
 import TrainingPage from '@/pages/Trainings'
 import HelpCenter from '@/pages/HelpCenter'
 import NotFound from '@/pages/NotFound'
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/rnc" element={<RNCPage />} />
               <Route path="/pcp" element={<PCPPage />} />
               <Route path="/inventory" element={<InventoryPage />} />
+              <Route path="/suppliers" element={<SuppliersPage />} />
               <Route path="/trainings" element={<TrainingPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/approvals" element={<Approvals />} />

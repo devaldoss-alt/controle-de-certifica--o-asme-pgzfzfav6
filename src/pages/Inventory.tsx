@@ -513,11 +513,11 @@ export default function InventoryPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Boxes className="w-7 h-7 text-primary" /> Almoxarifado & Estoque
+            <Boxes className="w-7 h-7 text-primary" /> Suprimentos — Almoxarifado & Estoque
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Gestão física, modo touch para chão de fábrica, requisição com trava CQ e controle de
-            estoque mínimo inteligente.
+            Módulo Suprimentos: gestão física, modo touch para chão de fábrica, requisição com trava
+            CQ e controle de estoque mínimo inteligente.
           </p>
         </div>
 

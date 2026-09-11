@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T00:05:01.975Z",
+  "generatedAt": "2026-09-11T00:37:32.312Z",
   "collections": [
     {
       "name": "users",
@@ -1316,7 +1316,8 @@
             "Almoxarifado",
             "Treinamentos",
             "RNC",
-            "PCP"
+            "PCP",
+            "Suprimentos"
           ]
         },
         {
@@ -2757,6 +2758,484 @@
         "CREATE INDEX idx_purreq_status ON purchase_requests (status)",
         "CREATE INDEX idx_purreq_os ON purchase_requests (os_id)",
         "CREATE INDEX idx_purreq_created ON purchase_requests (created)"
+      ]
+    },
+    {
+      "name": "suppliers",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "trade_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cnpj",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "contact_person",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "classification",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Crítico", "Não Crítico"]
+        },
+        {
+          "name": "critical_categories",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "Aços e materiais de aportar",
+            "Tratamentos térmicos",
+            "Revestimentos e banhos",
+            "Ensaios Não Destrutivos (END)",
+            "Calibração de instrumentos",
+            "Soldagem",
+            "Transporte de produto acabado",
+            "Tintas e revestimentos especiais",
+            "Componentes críticos de engenharia",
+            "Outros materiais e serviços gerais"
+          ]
+        },
+        {
+          "name": "materials_services_description",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "qualification_status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Em avaliação", "Qualificado", "Em requalificação", "Desqualificado"]
+        },
+        {
+          "name": "qualification_criteria",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "ISO 9001 válida",
+            "Certificados do serviço/material (RBC/ASME)",
+            "Histórico satisfatório de fornecimento",
+            "Questionário FSGQ 8.4-2 (Nota ≥ 6,0)",
+            "Dispensa / Não Crítico"
+          ]
+        },
+        {
+          "name": "iso9001_certified",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "iso9001_cert_number",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "iso9001_valid_until",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "technical_certificates_info",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "evaluation_score",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "last_evaluation_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "next_reevaluation_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "reevaluation_exempt",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "reevaluation_exempt_reason",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "disqualification_reason",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "qualification_notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "qualified_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_suppliers_company ON suppliers (company_id)",
+        "CREATE INDEX idx_suppliers_status ON suppliers (qualification_status)",
+        "CREATE INDEX idx_suppliers_class ON suppliers (classification)",
+        "CREATE INDEX idx_suppliers_name ON suppliers (name)"
+      ]
+    },
+    {
+      "name": "supplier_evaluations",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "supplier_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "suppliers"
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "evaluation_type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Inicial (FSGQ 8.4-2)", "Reavaliação (FSGQ 8.4-2.1)"]
+        },
+        {
+          "name": "evaluation_date",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "evaluator_name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "evaluator_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "answers_json",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "total_score",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "result",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Aprovado (≥ 6,0)", "Reprovado (< 6,0)", "Dispensado por ISO 9001"]
+        },
+        {
+          "name": "incf_recorded",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observations",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "action_plan",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "next_reevaluation_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_supeval_supplier ON supplier_evaluations (supplier_id)",
+        "CREATE INDEX idx_supeval_company ON supplier_evaluations (company_id)",
+        "CREATE INDEX idx_supeval_date ON supplier_evaluations (evaluation_date)"
+      ]
+    },
+    {
+      "name": "purchase_quotes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "quote_number",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "os_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "service_orders"
+        },
+        {
+          "name": "items_summary",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "proposals_json",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "quote_count",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "has_min_three_quotes",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "selected_supplier_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "suppliers"
+        },
+        {
+          "name": "selected_supplier_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "selected_supplier_is_critical",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "selected_supplier_is_qualified",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "exception_justification",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "total_amount",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "delivery_expected_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "delivery_actual_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "delivery_status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["No Prazo", "Atrasado", "Pendente"]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "Em cotação",
+            "Resumo Aprovado",
+            "Pedido Emitido",
+            "Entregue",
+            "Cancelado"
+          ]
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_pquotes_company ON purchase_quotes (company_id)",
+        "CREATE INDEX idx_pquotes_status ON purchase_quotes (status)",
+        "CREATE INDEX idx_pquotes_supplier ON purchase_quotes (selected_supplier_id)"
       ]
     }
   ]

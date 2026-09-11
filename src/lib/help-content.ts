@@ -563,13 +563,82 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
     tags: ['romaneios', 'expedição', 'transporte', 'logística', 'pesagem'],
   },
 
-  // 4. Materiais: Almoxarifado (Geral + Abas)
+  // 4. Suprimentos: Almoxarifado e Qualificação de Fornecedores
+  '/suppliers': {
+    id: 'suprimentos',
+    path: '/suppliers',
+    groupId: 'materials',
+    groupTitle: 'Suprimentos',
+    title: 'Suprimentos: Qualificação de Fornecedores (PSGQ 8.4)',
+    subtitle: 'Homologação, esteira de compras, avaliação bienal e indicadores de suprimentos',
+    summary:
+      'Módulo oficial de gestão e homologação de fornecedores segundo o procedimento PSGQ 8.4 Aquisição (Rev. 03). Abrange a qualificação de fornecedores críticos e não críticos (ISO 9001, RBC/ASME, histórico e questionário FSGQ 8.4-2), reavaliação bienal (FSGQ 8.4-2.1), geração da Lista Mestra de Fornecedores Qualificados (FSGQ 8.4-4), esteira formal de compras com cotação mínima de 3 fornecedores (FSGQ 8.4-7) e recálculo automático dos indicadores do SGQ integrados à RNC.',
+    features: [
+      {
+        name: 'Qualificação Automática via ISO 9001',
+        description:
+          'Fornecedores com ISO 9001 válida são qualificados automaticamente e dispensados de reavaliação periódica durante o prazo de vigência do certificado.',
+        badge: 'ISO 9001',
+      },
+      {
+        name: 'Questionários Digitais FSGQ 8.4-2 e 8.4-2.1',
+        description:
+          'Formulários eletrônicos com escala de conformidade (2, 1 ou 0) e nota de corte ≥ 6,0 pontos para aprovação imediata.',
+      },
+      {
+        name: 'Esteira de Compras com 3 Cotações (FSGQ 8.4-7)',
+        description:
+          'Coleta de preços formalizada com controle de fornecedores qualificados, registro de exceções e monitoramento de pontualidade de entrega (FSGQ 8.4-6).',
+      },
+      {
+        name: 'Consumo Automático do INCF da RNC',
+        description:
+          'Alimenta o indicador INCF (< 30%) diretamente dos registros de não conformidade de fornecedor gerados no módulo RNC sem digitação manual.',
+      },
+    ],
+    steps: [
+      {
+        step: 1,
+        title: 'Cadastrar novo fornecedor e classificação',
+        instruction:
+          'Clique em "Novo Fornecedor" e selecione a classificação (Crítico ou Não Crítico) e os escopos fornecidos (aços, tratamentos térmicos, soldagem, etc.).',
+      },
+      {
+        step: 2,
+        title: 'Qualificar por ISO 9001 ou Questionário FSGQ 8.4-2',
+        instruction:
+          'Insira o certificado ISO 9001 válido ou clique em "Avaliar" na linha do fornecedor para preencher o questionário técnico de 5 blocos.',
+      },
+      {
+        step: 3,
+        title: 'Emitir Lista de Fornecedores Qualificados (FSGQ 8.4-4)',
+        instruction:
+          'Acesse a aba "Lista Qualificados (FSGQ 8.4-4)" para gerar a visão em formato oficial de formulário SGQ pronta para auditoria ou impressão/PDF.',
+      },
+      {
+        step: 4,
+        title: 'Realizar Coleta de Preço com Mínimo 3 Fornecedores',
+        instruction:
+          'Na aba "Esteira de Compras", abra uma nova coleta FSGQ 8.4-7, insira as 3 propostas e selecione o vencedor, registrando a previsão de entrega.',
+      },
+    ],
+    tags: [
+      'suprimentos',
+      'fornecedores',
+      'psgq 8.4',
+      'fsgq 8.4-4',
+      'incf',
+      'cotações',
+      'qualificação',
+    ],
+  },
+
   '/inventory': {
     id: 'inventory',
     path: '/inventory',
     groupId: 'materials',
-    groupTitle: 'Materiais',
-    title: 'Almoxarifado & Gestão de Materiais',
+    groupTitle: 'Suprimentos',
+    title: 'Almoxarifado & Gestão de Estoque',
     subtitle: 'Controle de saldo, inspeção CQ, solicitações e compras',
     summary:
       'Sistema integrado de suprimentos e estoque industrial. Controla os dois fluxos de atendimento (Retirada direta quando há saldo / Requisição de Compra quando o saldo é insuficiente com roteamento automático), bloqueio obrigatório de itens pelo Controle da Qualidade (CQ) e projeção de estoque mínimo.',
@@ -631,7 +700,7 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
     path: '/inventory',
     subTab: 'touch',
     groupId: 'materials',
-    groupTitle: 'Materiais',
+    groupTitle: 'Suprimentos',
     title: 'Almoxarifado: Solicitação Touch',
     subtitle: 'Interface ágil para operadores e supervisores no quiosque',
     summary:
@@ -682,7 +751,7 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
     path: '/inventory',
     subTab: 'requisitions',
     groupId: 'materials',
-    groupTitle: 'Materiais',
+    groupTitle: 'Suprimentos',
     title: 'Almoxarifado: Atendimento Almoxarifado',
     subtitle: 'Fila de separação e entrega física de pedidos',
     summary:
@@ -731,7 +800,7 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
     path: '/inventory',
     subTab: 'supplies',
     groupId: 'materials',
-    groupTitle: 'Materiais',
+    groupTitle: 'Suprimentos',
     title: 'Almoxarifado: Suprimentos & Compras',
     subtitle: 'Roteamento automático de compras, cotações e recebimento',
     summary:
@@ -782,7 +851,7 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
     path: '/inventory',
     subTab: 'indicators',
     groupId: 'materials',
-    groupTitle: 'Materiais',
+    groupTitle: 'Suprimentos',
     title: 'Almoxarifado: Indicadores & Estoque Mínimo',
     subtitle: 'Métricas de acuracidade, rupturas e capital imobilizado',
     summary:
