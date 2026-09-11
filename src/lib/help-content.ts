@@ -520,47 +520,74 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
     path: '/packing-slips',
     groupId: 'operation',
     groupTitle: 'Operação',
-    title: 'Romaneios de Expedição',
-    subtitle: 'Emissão e conferência de remessas e transporte de materiais',
+    title: 'Romaneios de Entrada e Saída (FSGQ 8.5-22)',
+    subtitle:
+      'Controle de movimentações, tempo fora em serviços especiais e rastreabilidade de itens',
     summary:
-      'Controle formal da saída de produtos acabados, componentes e peças para galvanização, pintura externa ou montagem no cliente. Gera o documento oficial de remessa com pesos, volumes e identificações rastreáveis.',
+      'Módulo oficial de gestão de romaneios conforme FSGQ 8.5-22 Rev.02. Abrange o controle rigoroso de Entradas e Saídas, rastreabilidade de peças enviadas para serviços especiais (galvanização, pintura, tratamentos térmicos) com contagem de dias fora e alerta de atraso (>7 dias), 3 perguntas técnicas de qualidade por item (matéria-prima, certificado, nota fiscal) com evidências, anexo de fotos comprobatórias do estado do material e histórico pesquisável por item.',
     features: [
       {
-        name: 'Composição de Itens e Volumes',
+        name: 'Controle de Tempo Fora em Serviços Especiais',
         description:
-          'Lançamento de descrição, TAG do equipamento, quantidade, peso líquido, peso bruto e dimensões.',
+          'Monitora peças enviadas para pintura, galvanização e tratamentos térmicos com status aguardando retorno, cálculo automático de dias fora e indicador de tempo médio.',
+        badge: 'Serviços Especiais',
       },
       {
-        name: 'Associação com GRV / Nota Fiscal',
-        description: 'Registro do transportador, placa do veículo, motorista e nota de remessa.',
+        name: 'Perguntas Técnicas e Qualidade por Item',
+        description:
+          'Respostas Sim/Não para "É matéria-prima?", "Tem certificado?" e "Veio com nota?", com campos de anotação de evidências e certificados.',
       },
       {
-        name: 'Emissão de PDF Oficial',
+        name: 'Evidências Fotográficas do Estado Físico',
         description:
-          'Geração de romaneio padronizado para assinatura do motorista e conferência na portaria.',
+          'Anexo de múltiplas fotos por item para evidenciar o estado dos materiais na entrada ou na saída, impressas no PDF oficial.',
+      },
+      {
+        name: 'Pesquisa do Histórico Completo de Itens',
+        description:
+          'Busca instantânea que lista todas as movimentações de um material específico com datas, quantidades, O.S. e notas fiscais vinculadas.',
+      },
+      {
+        name: 'PDF Repetitivo FSGQ 8.5-22',
+        description:
+          'Emissão de PDF com cabeçalho de identificação e cabeçalho da tabela fixos em todas as páginas e rodapé padronizado em cada folha.',
       },
     ],
     steps: [
       {
         step: 1,
-        title: 'Iniciar novo romaneio',
+        title: 'Iniciar novo romaneio com data/hora automáticas',
         instruction:
-          'Clique em "Novo Romaneio", selecione a empresa emissora e informe o destinatário/cliente e a OS.',
+          'Clique em "+ Novo Romaneio". O sistema preenche automaticamente o número sequencial, data e hora de emissão.',
       },
       {
         step: 2,
-        title: 'Adicionar peças e volumes',
+        title: 'Selecionar tipo, motivo e destinatário',
         instruction:
-          'Insira cada item com peso e descrição detalhada para garantir a rastreabilidade na entrega.',
+          'Defina se é Entrada ou Saída. Em Saída para serviço especial, o encarregado torna-se "Encarregado pelo recebimento".',
       },
       {
         step: 3,
-        title: 'Imprimir documento de expedição',
+        title: 'Preencher itens, perguntas técnicas e anexar fotos',
         instruction:
-          'Clique em "Gerar PDF" para emitir as vias de transporte que acompanharão a carga.',
+          'Para cada item, informe quantidade, unidade, descrição, responda às 3 perguntas técnicas e anexe as fotos de evidência.',
+      },
+      {
+        step: 4,
+        title: 'Acompanhar itens fora e registrar retorno',
+        instruction:
+          'Na aba "Itens Fora em Serviço Especial", monitore os dias decorridos e clique em "Registrar Retorno" quando o material voltar à fábrica.',
       },
     ],
-    tags: ['romaneios', 'expedição', 'transporte', 'logística', 'pesagem'],
+    tags: [
+      'romaneios',
+      'fsgq 8.5-22',
+      'serviços especiais',
+      'galvanização',
+      'pintura',
+      'fotos',
+      'rastreabilidade',
+    ],
   },
 
   // 4. Suprimentos: Almoxarifado e Qualificação de Fornecedores

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T00:37:32.312Z",
+  "generatedAt": "2026-09-11T01:07:01.834Z",
   "collections": [
     {
       "name": "users",
@@ -1280,6 +1280,62 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "issue_time",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "movement_reason",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "movement_reason_other",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "special_service_type",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "special_service_status",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "return_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "returned_slip_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "packing_slips"
+        },
+        {
+          "name": "parent_slip_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "packing_slips"
+        },
+        {
+          "name": "days_out",
+          "type": "number",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []

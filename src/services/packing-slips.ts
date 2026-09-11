@@ -6,6 +6,15 @@ export interface PackingSlipItem {
   unit: string
   description: string
   observation: string
+  // Perguntas Sim/Não com evidências
+  is_raw_material?: boolean
+  raw_material_evidence?: string
+  has_certificate?: boolean
+  certificate_evidence?: string
+  has_invoice?: boolean
+  invoice_evidence?: string
+  // Fotos de evidência do estado do item
+  photos?: string[]
 }
 
 export interface PackingSlipGRV {
@@ -17,10 +26,25 @@ export interface PackingSlipGRV {
   requester: string
 }
 
+export type MovementReason =
+  | 'Serviço Especial'
+  | 'Uso interno/produção'
+  | 'Devolução ao estoque'
+  | 'Garantia'
+  | 'Outro'
+
+export type SpecialServiceType =
+  | 'Pintura'
+  | 'Galvanização'
+  | 'Tratamento Térmico'
+  | 'Usinagem externa'
+  | 'Outro'
+
 export interface PackingSlip {
   id: string
   number: number
   issue_date: string
+  issue_time?: string
   type: 'Entrada' | 'Saída' | 'Cancelamento'
   recipient_origin?: string
   origin_location?: string
@@ -42,12 +66,23 @@ export interface PackingSlip {
   grv_info?: PackingSlipGRV[]
   status: 'Draft' | 'Finalized' | 'Cancelled'
   company_id: string
+  // Novos campos para Onda C
+  movement_reason?: MovementReason | string
+  movement_reason_other?: string
+  special_service_type?: SpecialServiceType | string
+  special_service_status?: 'Aguardando retorno' | 'Retornado' | 'N/A' | string
+  return_date?: string
+  returned_slip_id?: string
+  parent_slip_id?: string
+  days_out?: number
   created?: string
   updated?: string
   expand?: {
     responsible_id?: { name: string; email: string }
     os_id?: { number: string; client: string; equipment: string }
     company_id?: { name: string }
+    returned_slip_id?: { id: string; number: number; issue_date: string }
+    parent_slip_id?: { id: string; number: number; issue_date: string }
   }
 }
 
@@ -62,7 +97,7 @@ export const getPackingSlips = async (companyId?: string): Promise<PackingSlip[]
     const result = await pb.collection('packing_slips').getFullList<PackingSlip>({
       filter,
       sort: '-number,-created',
-      expand: 'responsible_id,os_id,company_id',
+      expand: 'responsible_id,os_id,company_id,returned_slip_id,parent_slip_id',
     })
     return result
   } catch (e) {
@@ -73,7 +108,7 @@ export const getPackingSlips = async (companyId?: string): Promise<PackingSlip[]
 
 export const getPackingSlip = async (id: string): Promise<PackingSlip> => {
   return pb.collection('packing_slips').getOne<PackingSlip>(id, {
-    expand: 'responsible_id,os_id,company_id',
+    expand: 'responsible_id,os_id,company_id,returned_slip_id,parent_slip_id',
   })
 }
 
