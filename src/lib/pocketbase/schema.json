@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T01:07:01.834Z",
+  "generatedAt": "2026-09-11T01:23:31.193Z",
   "collections": [
     {
       "name": "users",
@@ -3292,6 +3292,325 @@
         "CREATE INDEX idx_pquotes_company ON purchase_quotes (company_id)",
         "CREATE INDEX idx_pquotes_status ON purchase_quotes (status)",
         "CREATE INDEX idx_pquotes_supplier ON purchase_quotes (selected_supplier_id)"
+      ]
+    },
+    {
+      "name": "document_reading_sessions",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "document_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "documents"
+        },
+        {
+          "name": "team_member_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "team"
+        },
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "reader_name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "reader_role",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "started_at",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ended_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "duration_seconds",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "completed",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "abandoned",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_drs_doc ON document_reading_sessions (document_id)",
+        "CREATE INDEX idx_drs_member ON document_reading_sessions (team_member_id)",
+        "CREATE INDEX idx_drs_company ON document_reading_sessions (company_id)",
+        "CREATE INDEX idx_drs_created ON document_reading_sessions (created)"
+      ]
+    },
+    {
+      "name": "document_quizzes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "document_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "documents"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "min_score_percent",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "estimated_minutes",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "questions",
+          "type": "json",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["draft", "published", "archived"]
+        },
+        {
+          "name": "generation_method",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["manual", "ai_generated", "hybrid"]
+        },
+        {
+          "name": "created_by_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_dq_doc ON document_quizzes (document_id)",
+        "CREATE INDEX idx_dq_status ON document_quizzes (status)"
+      ]
+    },
+    {
+      "name": "quiz_attempts",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "quiz_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "document_quizzes"
+        },
+        {
+          "name": "document_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "documents"
+        },
+        {
+          "name": "team_member_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "team"
+        },
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "collaborator_name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "collaborator_role",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "answers",
+          "type": "json",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "score_percent",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "approved",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "attempt_number",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "duration_seconds",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "training_action_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "effectiveness_evaluated",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_qa_quiz ON quiz_attempts (quiz_id)",
+        "CREATE INDEX idx_qa_doc ON quiz_attempts (document_id)",
+        "CREATE INDEX idx_qa_member ON quiz_attempts (team_member_id)",
+        "CREATE INDEX idx_qa_approved ON quiz_attempts (approved)"
       ]
     }
   ]

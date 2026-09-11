@@ -176,6 +176,32 @@ export async function computeTrainingIndicators(params: {
     monthlyListsCount[m] += 1
   })
 
+  // Incorporate tracked document readings into HHT (Onda D - Bloco 2)
+  try {
+    const readingFilter =
+      companyId && companyId !== 'all' ? `company_id = "${companyId}"` : undefined
+    const readingRecords = await pb.collection('document_reading_sessions').getFullList<{
+      id: string
+      started_at: string
+      duration_seconds: number
+      completed: boolean
+      abandoned: boolean
+    }>({
+      filter: readingFilter,
+    })
+    for (const rs of readingRecords) {
+      if (rs.abandoned || !rs.duration_seconds || rs.duration_seconds <= 0) continue
+      const rDate = new Date(rs.started_at)
+      if (!isNaN(rDate.getTime()) && rDate.getFullYear() === year) {
+        const rMonth = rDate.getMonth()
+        const rHours = Number((rs.duration_seconds / 3600).toFixed(2))
+        monthlyHH[rMonth] += rHours
+      }
+    }
+  } catch (err) {
+    console.warn('Incorporate reading sessions in HHT tolerant catch:', err)
+  }
+
   // Build monthly HHT data
   const totalAvailablePerMonth = employeesCount * baseHours
   const monthlyHHT: MonthlyHHTData[] = monthlyHH.map((hh, idx) => {
@@ -243,9 +269,37 @@ export async function computeTrainingIndicators(params: {
 
   const totalEvaluationsCompleted = companyEvals.length
   const totalEvaluationsSim = companyEvals.filter((ev) => ev.resposta === 'SIM').length
+
+  // Incorporate quiz attempts into % Eficácia (Onda D - Bloco 2)
+  let quizAttemptsTotal = 0
+  let quizAttemptsApproved = 0
+  try {
+    const attemptFilter =
+      companyId && companyId !== 'all' ? `company_id = "${companyId}"` : undefined
+    const quizAttempts = await pb.collection('quiz_attempts').getFullList<{
+      id: string
+      approved: boolean
+      created: string
+    }>({
+      filter: attemptFilter,
+    })
+    for (const qa of quizAttempts) {
+      const qDate = new Date(qa.created)
+      if (!isNaN(qDate.getTime()) && qDate.getFullYear() === year) {
+        quizAttemptsTotal++
+        if (qa.approved) quizAttemptsApproved++
+      }
+    }
+  } catch (err) {
+    console.warn('Incorporate quiz attempts in Eficácia tolerant catch:', err)
+  }
+
+  const combinedEvalsCompleted = totalEvaluationsCompleted + quizAttemptsTotal
+  const combinedEvalsSim = totalEvaluationsSim + quizAttemptsApproved
+
   const percentEficacia =
-    totalEvaluationsCompleted > 0
-      ? Number(((totalEvaluationsSim / totalEvaluationsCompleted) * 100).toFixed(1))
+    combinedEvalsCompleted > 0
+      ? Number(((combinedEvalsSim / combinedEvalsCompleted) * 100).toFixed(1))
       : 0
 
   // 5. Calculate % do Plano de Treinamento Concluído

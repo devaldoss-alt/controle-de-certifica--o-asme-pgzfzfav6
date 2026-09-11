@@ -15,6 +15,7 @@ import { TrainingImportDialog } from '@/components/TrainingImportDialog'
 import { TrainingActionDialog, TrainingRealizeDialog } from '@/components/TrainingActionDialog'
 import { TrainingAttendanceDialog } from '@/components/TrainingAttendanceDialog'
 import { TrainingIndicatorsSection } from '@/components/TrainingIndicatorsSection'
+import { CollaboratorProfileDialog } from '@/components/CollaboratorProfileDialog'
 import { getAttendanceLists, type TrainingAttendanceList } from '@/services/training-attendance'
 import { ContextualHelpButton } from '@/components/ContextualHelpButton'
 
@@ -55,6 +56,7 @@ import {
   Layers,
   Filter,
   Users,
+  User,
   Award,
   BarChart3,
   TrendingUp,
@@ -92,6 +94,11 @@ export default function TrainingPage() {
   const [actionForAttendance, setActionForAttendance] = useState<TrainingPlanActionComputed | null>(
     null,
   )
+
+  // Collaborator 360 profile modal (Onda D - Bloco 1)
+  const [collaboratorProfileOpen, setCollaboratorProfileOpen] = useState(false)
+  const [selectedCollaboratorName, setSelectedCollaboratorName] = useState('')
+  const [selectedTeamMemberId, setSelectedTeamMemberId] = useState<string | undefined>(undefined)
 
   // Map of attendance lists per action ID for fast status badge rendering
   const [attendanceListsMap, setAttendanceListsMap] = useState<
@@ -354,6 +361,20 @@ export default function TrainingPage() {
           </div>
 
           <ContextualHelpButton subTab={activeTab} variant="button" />
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSelectedCollaboratorName('')
+              setSelectedTeamMemberId(undefined)
+              setCollaboratorProfileOpen(true)
+            }}
+            className="text-xs border-primary/30 text-primary hover:bg-primary/10 gap-1.5 h-9"
+            title="Consultar Ficha do Colaborador (Treinamentos, Presenças, Horas e Eficácia)"
+          >
+            <User className="w-3.5 h-3.5" /> Ficha do Colaborador
+          </Button>
 
           <Button
             variant="outline"
@@ -947,6 +968,15 @@ export default function TrainingPage() {
         action={actionForAttendance}
         companyId={selectedCompanyId}
         onSuccess={loadActions}
+      />
+
+      {/* Collaborator 360 Profile Dialog (Onda D - Bloco 1) */}
+      <CollaboratorProfileDialog
+        open={collaboratorProfileOpen}
+        onOpenChange={setCollaboratorProfileOpen}
+        teamMemberId={selectedTeamMemberId}
+        collaboratorName={selectedCollaboratorName}
+        companyId={selectedCompanyId}
       />
     </div>
   )

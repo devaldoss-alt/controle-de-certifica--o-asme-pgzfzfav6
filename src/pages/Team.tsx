@@ -56,6 +56,7 @@ import {
 } from 'lucide-react'
 import { UserCertificates } from '@/components/UserCertificates'
 import { getCertificates, type Certificate } from '@/services/certificates'
+import { CollaboratorProfileDialog } from '@/components/CollaboratorProfileDialog'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -89,6 +90,8 @@ export default function Team() {
   const [memberSaving, setMemberSaving] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [deleteMemberId, setDeleteMemberId] = useState<string | null>(null)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [profileMember, setProfileMember] = useState<TeamMember | null>(null)
 
   const availableCompanies = useMemo(() => (companies.length > 0 ? companies : []), [companies])
 
@@ -269,7 +272,17 @@ export default function Team() {
                             {m.name?.charAt(0).toUpperCase() || 'U'}
                           </AvatarFallback>
                         </Avatar>
-                        {m.name}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileMember(m)
+                            setProfileOpen(true)
+                          }}
+                          className="hover:underline hover:text-primary font-medium text-left transition-colors"
+                          title="Clique para abrir Ficha do Colaborador (Onda D)"
+                        >
+                          {m.name}
+                        </button>
                         {m.is_indicator && (
                           <Badge
                             variant="outline"
@@ -286,6 +299,18 @@ export default function Team() {
                       <TableCell className="text-xs text-white/70">{m.role || '—'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setProfileMember(m)
+                              setProfileOpen(true)
+                            }}
+                            className="text-xs text-primary/90 hover:text-primary hover:bg-primary/10 h-8 px-2"
+                            title="Ficha do Colaborador"
+                          >
+                            Ficha
+                          </Button>
                           <Button
                             size="icon"
                             variant="ghost"
@@ -462,6 +487,15 @@ export default function Team() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Collaborator Profile Modal */}
+      <CollaboratorProfileDialog
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        teamMemberId={profileMember?.id}
+        collaboratorName={profileMember?.name}
+        companyId={profileMember?.company_id}
+      />
     </div>
   )
 }

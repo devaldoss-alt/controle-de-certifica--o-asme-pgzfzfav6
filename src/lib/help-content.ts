@@ -98,49 +98,66 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
     title: 'Documentos Técnicos (DMS)',
     subtitle: 'Gestão de procedimentos, instruções de trabalho e normas',
     summary:
-      'Módulo de gestão eletrônica de documentos (GED/DMS). Organiza procedimentos internos, especificações e normas técnicas em pastas virtuais classificadas por prefixos padronizados com controle de revisão e exportações.',
+      'Módulo de gestão eletrônica de documentos (GED/DMS) integrado à Onda D de Treinamentos. Organiza procedimentos internos em pastas virtuais, permite leitura rastreada com cronômetro em tempo real, provas de eficácia (criadas pela GQ ou geradas pelo Assistente IA) e relatórios completos de leitura e aprovação.',
     features: [
       {
-        name: 'Pastas Virtuais por Prefixo',
+        name: 'Leitura Rastreada com Cronômetro (Onda D)',
         description:
-          'Estruturação por prefixos padronizados como PR (Procedimentos), IT (Instruções) e PO (Políticas).',
+          'Ao abrir qualquer documento para leitura, o sistema registra quem leu e quanto tempo permaneceu lendo (descartando sessões ociosas > 2h).',
+        badge: 'Onda D',
       },
       {
-        name: 'Editor com Rich Text',
-        description: 'Elaboração e formatação de documentos técnicos diretamente na plataforma.',
-      },
-      {
-        name: 'Exportações Técnicas',
+        name: 'Prova de Leitura & Eficácia (Manual ou IA)',
         description:
-          'Download do documento formatado em PDF oficial, DOCX (Word) ou planilhas auxiliares.',
+          'A GQ cadastra perguntas ou gera automaticamente pelo Assistente IA. Nota mínima configurável (padrão 70%). Ao ser aprovado, alimenta automaticamente o HHT e a % Eficácia.',
+        badge: 'Assistente IA',
       },
       {
-        name: 'Controle de Versão e Código',
-        description: 'Registro de revisão vigente, histórico e numeração rastreável do documento.',
+        name: 'Relatório de Leitura para a GQ',
+        description:
+          'Painel exclusivo para a GQ auditar leitores únicos, tempo médio por sessão, notas obtidas e taxa de aprovação por procedimento.',
+      },
+      {
+        name: 'Pastas Virtuais e Exportações',
+        description:
+          'Estruturação por prefixos padronizados (PR, IT, PO) com controle de revisão e exportações em PDF oficial, Word e Excel.',
       },
     ],
     steps: [
       {
         step: 1,
-        title: 'Localize ou filtre documentos',
+        title: 'Leitura Rastreada do Procedimento',
         instruction:
-          'Navegue pelas pastas virtuais à esquerda ou use a busca para encontrar o procedimento desejado.',
+          'Clique em "Ler Procedimento" em qualquer documento. O cronômetro superior registrará com precisão seu tempo de estudo técnico.',
       },
       {
         step: 2,
-        title: 'Crie um novo documento técnico',
+        title: 'Realizar a Prova de Leitura',
         instruction:
-          'Clique em "Novo Documento", selecione o prefixo padronizado, informe o código, título e digite o conteúdo no editor.',
-        tip: 'Campos bilíngues permitem manter o procedimento alinhado com auditorias internacionais.',
+          'Ao concluir a leitura, clique em "Fazer Prova". Responda às perguntas para comprovar assimilação. Se nota ≥ mínima (ex: 70%), sua capacitação é aprovada imediatamente.',
       },
       {
         step: 3,
-        title: 'Exporte para compartilhamento',
+        title: 'Gerenciar Provas e Questões (GQ)',
         instruction:
-          'Na visualização do documento, use os botões "Exportar PDF" ou "Word" para disponibilizar a cópia controlada.',
+          'Usuários da GQ clicam no botão "Prova" para cadastrar perguntas manualmente ou clicar em "Gerar com Assistente IA" para criação automatizada das questões.',
+      },
+      {
+        step: 4,
+        title: 'Auditar no Relatório de Leitura',
+        instruction:
+          'Clique no ícone de gráfico para ver a lista de colaboradores que leram o documento, duração de cada sessão e notas obtidas nas tentativas.',
       },
     ],
-    tags: ['documentos', 'procedimentos', 'dms', 'it', 'qualidade'],
+    tags: [
+      'documentos',
+      'leitura rastreada',
+      'prova',
+      'onda d',
+      'eficácia',
+      'procedimentos',
+      'dms',
+    ],
   },
 
   // 2. Qualidade: Lista Mestra
@@ -938,8 +955,14 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
     title: 'Plano de Treinamentos (FSGQ 7.2-1)',
     subtitle: 'Gestão completa da capacitação técnica e conformidade ISO/ASME',
     summary:
-      'Módulo oficial de gestão de competências segundo o procedimento FSGQ 7.2-1 Rev.03. Controla o cronograma anual de ações, listas de presença digitais (FSGQ 7.2-3), avaliação de eficácia após 60 dias da conclusão e cálculo automático do indicador Homem-Hora de Treinamento (HHT).',
+      'Módulo oficial de gestão de competências segundo o procedimento FSGQ 7.2-1 Rev.03 e Onda D. Controla o cronograma anual de ações, listas de presença digitais (FSGQ 7.2-3), avaliação de eficácia após 60 dias com integração na Agenda, Ficha 360° do Colaborador (com matriz Previsto vs. Realizado, HHT individual e leituras de procedimentos) e indicadores automáticos HHT e % Eficácia.',
     features: [
+      {
+        name: 'Ficha do Colaborador 360° (Onda D)',
+        description:
+          'Visão individual completa ao clicar em qualquer colaborador: treinamentos assistidos, presenças, notas, avaliações de eficácia, leituras de procedimentos com provas e matriz Colaborador × Treinamentos do plano.',
+        badge: 'Onda D',
+      },
       {
         name: 'Formulário Oficial FSGQ 7.2-1',
         description:
@@ -948,47 +971,61 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
       {
         name: 'Lista de Presença Digital (FSGQ 7.2-3)',
         description:
-          'Coleta de assinaturas digitais dos colaboradores, foto da turma, instrutor e nota de aproveitamento.',
+          'Coleta de assinaturas digitais dos colaboradores, instrutor e notas de aproveitamento.',
       },
       {
-        name: 'Ciclo de Eficácia (+60 dias)',
+        name: 'Ciclo de Eficácia (+60 dias) com Agenda',
         description:
-          'Dispara automaticamente o prazo de 60 dias após o treinamento para o gestor avaliar se a competência foi absorvida na prática.',
+          'Gera automaticamente evento na Agenda corporativa para avaliação de impacto prático após 60 dias.',
         badge: '+60 dias',
       },
       {
-        name: 'Indicadores Automáticos (HHT)',
+        name: 'Indicadores Automáticos (HHT e % Eficácia)',
         description:
-          'Cálculo de Homem-Hora de Treinamento, % de aderência ao plano anual e índice de eficácia atingido.',
+          'Cálculo em tempo real de Homem-Hora de Treinamento e % de Eficácia consolidando presenças e leituras de procedimentos.',
       },
     ],
     steps: [
       {
         step: 1,
+        title: 'Consultar a Ficha do Colaborador',
+        instruction:
+          'Clique no botão "Ficha do Colaborador" no topo ou no nome de qualquer colaborador para ver todo o seu histórico técnico de capacitação e horas.',
+      },
+      {
+        step: 2,
         title: 'Planejar as ações anuais',
         instruction:
           'Cadastre as ações do ano clicando em "Nova Ação" ou faça a importação da planilha oficial FSGQ 7.2-1.',
       },
       {
-        step: 2,
+        step: 3,
         title: 'Registrar a realização com Lista de Presença',
         instruction:
           'Após ministrar o curso, clique no botão "Lista de Presença" na linha da ação. Registre participantes e notas.',
       },
       {
-        step: 3,
+        step: 4,
         title: 'Conduzir a Avaliação de Eficácia após 60 dias',
         instruction:
           'Após 60 dias da realização, o supervisor avalia o impacto do colaborador na fábrica respondendo ao questionário oficial.',
       },
       {
-        step: 4,
+        step: 5,
         title: 'Acompanhar a aba de Indicadores de Treinamento',
         instruction:
           'Monitore a meta mensal de HHT e o percentual de cumprimento da matriz anual na aba Indicadores.',
       },
     ],
-    tags: ['treinamentos', 'fsgq 7.2-1', 'hht', 'eficácia', 'capacitação'],
+    tags: [
+      'treinamentos',
+      'ficha do colaborador',
+      'onda d',
+      'fsgq 7.2-1',
+      'hht',
+      'eficácia',
+      'capacitação',
+    ],
   },
 
   // Treinamentos - Aba Plano de Ações

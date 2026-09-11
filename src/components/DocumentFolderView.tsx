@@ -13,11 +13,14 @@ import { Badge } from '@/components/ui/badge'
 import {
   Folder,
   FileText,
-  ArrowLeft,
   Trash2,
   FileDown,
   FileType,
   FileSpreadsheet,
+  ArrowLeft,
+  BookOpen,
+  Award,
+  BarChart3,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -32,6 +35,10 @@ interface DocumentFolderViewProps {
   onDelete: (id: string) => void
   onExport: (type: 'pdf' | 'word' | 'excel', doc: DocumentRecord) => void
   canEdit: boolean
+  onReadDocument?: (doc: DocumentRecord) => void
+  onManageQuiz?: (doc: DocumentRecord) => void
+  onViewReport?: (doc: DocumentRecord) => void
+  isGQUser?: boolean
 }
 
 export function DocumentFolderView({
@@ -43,6 +50,10 @@ export function DocumentFolderView({
   onDelete,
   onExport,
   canEdit,
+  onReadDocument,
+  onManageQuiz,
+  onViewReport,
+  isGQUser = false,
 }: DocumentFolderViewProps) {
   const { t, lang } = useI18n()
 
@@ -160,6 +171,44 @@ export function DocumentFolderView({
               <p className="text-xs text-muted-foreground">
                 {format(new Date(doc.updated), 'dd/MM/yyyy HH:mm')}
               </p>
+              {/* Leitura Rastreada & Prova (Onda D) */}
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-1 flex-wrap">
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => onReadDocument?.(doc)}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs h-7 px-2.5 font-medium"
+                  title="Abrir procedimento com cronômetro de leitura rastreada e prova"
+                >
+                  <BookOpen className="w-3.5 h-3.5 mr-1" />
+                  Ler Procedimento
+                </Button>
+
+                {isGQUser && (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onManageQuiz?.(doc)}
+                      className="border-primary/40 text-primary hover:bg-primary/10 text-xs h-7 px-2"
+                      title="Cadastrar ou editar prova de leitura deste documento"
+                    >
+                      <Award className="w-3.5 h-3.5 mr-1" />
+                      Prova
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onViewReport?.(doc)}
+                      className="text-muted-foreground hover:text-white text-xs h-7 px-1.5"
+                      title="Relatório de quem leu, tempos e notas das provas"
+                    >
+                      <BarChart3 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
               <div className="flex gap-2 pt-2 border-t border-white/5 flex-wrap">
                 <Button
                   size="sm"

@@ -18,6 +18,11 @@ import { exportDocumentPdf, exportDocumentWord, exportDocumentExcel } from '@/li
 import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
 import { DocumentFolderView } from '@/components/DocumentFolderView'
 import { DocumentEditor } from '@/components/DocumentEditor'
+import { TrackedDocumentReader } from '@/components/TrackedDocumentReader'
+import { DocumentQuizDialog } from '@/components/DocumentQuizDialog'
+import { DocumentQuizManagerDialog } from '@/components/DocumentQuizManagerDialog'
+import { DocumentReadingReportDialog } from '@/components/DocumentReadingReportDialog'
+import { getQuizForDocument, type DocumentQuiz } from '@/services/document-reading-quiz'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -64,6 +69,43 @@ export default function Documents() {
   const [isSaving, setIsSaving] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+
+  // Onda D (Bloco 2) - Leitura Rastreada, Provas e Relatórios
+  const [readerOpen, setReaderOpen] = useState(false)
+  const [activeDocForReader, setActiveDocForReader] = useState<DocumentRecord | null>(null)
+  const [quizDialogOpen, setQuizDialogOpen] = useState(false)
+  const [activeQuizForDialog, setActiveQuizForDialog] = useState<DocumentQuiz | null>(null)
+  const [quizManagerOpen, setQuizManagerOpen] = useState(false)
+  const [activeDocForQuizManager, setActiveDocForQuizManager] = useState<DocumentRecord | null>(
+    null,
+  )
+  const [existingQuizForManager, setExistingQuizForManager] = useState<DocumentQuiz | null>(null)
+  const [reportOpen, setReportOpen] = useState(false)
+  const [activeDocForReport, setActiveDocForReport] = useState<DocumentRecord | null>(null)
+
+  const isGQUser = ['Manager', 'Director', 'QCC', 'Consultor', 'Admin'].includes(user?.role || '')
+
+  const handleOpenReader = (doc: DocumentRecord) => {
+    setActiveDocForReader(doc)
+    setReaderOpen(true)
+  }
+
+  const handleOpenQuizManager = async (doc: DocumentRecord) => {
+    setActiveDocForQuizManager(doc)
+    const existing = await getQuizForDocument(doc.id)
+    setExistingQuizForManager(existing)
+    setQuizManagerOpen(true)
+  }
+
+  const handleOpenReport = (doc: DocumentRecord) => {
+    setActiveDocForReport(doc)
+    setReportOpen(true)
+  }
+
+  const handleTakeQuizFromReader = (quiz: DocumentQuiz) => {
+    setActiveQuizForDialog(quiz)
+    setQuizDialogOpen(true)
+  }
   const canEdit = canUseDocumentEditor(user?.plan) && ['QCC', 'Manager'].includes(user?.role || '')
   const txt = (pt: string, en: string) => (lang === 'pt' ? pt : en)
 
@@ -312,6 +354,10 @@ export default function Documents() {
           onDelete={handleDeleteRequest}
           onExport={handleExport}
           canEdit={canEdit}
+          onReadDocument={handleOpenReader}
+          onManageQuiz={handleOpenQuizManager}
+          onViewReport={handleOpenReport}
+          isGQUser={isGQUser}
         />
       )}
 
@@ -334,6 +380,44 @@ export default function Documents() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Onda D - Bloco 2 Modals */}
+      <TrackedDocumentReader
+        open={readerOpen}
+        onOpenChange={setReaderOpen}
+        document={activeDocForReader}
+        currentUserId={user?.id}
+        currentUserName={user?.name}
+        currentUserRole={user?.role}
+        companyId={selectedCompanyId !== 'all' ? selectedCompanyId : user?.primary_company_id}
+        onTakeQuiz={handleTakeQuizFromReader}
+      />
+
+      <DocumentQuizDialog
+        open={quizDialogOpen}
+        onOpenChange={setQuizDialogOpen}
+        quiz={activeQuizForDialog}
+        currentUserId={user?.id}
+        currentUserName={user?.name}
+        currentUserRole={user?.role}
+        companyId={selectedCompanyId !== 'all' ? selectedCompanyId : user?.primary_company_id}
+      />
+
+      <DocumentQuizManagerDialog
+        open={quizManagerOpen}
+        onOpenChange={setQuizManagerOpen}
+        document={activeDocForQuizManager}
+        existingQuiz={existingQuizForManager}
+        onSaved={() => {
+          toast({ title: 'Prova de leitura salva com sucesso!' })
+        }}
+      />
+
+      <DocumentReadingReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        document={activeDocForReport}
+      />
     </div>
   )
 }
