@@ -7,9 +7,12 @@ import { getIndicators, type Indicator } from '@/services/indicators'
 import { IndicatorFormDialog } from '@/components/IndicatorFormDialog'
 import { IndicatorCard } from '@/components/IndicatorCard'
 import { Button } from '@/components/ui/button'
-import { Plus, Target, RotateCw, Calendar } from 'lucide-react'
+import { Plus, Target, RotateCw, Calendar, Clock, BarChart3 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { LeadTimeReport } from '@/components/LeadTimeReport'
 import { recalculateTrainingIndicators } from '@/services/training-indicators'
 import { recalculateWarehouseIndicators } from '@/services/warehouse-phase2'
+import { recalculateLeadTimeIndicators } from '@/services/lead-time'
 import { useToast } from '@/components/ui/use-toast'
 import {
   Select,
@@ -30,6 +33,7 @@ export default function Indicators() {
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
   const [syncingAll, setSyncingAll] = useState(false)
+  const [activeTab, setActiveTab] = useState<'cards' | 'leadtime'>('cards')
   const txt = (pt: string, en: string) => (lang === 'pt' ? pt : en)
 
   const isQualityManager =
@@ -84,6 +88,8 @@ export default function Indicators() {
   useRealtime('training_effectiveness_evaluations', () => loadData())
   useRealtime('material_requisitions', () => loadData())
   useRealtime('purchase_requests', () => loadData())
+  useRealtime('packing_slips', () => loadData())
+  useRealtime('non_conformities', () => loadData())
 
   if (!canView) {
     return (
@@ -118,6 +124,34 @@ export default function Indicators() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Tab switch between general indicators and Lead Time report */}
+          <div className="flex items-center bg-black/40 border border-white/10 rounded-lg p-0.5">
+            <button
+              onClick={() => setActiveTab('cards')}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+                activeTab === 'cards'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-muted-foreground hover:text-white',
+              )}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>{txt('Painel Estratégico', 'Strategic Board')}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('leadtime')}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+                activeTab === 'leadtime'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-muted-foreground hover:text-white',
+              )}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>{txt('Lead Time (Onda F)', 'Lead Time (Wave F)')}</span>
+            </button>
+          </div>
+
           {/* Year selector */}
           <div className="flex items-center gap-1.5 bg-black/30 border border-white/10 rounded-md px-2 py-1">
             <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -203,32 +237,38 @@ export default function Indicators() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {indicators.map((ind) => (
-          <IndicatorCard
-            key={ind.id}
-            indicator={ind}
-            canEdit={canEdit}
-            onUpdated={loadData}
-            selectedYear={selectedYear}
-          />
-        ))}
-      </div>
+      {activeTab === 'leadtime' ? (
+        <LeadTimeReport companyId={selectedCompanyId} canEdit={canEdit} />
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {indicators.map((ind) => (
+              <IndicatorCard
+                key={ind.id}
+                indicator={ind}
+                canEdit={canEdit}
+                onUpdated={loadData}
+                selectedYear={selectedYear}
+              />
+            ))}
+          </div>
 
-      {indicators.length === 0 && (
-        <div className="text-center py-20 text-muted-foreground">
-          <Target className="w-12 h-12 mx-auto mb-4 opacity-20" />
-          <p className="mb-4">{txt('Nenhum indicador encontrado', 'No indicators found')}</p>
-          {canEdit && (
-            <Button
-              onClick={() => setShowCreateDialog(true)}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              {txt('Criar Indicador', 'Create Indicator')}
-            </Button>
+          {indicators.length === 0 && (
+            <div className="text-center py-20 text-muted-foreground">
+              <Target className="w-12 h-12 mx-auto mb-4 opacity-20" />
+              <p className="mb-4">{txt('Nenhum indicador encontrado', 'No indicators found')}</p>
+              {canEdit && (
+                <Button
+                  onClick={() => setShowCreateDialog(true)}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  {txt('Criar Indicador', 'Create Indicator')}
+                </Button>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
 
       <IndicatorFormDialog

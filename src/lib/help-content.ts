@@ -1191,6 +1191,16 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
       'Painel de governança corporativa da qualidade. Centraliza os indicadores de conformidade de processos, refugo, atendimento a prazos, fornecedores, almoxarifado e treinamento com histórico e metas.',
     features: [
       {
+        name: 'Relatório de Lead Time Operacional (Onda F)',
+        description:
+          'Painel integrado que calcula o tempo médio por período e cargo para fechamento de RNCs, dias fora da fábrica em serviços especiais (Romaneio), ciclo de compras (Suprimentos) e atendimento do almoxarifado.',
+      },
+      {
+        name: 'Alimentação 100% Automática de Indicadores',
+        description:
+          'Novos KPIs de Lead Time alimentados automaticamente pelos eventos do sistema, sem necessidade de digitação manual de valores.',
+      },
+      {
         name: 'Metas e Limites de Controle',
         description:
           'Definição de metas mínimas e máximas com indicação visual de status verde, âmbar e vermelho.',
@@ -1199,33 +1209,28 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
         name: 'Histórico Mensal de Medições',
         description: 'Registro das apurações mensais com notas explicativas e causas de variações.',
       },
-      {
-        name: 'Integração com Módulos Operacionais',
-        description:
-          'Consolida automaticamente indicadores vindos do Almoxarifado, Treinamentos e Checklists.',
-      },
     ],
     steps: [
       {
         step: 1,
-        title: 'Selecione o processo ou setor',
+        title: 'Alternar entre Painel Estratégico e Lead Time',
         instruction:
-          'Navegue pelos cartões de indicadores para avaliar o desempenho em relação à meta contratada.',
+          'Utilize os botões no topo para ver os cartões tradicionais de metas ou a aba especializada de Lead Time (Onda F).',
       },
       {
         step: 2,
-        title: 'Registrar nova medição do mês',
+        title: 'Filtrar Lead Time por período, processo e cargo',
         instruction:
-          'Clique no card do indicador e selecione "Inserir Valor" para alimentar o mês com o resultado obtido.',
+          'Filtre os tempos de ciclo por últimos 30/90 dias ou ano (2026/2025) e veja a distribuição por responsável e por fornecedor parceiro.',
       },
       {
         step: 3,
-        title: 'Consultar histórico e evolução',
+        title: 'Sincronizar Indicadores Automáticos',
         instruction:
-          'Abra o gráfico de tendência para verificar a curva dos últimos 12 meses e identificar desvios.',
+          'O sistema sincroniza sozinho ao salvar RNCs ou romaneios, mas você também pode forçar a sincronização no botão "Recalcular Indicadores".',
       },
     ],
-    tags: ['indicadores', 'kpis', 'metas', 'sgq', 'qualidade'],
+    tags: ['indicadores', 'kpis', 'lead time', 'metas', 'sgq', 'onda f'],
   },
 
   // 6. Gestão: RNC
@@ -1421,9 +1426,14 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
       'Painel de segurança administrativa do UQualiHub. Permite aos Gestores configurar com precisão quais módulos cada papel (Manager, QCC, Consultor, Supervisor, Apontador) pode visualizar, criar, editar ou excluir, além de proteger pastas de documentos confidenciais.',
     features: [
       {
+        name: 'Replicação Rápida de Permissões (Onda F)',
+        description:
+          'Permite copiar o perfil completo de permissões de um cargo modelo para um ou múltiplos cargos de uma só vez, com modal de confirmação e auditoria automática notificada aos gestores.',
+      },
+      {
         name: 'Matriz de Permissões por Módulo',
         description:
-          'Grade completa onde cada linha é um módulo do sistema e cada coluna define os direitos de cada papel.',
+          'Grade completa onde cada linha é um módulo do sistema e cada coluna define os direitos de cada papel (incluindo Suprimentos).',
       },
       {
         name: 'Permissões por Pasta Técnica',
@@ -1439,25 +1449,25 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
     steps: [
       {
         step: 1,
-        title: 'Selecione a empresa ou visão global',
+        title: 'Replicar permissões entre cargos',
         instruction:
-          'Escolha se deseja configurar a matriz para uma empresa específica ou para todas as unidades.',
+          'Clique no botão "Replicar Permissões...", escolha o cargo de origem (modelo), marque os cargos destino e confirme para aplicar.',
+        tip: 'Uma notificação de auditoria é enviada aos Gestores registrando quem replicou de quem.',
       },
       {
         step: 2,
-        title: 'Ajuste os privilégios dos módulos',
+        title: 'Ajuste manual fino dos privilégios',
         instruction:
-          'Marque ou desmarque as caixas de "Ver", "Criar", "Editar" e "Excluir" para os papéis desejados.',
-        tip: 'O módulo de Ajuda é aberto para todos os colaboradores por padrão.',
+          'Marque ou desmarque as caixas de "Ver", "Criar", "Editar" e "Excluir" para os papéis e módulos desejados.',
       },
       {
         step: 3,
-        title: 'Configure o acesso a pastas de documentos',
+        title: 'Salvar as configurações',
         instruction:
-          'Na aba correspondente, libere ou restrinja o acesso aos prefixos do DMS conforme o setor do colaborador.',
+          'Clique em "Salvar Configurações" para gravar a matriz atualizada no banco de dados.',
       },
     ],
-    tags: ['controle de acesso', 'permissões', 'segurança', 'papéis', 'administração'],
+    tags: ['controle de acesso', 'permissões', 'replicação', 'segurança', 'papéis', 'onda f'],
   },
 }
 
@@ -1492,10 +1502,15 @@ export function getHelpTopic(pathname: string, subTab?: string): HelpTopic {
     groupId: 'home',
     groupTitle: 'Ajuda UQualiHub',
     title: 'Guia de Navegação UQualiHub',
-    subtitle: 'Instruções gerais do sistema',
+    subtitle: 'Instruções gerais do sistema e melhoria contínua',
     summary:
-      'Você está visualizando uma tela do UQualiHub. Caso tenha dúvidas sobre a operação deste recurso, consulte o menu lateral para acessar a Central de Tutoriais completa ou recorra ao seu Gestor da Qualidade.',
+      'Você está visualizando uma tela do UQualiHub. Utilize o botão discreto "Comentar" no cabeçalho a qualquer momento para enviar sugestões de melhoria ou dúvidas diretamente ao Gestor da Qualidade.',
     features: [
+      {
+        name: 'Canal de Feedback & Comentários (Onda F)',
+        description:
+          'Clique em "Comentar" no topo da página para sugerir melhorias ou relatar dificuldades naquela tela específica.',
+      },
       {
         name: 'Menu Lateral Integrado',
         description:
@@ -1506,17 +1521,13 @@ export function getHelpTopic(pathname: string, subTab?: string): HelpTopic {
         description:
           'Consulte o passo a passo completo de cada recurso em linguagem simples e direta.',
       },
-      {
-        name: 'Notificações no Sino',
-        description:
-          'Acompanhe tarefas atribuídas e retornos de aprovação pelo ícone no cabeçalho.',
-      },
     ],
     steps: [
       {
         step: 1,
-        title: 'Selecione a empresa correta',
-        instruction: 'Confirme no topo superior direito se você está operando na unidade desejada.',
+        title: 'Enviar feedback sobre a tela',
+        instruction:
+          'Clique no botão "Comentar" ao lado do botão de Ajuda no cabeçalho, selecione o tipo (Sugestão/Problema/Dúvida) e envie.',
       },
       {
         step: 2,
@@ -1526,12 +1537,12 @@ export function getHelpTopic(pathname: string, subTab?: string): HelpTopic {
       },
       {
         step: 3,
-        title: 'Fale com o suporte técnico',
+        title: 'Acompanhar notificações no sino',
         instruction:
-          'Se encontrar qualquer dificuldade ou inconsistência, entre em contato com a equipe de Qualidade.',
+          'Receba avisos imediatos de aprovações, convocações e respostas aos seus apontamentos.',
       },
     ],
-    tags: ['ajuda', 'suporte', 'uqualihub'],
+    tags: ['ajuda', 'suporte', 'feedback', 'uqualihub', 'onda f'],
   }
 }
 

@@ -54,8 +54,10 @@ import {
   UserCheck,
   Settings,
   Users,
+  Copy,
 } from 'lucide-react'
 import { Loader2 } from 'lucide-react'
+import { ReplicatePermissionsDialog } from '@/components/ReplicatePermissionsDialog'
 const ROLES = [
   'Manager',
   'Director',
@@ -104,6 +106,7 @@ export default function AccessControl() {
   const [loading, setLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [selectedRole, setSelectedRole] = useState<string>('Consultor')
+  const [showReplicateDialog, setShowReplicateDialog] = useState(false)
 
   const isQualityManager =
     user?.email === 'devaldoss@gmail.com' ||
@@ -438,15 +441,33 @@ export default function AccessControl() {
           </p>
         </div>
 
-        <Button
-          onClick={handleSaveModulePermissions}
-          disabled={isSaving}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
-        >
-          <Save className="w-4 h-4 mr-2" />
-          {isSaving ? 'Salvando...' : lang === 'pt' ? 'Salvar Configurações' : 'Save Settings'}
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            onClick={() => setShowReplicateDialog(true)}
+            className="border-primary/40 text-primary hover:bg-primary/10 font-semibold text-xs h-9 gap-1.5"
+          >
+            <Copy className="w-4 h-4" />
+            {lang === 'pt' ? 'Replicar Permissões...' : 'Replicate Permissions...'}
+          </Button>
+
+          <Button
+            onClick={handleSaveModulePermissions}
+            disabled={isSaving}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-xs h-9"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            {isSaving ? 'Salvando...' : lang === 'pt' ? 'Salvar Configurações' : 'Save Settings'}
+          </Button>
+        </div>
       </div>
+
+      <ReplicatePermissionsDialog
+        open={showReplicateDialog}
+        onOpenChange={setShowReplicateDialog}
+        companyId={selectedCompanyId}
+        onCompleted={loadData}
+      />
 
       <div className="space-y-6">
         <div className="flex gap-2 border-b border-white/10 pb-2">

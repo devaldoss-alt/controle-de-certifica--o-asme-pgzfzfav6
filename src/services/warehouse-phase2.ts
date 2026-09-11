@@ -294,6 +294,12 @@ export async function updateMaterialRequisitionStatus(params: {
 
   // Recalculate indicators asynchronously
   recalculateWarehouseIndicators({ companyId: existing.company_id })
+  try {
+    const { recalculateLeadTimeIndicators } = await import('./lead-time')
+    recalculateLeadTimeIndicators({ companyId: existing.company_id })
+  } catch {
+    /* intentionally ignored */
+  }
 
   return updated
 }

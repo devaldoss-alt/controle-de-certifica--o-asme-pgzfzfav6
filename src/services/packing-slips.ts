@@ -136,7 +136,17 @@ export const updatePackingSlip = async (
   id: string,
   data: Partial<PackingSlip>,
 ): Promise<PackingSlip> => {
-  return pb.collection('packing_slips').update<PackingSlip>(id, data)
+  const updated = await pb.collection('packing_slips').update<PackingSlip>(id, data)
+  // Non-blocking trigger for Lead Time indicators if special service or return
+  if (data.return_date || data.days_out || data.movement_reason === 'Serviço Especial') {
+    try {
+      const { recalculateLeadTimeIndicators } = await import('./lead-time')
+      recalculateLeadTimeIndicators({ companyId: updated.company_id })
+    } catch {
+      /* intentionally ignored */
+    }
+  }
+  return updated
 }
 
 export const deletePackingSlip = async (id: string): Promise<boolean> => {

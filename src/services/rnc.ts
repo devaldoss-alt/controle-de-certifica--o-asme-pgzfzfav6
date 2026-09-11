@@ -452,6 +452,13 @@ export async function updateNonConformity(
 
   // If status is closed or updated, recalculate indicators
   recalculateRNCIndicators({ companyId: updated.company_id })
+  // Tolerant update for Lead Time indicators
+  try {
+    const { recalculateLeadTimeIndicators } = await import('./lead-time')
+    recalculateLeadTimeIndicators({ companyId: updated.company_id })
+  } catch {
+    /* intentionally ignored */
+  }
 
   return updated
 }

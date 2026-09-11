@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T01:23:31.193Z",
+  "generatedAt": "2026-09-11T01:37:23.714Z",
   "collections": [
     {
       "name": "users",
@@ -3611,6 +3611,108 @@
         "CREATE INDEX idx_qa_doc ON quiz_attempts (document_id)",
         "CREATE INDEX idx_qa_member ON quiz_attempts (team_member_id)",
         "CREATE INDEX idx_qa_approved ON quiz_attempts (approved)"
+      ]
+    },
+    {
+      "name": "user_feedback",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "user_name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "user_email",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "screen_path",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "screen_name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["sugestao", "problema", "duvida", "elogio"]
+        },
+        {
+          "name": "comment",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["novo", "lido", "resolvido"]
+        },
+        {
+          "name": "resolved_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "resolved_by_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_feedback_screen ON user_feedback (screen_path)",
+        "CREATE INDEX idx_feedback_status ON user_feedback (status)",
+        "CREATE INDEX idx_feedback_created ON user_feedback (created)"
       ]
     }
   ]
