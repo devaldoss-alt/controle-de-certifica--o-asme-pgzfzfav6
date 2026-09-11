@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useI18n } from '@/hooks/use-i18n'
 import {
   getCompanies,
@@ -21,8 +21,9 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Building2, Plus, Pencil, Trash2, Award } from 'lucide-react'
+import { Building2, Plus, Pencil, Trash2, Award, Upload, Image, X } from 'lucide-react'
 import { localizedField } from '@/lib/i18n-content'
+import pb from '@/lib/pocketbase/client'
 
 export default function Companies() {
   const { t, lang } = useI18n()
@@ -35,7 +36,10 @@ export default function Companies() {
     iso_certs: '',
     asme_certs: '',
     nbic_certs: '',
+    logoFile: null as File | null,
+    existingLogo: '',
   })
+  const logoInputRef = useRef<HTMLInputElement>(null)
 
   const loadData = async () => {
     const data = await getCompanies()
@@ -49,7 +53,15 @@ export default function Companies() {
 
   const openNew = () => {
     setEditing(null)
-    setForm({ name: '', tax_id: '', iso_certs: '', asme_certs: '', nbic_certs: '' })
+    setForm({
+      name: '',
+      tax_id: '',
+      iso_certs: '',
+      asme_certs: '',
+      nbic_certs: '',
+      logoFile: null,
+      existingLogo: '',
+    })
     setDialogOpen(true)
   }
 
@@ -61,6 +73,8 @@ export default function Companies() {
       iso_certs: c.iso_certs || '',
       asme_certs: c.asme_certs || '',
       nbic_certs: c.nbic_certs || '',
+      logoFile: null,
+      existingLogo: c.logo || '',
     })
     setDialogOpen(true)
   }
@@ -68,16 +82,31 @@ export default function Companies() {
   const handleSave = async () => {
     if (!form.name.trim()) return
     try {
+      const fd = new FormData()
+      fd.append('name', form.name)
+      fd.append('tax_id', form.tax_id)
+      fd.append('iso_certs', form.iso_certs)
+      fd.append('asme_certs', form.asme_certs)
+      fd.append('nbic_certs', form.nbic_certs)
+      if (form.logoFile) {
+        fd.append('logo', form.logoFile)
+      }
+
       if (editing) {
-        await updateCompany(editing.id, form)
+        await updateCompany(editing.id, fd)
       } else {
-        await createCompany(form)
+        await createCompany(fd)
       }
       setDialogOpen(false)
       loadData()
     } catch (e) {
       console.error(e)
     }
+  }
+
+  const getCompanyLogoSrc = (company: Company) => {
+    if (!company.logo) return null
+    return pb.files.getURL({ id: company.id, collectionName: 'companies' } as any, company.logo)
   }
 
   const handleDelete = async (id: string) => {
@@ -120,7 +149,19 @@ export default function Companies() {
           >
             <CardContent className="p-5 space-y-3">
               <div className="flex items-start justify-between">
-                <Building2 className="w-8 h-8 text-primary" />
+                {c.logo ? (
+                  <div className="h-10 w-24 bg-white/5 border border-white/10 rounded p-1 flex items-center justify-center overflow-hidden">
+                    <img
+                      src={getCompanyLogoSrc(c) || ''}
+                      alt={c.name}
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Building2 className="w-6 h-6 text-primary" />
+                  </div>
+                )}
                 <div className="flex gap-1">
                   <Button
                     size="icon"
@@ -222,6 +263,67 @@ export default function Companies() {
                 placeholder="NBIC R, NR"
                 className="bg-black/20 border-white/10 text-white"
               />
+            </div>
+
+            {/* Upload da Logomarca para o Cabeçalho do PDF */}
+            <div className="space-y-2 border border-white/10 rounded-lg p-3 bg-black/20">
+              <Label className="text-white text-xs block font-semibold flex items-center gap-1.5">
+                <Image className="w-3.5 h-3.5 text-primary" /> Logomarca da Empresa (Cabeçalho do
+                PDF)
+              </Label>
+              <p className="text-[11px] text-muted-foreground">
+                Usada no cabeçalho de todos os procedimentos impressos em PDF (PSGQ, FSGQ, ITSGQ,
+                CDE).
+              </p>
+
+              <div className="flex items-center gap-3">
+                {form.logoFile ? (
+                  <div className="flex items-center gap-2 p-1.5 rounded bg-primary/10 border border-primary/30 text-xs text-white">
+                    <span className="truncate max-w-[150px]">{form.logoFile.name}</span>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-5 w-5 text-muted-foreground hover:text-white"
+                      onClick={() => setForm({ ...form, logoFile: null })}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ) : form.existingLogo && editing ? (
+                  <div className="flex items-center gap-2 p-1.5 rounded bg-white/5 border border-white/10">
+                    <img
+                      src={getCompanyLogoSrc(editing) || ''}
+                      alt="Logo"
+                      className="h-7 max-w-[100px] object-contain"
+                    />
+                    <span className="text-[10px] text-muted-foreground">Logo atual</span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-muted-foreground italic">Nenhuma logo enviada</span>
+                )}
+
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setForm({ ...form, logoFile: e.target.files[0] })
+                    }
+                  }}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => logoInputRef.current?.click()}
+                  className="text-xs border-white/10 text-white"
+                >
+                  <Upload className="w-3 h-3 mr-1" /> Selecionar Imagem
+                </Button>
+              </div>
             </div>
           </div>
           <DialogFooter>

@@ -22,11 +22,13 @@ import { TrackedDocumentReader } from '@/components/TrackedDocumentReader'
 import { DocumentQuizDialog } from '@/components/DocumentQuizDialog'
 import { DocumentQuizManagerDialog } from '@/components/DocumentQuizManagerDialog'
 import { DocumentReadingReportDialog } from '@/components/DocumentReadingReportDialog'
+import { DocumentBatchMigrationAssistant } from '@/components/DocumentBatchMigrationAssistant'
 import { getQuizForDocument, type DocumentQuiz } from '@/services/document-reading-quiz'
+import { getCompanies, type Company } from '@/services/companies'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Plus, Lock, AlertTriangle, Search } from 'lucide-react'
+import { Plus, Lock, AlertTriangle, Search, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   AlertDialog,
@@ -82,6 +84,7 @@ export default function Documents() {
   const [existingQuizForManager, setExistingQuizForManager] = useState<DocumentQuiz | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
   const [activeDocForReport, setActiveDocForReport] = useState<DocumentRecord | null>(null)
+  const [migrationAssistantOpen, setMigrationAssistantOpen] = useState(false)
 
   const isGQUser = ['Manager', 'Director', 'QCC', 'Consultor', 'Admin'].includes(user?.role || '')
 
@@ -124,11 +127,14 @@ export default function Documents() {
 
   const effectiveSelectedPrefix = search.trim() ? 'ALL' : selectedPrefix
 
+  const [allCompanies, setAllCompanies] = useState<Company[]>([])
+
   const loadData = async () => {
     setLoadError(null)
     try {
       const isFullAccess = ['Manager', 'Director', 'QCC', 'Consultor'].includes(user?.role || '')
-      const access = await getDocumentAccess(user?.role)
+      const [access, comps] = await Promise.all([getDocumentAccess(user?.role), getCompanies()])
+      setAllCompanies(comps)
       const prefixes = access.filter((r: any) => r.can_view).map((r: any) => r.document_prefix)
       setAccessiblePrefixes(isFullAccess ? [] : prefixes)
       const effectivePrefixes = isFullAccess ? undefined : prefixes
@@ -178,12 +184,18 @@ export default function Documents() {
     setFormData({
       title: doc.title,
       titleEn: doc.title_en || '',
-      content: doc.content,
+      content: doc.content || '',
+      contentEn: doc.content_en || '',
       category: doc.category,
       filePath: doc.file_path || '',
       prefix: doc.prefix || '',
       code: doc.code || '',
       revision: doc.revision || '',
+      templateFamily: doc.template_family || '',
+      inspectorQualification: doc.inspector_qualification || '',
+      preparedBy: doc.prepared_by || '',
+      approvedBy: doc.approved_by || '',
+      verifiedBy: doc.verified_by || '',
       file: null,
     })
     setEditMode(true)
@@ -204,6 +216,7 @@ export default function Documents() {
     fd.append('title', formData.title)
     fd.append('title_en', formData.titleEn)
     fd.append('content', formData.content)
+    if (formData.contentEn !== undefined) fd.append('content_en', formData.contentEn)
     fd.append('category', formData.category)
     fd.append('file_path', formData.filePath)
     fd.append('prefix', formData.prefix)
@@ -211,6 +224,12 @@ export default function Documents() {
     fd.append('prefix_en', prefixMeta?.label_en || '')
     fd.append('code', formData.code.trim() || extractCodeFromTitle(formData.title))
     fd.append('revision', formData.revision)
+    if (formData.templateFamily) fd.append('template_family', formData.templateFamily)
+    if (formData.inspectorQualification !== undefined)
+      fd.append('inspector_qualification', formData.inspectorQualification)
+    if (formData.preparedBy !== undefined) fd.append('prepared_by', formData.preparedBy)
+    if (formData.approvedBy !== undefined) fd.append('approved_by', formData.approvedBy)
+    if (formData.verifiedBy !== undefined) fd.append('verified_by', formData.verifiedBy)
     const effectiveCompanyId =
       selectedCompanyId !== 'all' ? selectedCompanyId : user?.primary_company_id || ''
     if (effectiveCompanyId) fd.append('company_id', effectiveCompanyId)
@@ -261,8 +280,21 @@ export default function Documents() {
     }
   }
 
-  const handleExport = (type: 'pdf' | 'word' | 'excel', doc: DocumentRecord) => {
-    if (type === 'pdf') exportDocumentPdf(doc, lang)
+  const currentCompany = useMemo(() => {
+    const compId =
+      selectedCompanyId && selectedCompanyId !== 'all'
+        ? selectedCompanyId
+        : user?.primary_company_id
+    if (!compId) return allCompanies[0] || null
+    return allCompanies.find((c) => c.id === compId) || allCompanies[0] || null
+  }, [selectedCompanyId, user?.primary_company_id, allCompanies])
+
+  const handleExport = (
+    type: 'pdf' | 'word' | 'excel',
+    doc: DocumentRecord,
+    forceLang?: 'pt' | 'en',
+  ) => {
+    if (type === 'pdf') exportDocumentPdf(doc, lang, currentCompany, forceLang)
     else if (type === 'word') exportDocumentWord(doc, lang)
     else exportDocumentExcel(doc, lang)
   }
@@ -294,17 +326,30 @@ export default function Documents() {
             <BilingualText k="page.documents.desc" />
           </p>
         </div>
-        {canEdit ? (
-          <Button onClick={openNew} className="bg-primary hover:bg-primary/90">
-            <Plus className="w-4 h-4 mr-2" />
-            <BilingualText k="doc.new" />
-          </Button>
-        ) : (
-          <Badge variant="outline" className="border-amber-500/30 text-amber-500">
-            <Lock className="w-3 h-3 mr-1" />
-            <BilingualText k="msg.planRestricted" />
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {isGQUser && (
+            <Button
+              variant="outline"
+              onClick={() => setMigrationAssistantOpen(true)}
+              className="border-primary/40 text-primary hover:bg-primary/10"
+              title="Migração em lote dos procedimentos originais para dentro do sistema"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Migração em Lote (Onda B)
+            </Button>
+          )}
+          {canEdit ? (
+            <Button onClick={openNew} className="bg-primary hover:bg-primary/90">
+              <Plus className="w-4 h-4 mr-2" />
+              <BilingualText k="doc.new" />
+            </Button>
+          ) : (
+            <Badge variant="outline" className="border-amber-500/30 text-amber-500">
+              <Lock className="w-3 h-3 mr-1" />
+              <BilingualText k="msg.planRestricted" />
+            </Badge>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-2">
@@ -380,6 +425,15 @@ export default function Documents() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Assistente de Migração em Lote (Onda B) */}
+      <DocumentBatchMigrationAssistant
+        open={migrationAssistantOpen}
+        onOpenChange={setMigrationAssistantOpen}
+        documents={documents}
+        companies={allCompanies}
+        onSuccess={() => loadData()}
+      />
 
       {/* Onda D - Bloco 2 Modals */}
       <TrackedDocumentReader

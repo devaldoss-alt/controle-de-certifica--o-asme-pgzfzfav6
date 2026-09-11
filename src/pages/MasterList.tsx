@@ -142,6 +142,7 @@ export default function MasterList() {
       title: doc.title,
       titleEn: doc.title_en || '',
       content: doc.content || '',
+      contentEn: doc.content_en || '',
       category: 'Internal',
       filePath: doc.file_path || '',
       prefix: doc.prefix || '',
@@ -158,6 +159,11 @@ export default function MasterList() {
       sector: doc.sector || '',
       reviewDeadlineDays: doc.review_deadline_days ? String(doc.review_deadline_days) : '',
       notes: doc.notes || '',
+      templateFamily: doc.template_family || '',
+      inspectorQualification: doc.inspector_qualification || '',
+      preparedBy: doc.prepared_by || '',
+      approvedBy: doc.approved_by || '',
+      verifiedBy: doc.verified_by || '',
     })
     setFormOpen(true)
   }
@@ -168,6 +174,7 @@ export default function MasterList() {
     fd.append('title', formData.title)
     fd.append('title_en', formData.titleEn)
     fd.append('content', formData.content)
+    if (formData.contentEn !== undefined) fd.append('content_en', formData.contentEn)
     fd.append('category', 'Internal')
     fd.append('file_path', formData.filePath)
     const normalizedPrefix = normalizePrefix(formData.prefix)
@@ -184,6 +191,12 @@ export default function MasterList() {
     fd.append('sector', formData.sector)
     fd.append('review_deadline_days', formData.reviewDeadlineDays || '')
     fd.append('notes', formData.notes)
+    if (formData.templateFamily) fd.append('template_family', formData.templateFamily)
+    if (formData.inspectorQualification !== undefined)
+      fd.append('inspector_qualification', formData.inspectorQualification)
+    if (formData.preparedBy !== undefined) fd.append('prepared_by', formData.preparedBy)
+    if (formData.approvedBy !== undefined) fd.append('approved_by', formData.approvedBy)
+    if (formData.verifiedBy !== undefined) fd.append('verified_by', formData.verifiedBy)
     const cid = selectedCompanyId !== 'all' ? selectedCompanyId : user?.primary_company_id || ''
     if (cid) fd.append('company_id', cid)
     if (formData.file) fd.append('file', formData.file)

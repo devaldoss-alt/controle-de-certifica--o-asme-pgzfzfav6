@@ -17,9 +17,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { RichTextEditor } from '@/components/RichTextEditor'
+import { TwoColumnMarkdownEditor } from '@/components/TwoColumnMarkdownEditor'
 import { DMS_PREFIXES, type DocumentFormData } from '@/lib/dms-codes'
-import { Upload, FileText, X, Loader2 } from 'lucide-react'
+import { TEMPLATE_FAMILIES } from '@/lib/document-template-helper'
+import { Upload, FileText, X, Loader2, Edit3, Code2, Printer } from 'lucide-react'
 import { HybridDatePicker } from '@/components/HybridDatePicker'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useState } from 'react'
 
 export interface InternalDocFormData extends DocumentFormData {
   documentType: string
@@ -56,6 +60,8 @@ export function InternalDocumentForm({
   existingFileName,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [contentMode, setContentMode] = useState<'visual' | 'markdown'>('visual')
+  const [contentEnMode, setContentEnMode] = useState<'visual' | 'markdown'>('visual')
 
   const Field = ({
     label,
@@ -333,9 +339,140 @@ export function InternalDocumentForm({
             />
           </Field>
 
-          <div>
-            <Label className="text-white/80 mb-1 block">Conteúdo</Label>
-            <RichTextEditor value={data.content} onChange={(v: string) => onChange('content', v)} />
+          {/* Configuração do Template e Assinaturas */}
+          <div className="border border-white/10 rounded-lg p-3 bg-white/5 space-y-3">
+            <div className="text-xs font-semibold text-primary uppercase tracking-wider flex items-center gap-1.5">
+              <Printer className="w-3.5 h-3.5" /> Template de Impressão PDF & Assinaturas
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>
+                <Label className="text-white/80 text-xs mb-1 block">Família do Template</Label>
+                <Select
+                  value={data.templateFamily || TEMPLATE_FAMILIES.FAMILY_A}
+                  onValueChange={(v) => onChange('templateFamily', v)}
+                >
+                  <SelectTrigger className="bg-black/20 border-white/10 text-white text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={TEMPLATE_FAMILIES.FAMILY_A}>
+                      SGQ — Português (PSGQ/FSGQ/ITSGQ)
+                    </SelectItem>
+                    <SelectItem value={TEMPLATE_FAMILIES.FAMILY_B}>
+                      Técnico/CQ — Bilíngue (CDE)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-white/80 text-xs mb-1 block">Elaboração / Revisão</Label>
+                <Input
+                  value={data.preparedBy || ''}
+                  onChange={(e) => onChange('preparedBy', e.target.value)}
+                  placeholder="Ex: Roberta Junqueira / GQ"
+                  className="bg-black/20 border-white/10 text-white text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-white/80 text-xs mb-1 block">Aprovação / Reaprovação</Label>
+                <Input
+                  value={data.approvedBy || ''}
+                  onChange={(e) => onChange('approvedBy', e.target.value)}
+                  placeholder="Ex: Marcos Maciel / Diretor"
+                  className="bg-black/20 border-white/10 text-white text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-white/80 text-xs mb-1 block">Verificação (Família B)</Label>
+                <Input
+                  value={data.verifiedBy || ''}
+                  onChange={(e) => onChange('verifiedBy', e.target.value)}
+                  placeholder="Ex: Geraldo Timóteo"
+                  className="bg-black/20 border-white/10 text-white text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-white/80 text-xs mb-1 block">
+                Qualificação do Inspetor / Procedimento (Família B)
+              </Label>
+              <Input
+                value={data.inspectorQualification || ''}
+                onChange={(e) => onChange('inspectorQualification', e.target.value)}
+                placeholder="Ex: PROCEDIMENTO QUALIFICADO E DE ACORDO COM AS REGRAS DAS NORMAS ASME VIII; TEMA E N268."
+                className="bg-black/20 border-white/10 text-white text-xs"
+              />
+            </div>
+          </div>
+
+          {/* Conteúdo doc.content com alternador Visual / Markdown */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <Label className="text-white/80 block">Conteúdo (doc.content - Português)</Label>
+              <Tabs
+                value={contentMode}
+                onValueChange={(v) => setContentMode(v as 'visual' | 'markdown')}
+                className="w-auto"
+              >
+                <TabsList className="h-8 bg-black/40 border border-white/10">
+                  <TabsTrigger value="visual" className="text-xs gap-1.5 px-2.5 h-6">
+                    <Edit3 className="w-3 h-3" /> Visual
+                  </TabsTrigger>
+                  <TabsTrigger value="markdown" className="text-xs gap-1.5 px-2.5 h-6">
+                    <Code2 className="w-3 h-3" /> Markdown (2 Colunas)
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
+            {contentMode === 'visual' ? (
+              <RichTextEditor
+                value={data.content}
+                onChange={(v: string) => onChange('content', v)}
+              />
+            ) : (
+              <TwoColumnMarkdownEditor
+                valueHtml={data.content}
+                onChangeHtml={(v: string) => onChange('content', v)}
+              />
+            )}
+          </div>
+
+          {/* Conteúdo content_en com alternador Visual / Markdown */}
+          <div className="space-y-2 pt-2 border-t border-white/10">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <Label className="text-white/80 block">
+                Conteúdo em Inglês (content_en - English)
+              </Label>
+              <Tabs
+                value={contentEnMode}
+                onValueChange={(v) => setContentEnMode(v as 'visual' | 'markdown')}
+                className="w-auto"
+              >
+                <TabsList className="h-8 bg-black/40 border border-white/10">
+                  <TabsTrigger value="visual" className="text-xs gap-1.5 px-2.5 h-6">
+                    <Edit3 className="w-3 h-3" /> Visual
+                  </TabsTrigger>
+                  <TabsTrigger value="markdown" className="text-xs gap-1.5 px-2.5 h-6">
+                    <Code2 className="w-3 h-3" /> Markdown (2 Colunas)
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
+            {contentEnMode === 'visual' ? (
+              <RichTextEditor
+                value={data.contentEn || ''}
+                onChange={(v: string) => onChange('contentEn', v)}
+              />
+            ) : (
+              <TwoColumnMarkdownEditor
+                valueHtml={data.contentEn || ''}
+                onChangeHtml={(v: string) => onChange('contentEn', v)}
+                placeholder="Type or paste English content..."
+              />
+            )}
           </div>
         </div>
 

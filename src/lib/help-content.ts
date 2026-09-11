@@ -98,8 +98,31 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
     title: 'Documentos Técnicos (DMS)',
     subtitle: 'Gestão de procedimentos, instruções de trabalho e normas',
     summary:
-      'Módulo de gestão eletrônica de documentos (GED/DMS) integrado à Onda D de Treinamentos. Organiza procedimentos internos em pastas virtuais, permite leitura rastreada com cronômetro em tempo real, provas de eficácia (criadas pela GQ ou geradas pelo Assistente IA) e relatórios completos de leitura e aprovação.',
+      'Módulo de gestão eletrônica de documentos (GED/DMS) integrado com o Pacote Documentos — Onda B e Onda D de Treinamentos. Organiza procedimentos internos em pastas virtuais, editor Markdown de duas colunas com live preview, templates fieis aos originais (Família A SGQ e Família B CQ Bilíngue), assistente de migração em lote de procedimentos e leitura rastreada com provas de eficácia.',
     features: [
+      {
+        name: 'Editor Markdown Duas Colunas (Onda B)',
+        description:
+          'Cole texto puro ou do Word na coluna esquerda e veja o documento renderizado ao vivo à direita. Converte automaticamente para HTML ao salvar e limpa estilos sujos do Office.',
+        badge: 'Onda B',
+      },
+      {
+        name: 'Template de Impressão PDF Fiel ao Original',
+        description:
+          'Layout idêntico aos documentos originais da PSC e Koala: cabeçalho com logo por empresa, código, revisão, tabela de assinaturas de mão e histórico de revisões com thead/tfoot fixos em todas as páginas.',
+        badge: 'PDF Fiel',
+      },
+      {
+        name: 'Assistente de Migração em Lote',
+        description:
+          'Fila com status de migração dos procedimentos legados, com colagem direta do Word (limpeza auto), editor markdown e extração direta de múltiplos arquivos .docx.',
+        badge: 'GQ',
+      },
+      {
+        name: 'Impressão Bilíngue Separada (PT / EN)',
+        description:
+          'Suporte a procedimentos bilíngues (CDE). Impressão individual em português, inglês ou pareada com blocos de qualificação de inspetor técnico.',
+      },
       {
         name: 'Leitura Rastreada com Cronômetro (Onda D)',
         description:
@@ -112,41 +135,31 @@ export const HELP_CONTENT: Record<string, HelpTopic> = {
           'A GQ cadastra perguntas ou gera automaticamente pelo Assistente IA. Nota mínima configurável (padrão 70%). Ao ser aprovado, alimenta automaticamente o HHT e a % Eficácia.',
         badge: 'Assistente IA',
       },
-      {
-        name: 'Relatório de Leitura para a GQ',
-        description:
-          'Painel exclusivo para a GQ auditar leitores únicos, tempo médio por sessão, notas obtidas e taxa de aprovação por procedimento.',
-      },
-      {
-        name: 'Pastas Virtuais e Exportações',
-        description:
-          'Estruturação por prefixos padronizados (PR, IT, PO) com controle de revisão e exportações em PDF oficial, Word e Excel.',
-      },
     ],
     steps: [
       {
         step: 1,
-        title: 'Leitura Rastreada do Procedimento',
+        title: 'Migração de Procedimentos em Lote (Onda B)',
         instruction:
-          'Clique em "Ler Procedimento" em qualquer documento. O cronômetro superior registrará com precisão seu tempo de estudo técnico.',
+          'Acesse o botão "Migração em Lote (Onda B)" no topo da tela. Escolha um documento pendente, cole o texto do Word ou digite em Markdown com live preview e salve como Rascunho ou Aprovado.',
       },
       {
         step: 2,
-        title: 'Realizar a Prova de Leitura',
+        title: 'Imprimir PDF com Layout Fiel ao Original',
         instruction:
-          'Ao concluir a leitura, clique em "Fazer Prova". Responda às perguntas para comprovar assimilação. Se nota ≥ mínima (ex: 70%), sua capacitação é aprovada imediatamente.',
+          'Clique no botão "PDF (PT)" ou "PDF (EN)" ao lado de qualquer procedimento. A visualização exibirá o cabeçalho oficial da empresa, carimbos, assinaturas e paginação "Página X de Y".',
       },
       {
         step: 3,
-        title: 'Gerenciar Provas e Questões (GQ)',
+        title: 'Editar no Editor Markdown de Duas Colunas',
         instruction:
-          'Usuários da GQ clicam no botão "Prova" para cadastrar perguntas manualmente ou clicar em "Gerar com Assistente IA" para criação automatizada das questões.',
+          'Ao editar um documento, alterne para a aba "Markdown (2 Colunas)". Formate com títulos #, listas e tabelas | e use o botão "Limpar Formatação Word" quando colar conteúdo copiado.',
       },
       {
         step: 4,
-        title: 'Auditar no Relatório de Leitura',
+        title: 'Leitura Rastreada e Prova de Eficácia',
         instruction:
-          'Clique no ícone de gráfico para ver a lista de colaboradores que leram o documento, duração de cada sessão e notas obtidas nas tentativas.',
+          'Clique em "Ler Procedimento" para estudo cronometrado e, ao concluir, realize a prova gerada pela GQ ou IA para registrar conformidade no SGQ.',
       },
     ],
     tags: [

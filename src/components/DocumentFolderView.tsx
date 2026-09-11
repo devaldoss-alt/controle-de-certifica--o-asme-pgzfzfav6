@@ -21,6 +21,7 @@ import {
   BookOpen,
   Award,
   BarChart3,
+  Printer,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -33,7 +34,7 @@ interface DocumentFolderViewProps {
   onSelectPrefix: (prefix: string | null) => void
   onEdit: (doc: DocumentRecord) => void
   onDelete: (id: string) => void
-  onExport: (type: 'pdf' | 'word' | 'excel', doc: DocumentRecord) => void
+  onExport: (type: 'pdf' | 'word' | 'excel', doc: DocumentRecord, forceLang?: 'pt' | 'en') => void
   canEdit: boolean
   onReadDocument?: (doc: DocumentRecord) => void
   onManageQuiz?: (doc: DocumentRecord) => void
@@ -221,13 +222,26 @@ export function DocumentFolderView({
                 </Button>
                 <Button
                   size="sm"
-                  variant="ghost"
-                  onClick={() => onExport('pdf', doc)}
-                  className="text-xs h-7"
+                  variant="outline"
+                  onClick={() => onExport('pdf', doc, 'pt')}
+                  className="text-xs h-7 border-primary/30 text-primary hover:bg-primary/10 font-medium"
+                  title="Imprimir PDF com layout fiel ao documento original em Português"
                 >
-                  <FileDown className="w-3 h-3 mr-1" />
-                  <BilingualText k="doc.exportPdf" />
+                  <Printer className="w-3 h-3 mr-1" />
+                  PDF (PT)
                 </Button>
+                {doc.content_en && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onExport('pdf', doc, 'en')}
+                    className="text-xs h-7 border-blue-500/30 text-blue-400 hover:bg-blue-500/10 font-medium"
+                    title="Imprimir PDF com layout fiel ao documento original em Inglês"
+                  >
+                    <Printer className="w-3 h-3 mr-1" />
+                    PDF (EN)
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="ghost"

@@ -14,6 +14,16 @@ export interface Company {
   updated: string
 }
 
+export interface CompanyFormData {
+  name: string
+  name_en?: string
+  tax_id: string
+  iso_certs?: string
+  asme_certs?: string
+  nbic_certs?: string
+  logo?: File | null
+}
+
 export const getCompanies = async () => {
   try {
     const result = await pb.collection('companies').getFullList<Company>({ sort: 'name' })
@@ -28,12 +38,12 @@ export const getCompany = async (id: string) => {
   return pb.collection('companies').getOne<Company>(id)
 }
 
-export const createCompany = async (data: Partial<Company>) => {
-  return pb.collection('companies').create(data)
+export const createCompany = async (data: Partial<Company> | FormData) => {
+  return pb.collection('companies').create<Company>(data)
 }
 
-export const updateCompany = async (id: string, data: Partial<Company>) => {
-  return pb.collection('companies').update(id, data)
+export const updateCompany = async (id: string, data: Partial<Company> | FormData) => {
+  return pb.collection('companies').update<Company>(id, data)
 }
 
 export const deleteCompany = async (id: string) => {

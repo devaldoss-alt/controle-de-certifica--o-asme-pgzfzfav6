@@ -46,11 +46,17 @@ export interface DocumentFormData {
   title: string
   titleEn: string
   content: string
+  contentEn?: string
   category: string
   filePath: string
   prefix: string
   code: string
   revision: string
+  templateFamily?: string
+  inspectorQualification?: string
+  preparedBy?: string
+  approvedBy?: string
+  verifiedBy?: string
   file: File | null
 }
 

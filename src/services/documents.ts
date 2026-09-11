@@ -2,6 +2,15 @@ import pb from '@/lib/pocketbase/client'
 import { safeArray } from '@/lib/safe-data'
 import { normalizePrefix } from '@/lib/dms-codes'
 
+export interface RevisionHistoryItem {
+  revision: string
+  date: string
+  changes: string
+  preparedBy?: string
+  verifiedBy?: string
+  approvedBy?: string
+}
+
 export interface DocumentRecord {
   id: string
   title: string
@@ -22,6 +31,12 @@ export interface DocumentRecord {
   origin?: string
   language?: string
   status?: string
+  template_family?: string
+  inspector_qualification?: string
+  prepared_by?: string
+  approved_by?: string
+  verified_by?: string
+  revision_history?: RevisionHistoryItem[] | string
   created: string
   updated: string
   file?: string | string[]

@@ -5,11 +5,21 @@ import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
 import { normalizePrefix, resolveCompanyByPrefix, extractCodeFromTitle } from '@/lib/dms-codes'
 import { normalizeImportStatus } from '@/lib/document-status'
 
+export interface RevisionHistoryItem {
+  revision: string
+  date: string
+  changes: string
+  preparedBy?: string
+  verifiedBy?: string
+  approvedBy?: string
+}
+
 export interface InternalDocument {
   id: string
   title: string
   title_en?: string
   content: string
+  content_en?: string
   code?: string
   revision?: string
   prefix?: string
@@ -27,6 +37,12 @@ export interface InternalDocument {
   file?: string | string[]
   file_path?: string
   company_id?: string
+  template_family?: string
+  inspector_qualification?: string
+  prepared_by?: string
+  approved_by?: string
+  verified_by?: string
+  revision_history?: RevisionHistoryItem[] | string
   created: string
   updated: string
 }

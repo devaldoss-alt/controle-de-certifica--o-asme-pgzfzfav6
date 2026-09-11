@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T01:37:23.714Z",
+  "generatedAt": "2026-09-11T09:20:57.744Z",
   "collections": [
     {
       "name": "users",
@@ -605,6 +605,43 @@
         {
           "name": "notes",
           "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "template_family",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["SGQ — Português (PSGQ/FSGQ/ITSGQ)", "Técnico/CQ — Bilíngue (CDE)"]
+        },
+        {
+          "name": "inspector_qualification",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "prepared_by",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "approved_by",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "verified_by",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "revision_history",
+          "type": "json",
           "required": false,
           "system": false
         }
