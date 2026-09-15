@@ -492,6 +492,60 @@ export const translations: Record<string, { pt: string; en: string }> = {
     pt: 'Gestão de permissões granulares por módulo e replicação em lote.',
     en: 'Granular module permission management and bulk replication.',
   },
+
+  // Access Control - Users Tab
+  'accessControl.tab.users': { pt: 'Usuários', en: 'Users' },
+  'accessControl.users.title': { pt: 'Usuários do Sistema', en: 'System Users' },
+  'accessControl.users.desc': {
+    pt: 'Gerenciamento de acessos de login, papéis e desativação sem exclusão de histórico.',
+    en: 'Management of login accounts, roles and deactivation without deleting history.',
+  },
+  'accessControl.users.searchPlaceholder': {
+    pt: 'Buscar usuário por nome ou e-mail...',
+    en: 'Search user by name or email...',
+  },
+  'accessControl.users.colName': { pt: 'Nome', en: 'Name' },
+  'accessControl.users.colEmail': { pt: 'E-mail', en: 'Email' },
+  'accessControl.users.colRole': { pt: 'Papel (Role)', en: 'Role' },
+  'accessControl.users.colCompany': { pt: 'Empresa', en: 'Company' },
+  'accessControl.users.colStatus': { pt: 'Acesso', en: 'Access' },
+  'accessControl.users.colActions': { pt: 'Ações', en: 'Actions' },
+  'accessControl.users.active': { pt: 'Ativo', en: 'Active' },
+  'accessControl.users.deactivated': { pt: 'Desativado', en: 'Deactivated' },
+  'accessControl.users.deactivateBtn': { pt: 'Desativar Acesso', en: 'Deactivate Access' },
+  'accessControl.users.reactivateBtn': { pt: 'Reativar Acesso', en: 'Reactivate Access' },
+  'accessControl.users.confirmDeactivateTitle': {
+    pt: 'Confirmar desativação de acesso',
+    en: 'Confirm access deactivation',
+  },
+  'accessControl.users.confirmDeactivateDesc': {
+    pt: 'Tem certeza que deseja desativar o acesso de {name}? O usuário não conseguirá mais efetuar login, mas seus registros e histórico serão preservados.',
+    en: 'Are you sure you want to deactivate access for {name}? The user will no longer be able to log in, but records and history remain preserved.',
+  },
+  'accessControl.users.confirmReactivateTitle': {
+    pt: 'Confirmar reativação de acesso',
+    en: 'Confirm access reactivation',
+  },
+  'accessControl.users.confirmReactivateDesc': {
+    pt: 'Deseja reativar o acesso ao sistema para {name}?',
+    en: 'Do you want to reactivate system access for {name}?',
+  },
+  'accessControl.users.deactivateSuccess': {
+    pt: 'Acesso desativado com sucesso.',
+    en: 'Access deactivated successfully.',
+  },
+  'accessControl.users.reactivateSuccess': {
+    pt: 'Acesso reativado com sucesso.',
+    en: 'Access reactivated successfully.',
+  },
+  'accessControl.users.empty': {
+    pt: 'Nenhum usuário encontrado.',
+    en: 'No users found.',
+  },
+  'accessControl.users.selfWarning': {
+    pt: 'Você não pode desativar o seu próprio acesso.',
+    en: 'You cannot deactivate your own access.',
+  },
 }
 
 export function getTranslation(key: string, lang: Language): string {

@@ -9,9 +9,13 @@ export interface User {
   qualification_expiry?: string
   plan?: string
   primary_company_id?: string
+  disabled?: boolean
   avatar?: string
   created: string
   updated: string
+  expand?: {
+    primary_company_id?: { id: string; name: string; name_en?: string }
+  }
 }
 
 export interface Checklist {
@@ -166,7 +170,11 @@ export const getUsers = async (companyId?: string) => {
   try {
     const filter =
       companyId && companyId !== 'all' ? `primary_company_id = "${companyId}"` : undefined
-    const result = await pb.collection('users').getFullList<User>({ filter, sort: 'name' })
+    const result = await pb.collection('users').getFullList<User>({
+      filter,
+      sort: 'name',
+      expand: 'primary_company_id',
+    })
     return safeArray<User>(result)
   } catch (e) {
     console.error('getUsers failed:', e)

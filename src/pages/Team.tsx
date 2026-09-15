@@ -278,7 +278,9 @@ export default function Team() {
                             setProfileMember(m)
                             setProfileOpen(true)
                           }}
-                          className="hover:underline hover:text-primary font-medium text-left transition-colors"
+                          className={`hover:underline hover:text-primary font-medium text-left transition-colors ${
+                            m.is_active === false ? 'line-through text-muted-foreground' : ''
+                          }`}
                           title="Clique para abrir Ficha do Colaborador (Onda D)"
                         >
                           {m.name}
@@ -289,6 +291,14 @@ export default function Team() {
                             className="border-amber-500/30 text-amber-400 text-[10px]"
                           >
                             Apontador
+                          </Badge>
+                        )}
+                        {m.is_active === false && (
+                          <Badge
+                            variant="outline"
+                            className="border-rose-500/30 text-rose-400 text-[10px]"
+                          >
+                            Afastado
                           </Badge>
                         )}
                       </TableCell>

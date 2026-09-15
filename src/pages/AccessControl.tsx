@@ -55,9 +55,28 @@ import {
   Settings,
   Users,
   Copy,
+  UserX,
+  Search,
+  Building2,
+  Mail,
 } from 'lucide-react'
 import { Loader2 } from 'lucide-react'
 import { ReplicatePermissionsDialog } from '@/components/ReplicatePermissionsDialog'
+import { User, getUsers } from '@/services/api'
+import { getCompanies, Company } from '@/services/companies'
+import { getAllAllocations, UserAllocation } from '@/services/allocations'
+import { Input } from '@/components/ui/input'
+import { pb } from '@/lib/pocketbase/client'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 const ROLES = [
   'Manager',
   'Director',
@@ -307,7 +326,7 @@ export default function AccessControl() {
     }
   }
 
-  const [selectedTab, setSelectedTab] = useState<'modules' | 'documents' | 'docs' | 'team'>(
+  const [selectedTab, setSelectedTab] = useState<'modules' | 'documents' | 'docs' | 'users'>(
     'modules',
   )
 
@@ -316,6 +335,98 @@ export default function AccessControl() {
   const [docPermSectors, setDocPermSectors] = useState<string[]>([])
   const [docPerms, setDocPerms] = useState<DocumentPermission[]>([])
   const [selectedMemberId, setSelectedMemberId] = useState<string>('')
+
+  // ---- Users tab state ---------------------------------------------------
+  const [usersList, setUsersList] = useState<User[]>([])
+  const [companiesList, setCompaniesList] = useState<Company[]>([])
+  const [allocationsList, setAllocationsList] = useState<UserAllocation[]>([])
+  const [usersSearch, setUsersSearch] = useState('')
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [toggleUserTarget, setToggleUserTarget] = useState<User | null>(null)
+  const [isUpdatingUser, setIsUpdatingUser] = useState(false)
+
+  const loadUsersData = async () => {
+    try {
+      setUsersLoading(true)
+      const [u, comp, alloc] = await Promise.all([getUsers(), getCompanies(), getAllAllocations()])
+      setUsersList(u)
+      setCompaniesList(comp)
+      setAllocationsList(alloc)
+    } catch (e) {
+      console.error('Error loading users in AccessControl:', e)
+    } finally {
+      setUsersLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (selectedTab === 'users') {
+      loadUsersData()
+    }
+  }, [selectedTab])
+
+  useRealtime('users', () => {
+    if (selectedTab === 'users') loadUsersData()
+  })
+
+  const getUserCompanyDisplay = (targetUser: User): string => {
+    if (targetUser.primary_company_id) {
+      const match = companiesList.find((c) => c.id === targetUser.primary_company_id)
+      if (match) return match.name
+    }
+    // Check allocations
+    const userAlloc = allocationsList.find((a) => a.user_id === targetUser.id)
+    if (userAlloc) {
+      const match = companiesList.find((c) => c.id === userAlloc.company_id)
+      if (match) return match.name
+    }
+    if (targetUser.expand?.primary_company_id?.name) {
+      return targetUser.expand.primary_company_id.name
+    }
+    return '-'
+  }
+
+  const handleConfirmToggleDisabled = async () => {
+    if (!toggleUserTarget) return
+    const newDisabledState = !toggleUserTarget.disabled
+
+    // Guard: Prevent self-deactivation
+    if (toggleUserTarget.id === user?.id && newDisabledState) {
+      toast({
+        title: lang === 'pt' ? 'Operação não permitida' : 'Operation not permitted',
+        description: t('accessControl.users.selfWarning'),
+        variant: 'destructive',
+      })
+      setToggleUserTarget(null)
+      return
+    }
+
+    try {
+      setIsUpdatingUser(true)
+      await pb.collection('users').update(toggleUserTarget.id, {
+        disabled: newDisabledState,
+      })
+
+      setUsersList((prev) =>
+        prev.map((u) => (u.id === toggleUserTarget.id ? { ...u, disabled: newDisabledState } : u)),
+      )
+
+      toast({
+        title: newDisabledState
+          ? t('accessControl.users.deactivateSuccess')
+          : t('accessControl.users.reactivateSuccess'),
+      })
+    } catch (e) {
+      toast({
+        title: lang === 'pt' ? 'Erro ao alterar status' : 'Error updating status',
+        description: getErrorMessage(e),
+        variant: 'destructive',
+      })
+    } finally {
+      setIsUpdatingUser(false)
+      setToggleUserTarget(null)
+    }
+  }
 
   const loadDocPermData = async () => {
     try {
@@ -498,6 +609,14 @@ export default function AccessControl() {
           >
             <Users className="w-4 h-4 mr-2" />
             {lang === 'pt' ? 'Documentos' : 'Documents'}
+          </Button>
+          <Button
+            variant={selectedTab === 'users' ? 'default' : 'ghost'}
+            onClick={() => setSelectedTab('users')}
+            className={selectedTab === 'users' ? 'bg-primary text-white' : 'text-muted-foreground'}
+          >
+            <UserCheck className="w-4 h-4 mr-2" />
+            {t('accessControl.tab.users')}
           </Button>
         </div>
 
@@ -692,7 +811,7 @@ export default function AccessControl() {
               </div>
             </CardContent>
           </Card>
-        ) : (
+        ) : selectedTab === 'docs' ? (
           // ---- Documentos: per-person sector matrix ----
           <Card className="glass border-white/10">
             <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
@@ -793,8 +912,266 @@ export default function AccessControl() {
               )}
             </CardContent>
           </Card>
+        ) : (
+          // ---- Aba 4: Usuários ----
+          <Card className="glass border-white/10">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-lg text-white flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  {t('accessControl.users.title')}
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground mt-1">
+                  {t('accessControl.users.desc')}
+                </CardDescription>
+              </div>
+
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={usersSearch}
+                  onChange={(e) => setUsersSearch(e.target.value)}
+                  placeholder={t('accessControl.users.searchPlaceholder')}
+                  className="pl-9 bg-black/40 border-white/10 text-white placeholder:text-muted-foreground text-xs h-9"
+                />
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-0">
+              {usersLoading ? (
+                <div className="flex items-center justify-center p-12 text-muted-foreground text-sm">
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  {lang === 'pt' ? 'Carregando usuários...' : 'Loading users...'}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-white/10 bg-black/40 text-[11px] uppercase">
+                        <TableHead className="text-xs text-white/70">
+                          {t('accessControl.users.colName')}
+                        </TableHead>
+                        <TableHead className="text-xs text-white/70">
+                          {t('accessControl.users.colEmail')}
+                        </TableHead>
+                        <TableHead className="text-xs text-white/70">
+                          {t('accessControl.users.colRole')}
+                        </TableHead>
+                        <TableHead className="text-xs text-white/70">
+                          {t('accessControl.users.colCompany')}
+                        </TableHead>
+                        <TableHead className="text-xs text-white/70 text-center">
+                          {t('accessControl.users.colStatus')}
+                        </TableHead>
+                        <TableHead className="text-xs text-white/70 text-right">
+                          {t('accessControl.users.colActions')}
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {usersList
+                        .filter((u) => {
+                          const term = usersSearch.trim().toLowerCase()
+                          if (!term) return true
+                          const name = (u.name || '').toLowerCase()
+                          const email = (u.email || '').toLowerCase()
+                          return name.includes(term) || email.includes(term)
+                        })
+                        .map((u) => {
+                          const isDisabled = !!u.disabled
+                          const companyName = getUserCompanyDisplay(u)
+                          const isCurrentUser = u.id === user?.id
+
+                          return (
+                            <TableRow
+                              key={u.id}
+                              className={`border-white/5 transition-colors ${
+                                isDisabled ? 'opacity-60 bg-rose-950/10' : 'hover:bg-white/5'
+                              }`}
+                            >
+                              <TableCell className="font-medium text-white text-xs py-3.5">
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                                      isDisabled
+                                        ? 'bg-rose-500/20 text-rose-400'
+                                        : 'bg-primary/20 text-primary'
+                                    }`}
+                                  >
+                                    {(u.name || u.email || '?').charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <div className="font-semibold text-white">
+                                      {u.name || (
+                                        <span className="italic text-muted-foreground">
+                                          {lang === 'pt' ? 'Sem nome' : 'No name'}
+                                        </span>
+                                      )}
+                                      {isCurrentUser && (
+                                        <Badge
+                                          variant="outline"
+                                          className="ml-2 text-[10px] border-primary/40 text-primary py-0"
+                                        >
+                                          {lang === 'pt' ? 'Você' : 'You'}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground py-3.5">
+                                <div className="flex items-center gap-1.5">
+                                  <Mail className="w-3.5 h-3.5 text-muted-foreground/70" />
+                                  <span>{u.email}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-xs py-3.5">
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-white/10 text-white font-normal text-[11px]"
+                                >
+                                  {u.role || 'User'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-xs text-white/90 py-3.5">
+                                <div
+                                  className="flex items-center gap-1.5 max-w-[240px] truncate"
+                                  title={companyName}
+                                >
+                                  <Building2 className="w-3.5 h-3.5 text-primary/70 shrink-0" />
+                                  <span className="truncate">{companyName}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center py-3.5">
+                                {isDisabled ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="border-rose-500/40 text-rose-400 bg-rose-500/10 text-[10px]"
+                                  >
+                                    <UserX className="w-3 h-3 mr-1" />
+                                    {t('accessControl.users.deactivated')}
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="border-emerald-500/40 text-emerald-400 bg-emerald-500/10 text-[10px]"
+                                  >
+                                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                                    {t('accessControl.users.active')}
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right py-3.5">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={isCurrentUser && !isDisabled}
+                                  onClick={() => setToggleUserTarget(u)}
+                                  className={`h-8 text-xs font-semibold gap-1.5 ${
+                                    isDisabled
+                                      ? 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10'
+                                      : 'text-rose-400 hover:text-rose-300 hover:bg-rose-500/10'
+                                  }`}
+                                  title={
+                                    isCurrentUser && !isDisabled
+                                      ? t('accessControl.users.selfWarning')
+                                      : undefined
+                                  }
+                                >
+                                  {isDisabled ? (
+                                    <>
+                                      <UserCheck className="w-3.5 h-3.5" />
+                                      {t('accessControl.users.reactivateBtn')}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <UserX className="w-3.5 h-3.5" />
+                                      {t('accessControl.users.deactivateBtn')}
+                                    </>
+                                  )}
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+
+                      {usersList.length === 0 && (
+                        <TableRow>
+                          <TableCell
+                            colSpan={6}
+                            className="text-center py-8 text-muted-foreground text-xs"
+                          >
+                            {t('accessControl.users.empty')}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
       </div>
+
+      {/* Confirmation Dialog for Deactivate / Reactivate User Access */}
+      <AlertDialog
+        open={!!toggleUserTarget}
+        onOpenChange={(open) => {
+          if (!open) setToggleUserTarget(null)
+        }}
+      >
+        <AlertDialogContent className="glass border-white/20">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white flex items-center gap-2">
+              {toggleUserTarget?.disabled ? (
+                <>
+                  <UserCheck className="w-5 h-5 text-emerald-400" />
+                  {t('accessControl.users.confirmReactivateTitle')}
+                </>
+              ) : (
+                <>
+                  <UserX className="w-5 h-5 text-rose-400" />
+                  {t('accessControl.users.confirmDeactivateTitle')}
+                </>
+              )}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground text-xs leading-relaxed">
+              {toggleUserTarget?.disabled
+                ? t('accessControl.users.confirmReactivateDesc').replace(
+                    '{name}',
+                    toggleUserTarget?.name || toggleUserTarget?.email || '',
+                  )
+                : t('accessControl.users.confirmDeactivateDesc').replace(
+                    '{name}',
+                    toggleUserTarget?.name || toggleUserTarget?.email || '',
+                  )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isUpdatingUser}
+              className="border-white/10 hover:bg-white/5 text-white text-xs"
+            >
+              {lang === 'pt' ? 'Cancelar' : 'Cancel'}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isUpdatingUser}
+              onClick={handleConfirmToggleDisabled}
+              className={`text-xs font-semibold ${
+                toggleUserTarget?.disabled
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  : 'bg-rose-600 hover:bg-rose-500 text-white'
+              }`}
+            >
+              {isUpdatingUser ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+              {toggleUserTarget?.disabled
+                ? t('accessControl.users.reactivateBtn')
+                : t('accessControl.users.deactivateBtn')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

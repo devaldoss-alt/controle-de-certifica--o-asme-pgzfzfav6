@@ -9,6 +9,7 @@ export interface User {
   qualification_expiry?: string
   plan?: string
   primary_company_id?: string
+  disabled?: boolean
 }
 
 interface AuthContextType {
@@ -65,7 +66,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, pass: string) => {
     try {
-      await pb.collection('users').authWithPassword(email, pass)
+      const authData = await pb.collection('users').authWithPassword(email, pass)
+      if (authData.record && authData.record.disabled) {
+        pb.authStore.clear()
+        return {
+          error: new Error(
+            'Este usuário está com o acesso desativado no sistema. Contate o administrador.',
+          ),
+        }
+      }
       return { error: null }
     } catch (error) {
       return { error }

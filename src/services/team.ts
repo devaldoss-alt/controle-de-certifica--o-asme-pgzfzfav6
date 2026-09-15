@@ -10,6 +10,7 @@ export interface TeamMember {
   department: string
   role: string
   is_indicator: boolean
+  is_active?: boolean
   linked_operators?: string | string[] | null
   created: string
   updated: string
@@ -85,8 +86,9 @@ export async function createTeamMember(data: Partial<TeamMember>): Promise<TeamM
     name: data.name || '',
     company_id: data.company_id || '',
     department: data.department || '',
-    role: data.role || 'Colaborador',
+    role: data.role || '',
     is_indicator: !!data.is_indicator,
+    is_active: data.is_active !== undefined ? data.is_active : true,
     linked_operators: data.linked_operators || [],
   })
 }
@@ -98,6 +100,7 @@ export async function updateTeamMember(id: string, data: Partial<TeamMember>): P
     department: data.department,
     role: data.role,
     is_indicator: !!data.is_indicator,
+    is_active: data.is_active,
     linked_operators: data.linked_operators,
   })
 }
