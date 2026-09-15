@@ -66,7 +66,7 @@ import { User, getUsers } from '@/services/api'
 import { getCompanies, Company } from '@/services/companies'
 import { getAllAllocations, UserAllocation } from '@/services/allocations'
 import { Input } from '@/components/ui/input'
-import { pb } from '@/lib/pocketbase/client'
+import pb from '@/lib/pocketbase/client'
 import {
   AlertDialog,
   AlertDialogAction,
