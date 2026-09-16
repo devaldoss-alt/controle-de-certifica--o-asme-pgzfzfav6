@@ -5,9 +5,6 @@
  */
 
 // Leitor simples de ZIP PKZip em puro JS sem dependências externas
-// @ts-ignore
-import rawItsgq from '@/assets/itsgq-8.5-7-planejamento-e-controle-de-ordens-de-servico-rev.01-a5364.pdf?raw'
-
 export async function extractTextFromDocx(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer()
   const bytes = new Uint8Array(arrayBuffer)
