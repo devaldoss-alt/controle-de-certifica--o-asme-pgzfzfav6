@@ -102,6 +102,7 @@ import {
   IshikawaDiagramEditor,
   CostOfQualityCalculator,
 } from '@/components/RNCTools'
+import { RNCImportDialog } from '@/components/RNCImportDialog'
 import pb from '@/lib/pocketbase/client'
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -161,10 +162,11 @@ export default function RNCPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [evidenceFiles, setEvidenceFiles] = useState<File[]>([])
 
-  // Detailed Modal
+  // Detailed Modal & Import Dialog
   const [detailDoc, setDetailDoc] = useState<NonConformity | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [isGeneratingChild, setIsGeneratingChild] = useState(false)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   // Form Data State mirroring FSGQ 8.7-2
   const [formData, setFormData] = useState({
@@ -631,14 +633,26 @@ export default function RNCPage() {
           </p>
         </div>
 
-        {canEmit && (
-          <Button
-            onClick={openNew}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-lg shadow-primary/20"
-          >
-            <Plus className="w-4 h-4 mr-2" /> Emitir Nova RNC (FSGQ 8.7-2)
-          </Button>
-        )}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {canManage && (
+            <Button
+              variant="outline"
+              onClick={() => setImportDialogOpen(true)}
+              className="border-white/20 bg-white/5 hover:bg-white/10 text-white font-medium text-xs sm:text-sm shadow-md gap-2"
+            >
+              <Upload className="w-4 h-4 text-emerald-400" />
+              Importar RNCs (Excel + PDFs)
+            </Button>
+          )}
+          {canEmit && (
+            <Button
+              onClick={openNew}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-lg shadow-primary/20 text-xs sm:text-sm"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Emitir Nova RNC (FSGQ 8.7-2)
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs defaultValue="list" className="space-y-6">
@@ -2142,6 +2156,17 @@ export default function RNCPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Assistente de Importação em Lote de RNCs (Excel + PDFs) */}
+      <RNCImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        companies={companies}
+        defaultCompanyId={selectedCompanyId !== 'all' ? selectedCompanyId : undefined}
+        onSuccess={() => {
+          loadData()
+        }}
+      />
     </div>
   )
 }

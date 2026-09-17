@@ -1,0 +1,1521 @@
+import React, { useState, useEffect, useRef, useMemo } from 'react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table'
+import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import {
+  FileSpreadsheet,
+  Upload,
+  FileCheck,
+  AlertCircle,
+  CheckCircle2,
+  Building2,
+  Download,
+  Info,
+  Files,
+  FileText,
+  Clock,
+  Sparkles,
+  HelpCircle,
+  X,
+  FileWarning,
+  Search,
+  ChevronRight,
+  Loader2,
+  ArrowRight,
+} from 'lucide-react'
+import {
+  parseSpreadsheetSheets,
+  normalizeDate,
+  normalizeText,
+  type SheetData,
+} from '@/lib/spreadsheet-parser'
+import {
+  bulkImportRNCs,
+  normalizeRNCNumberForMatch,
+  normalizeRNCStatus,
+  normalizeRNCSeverity,
+  normalizeRNCOrigin,
+  type RNCImportRow,
+  type RNCImportResult,
+  type FiveWhyItem,
+  type IshikawaData,
+} from '@/services/rnc'
+import { type Company } from '@/services/companies'
+import { useToast } from '@/components/ui/use-toast'
+
+interface RNCImportDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  companies: Company[]
+  defaultCompanyId?: string
+  onSuccess: () => void
+}
+
+export function RNCImportDialog({
+  open,
+  onOpenChange,
+  companies,
+  defaultCompanyId,
+  onSuccess,
+}: RNCImportDialogProps) {
+  const { toast } = useToast()
+
+  // Steps: 1. upload (Excel + PDFs) -> 2. preview (Tabela detalhada & diagnósticos) -> 3. importing/result
+  const [step, setStep] = useState<'upload' | 'preview' | 'result'>('upload')
+
+  // Selected Target Company (Mandatory)
+  const [targetCompanyId, setTargetCompanyId] = useState<string>('')
+  const [companyError, setCompanyError] = useState<string>('')
+
+  // Files state
+  const [excelFile, setExcelFile] = useState<File | null>(null)
+  const [rawSheets, setRawSheets] = useState<SheetData[]>([])
+  const [pdfFiles, setPdfFiles] = useState<File[]>([])
+
+  // Parsed RNCs ready for import
+  const [parsedRows, setParsedRows] = useState<RNCImportRow[]>([])
+  const [unmatchedPdfs, setUnmatchedPdfs] = useState<string[]>([])
+  const [sheetStats, setSheetStats] = useState<{
+    rncSheetName?: string
+    whysSheetName?: string
+    ishikawaSheetName?: string
+    evidenceSheetName?: string
+    totalRows: number
+    linkedWhys: number
+    linkedIshikawas: number
+    linkedPdfs: number
+  }>({
+    totalRows: 0,
+    linkedWhys: 0,
+    linkedIshikawas: 0,
+    linkedPdfs: 0,
+  })
+
+  // Execution state
+  const [isParsing, setIsParsing] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [progress, setProgress] = useState<{ current: number; total: number; currentNum?: string }>(
+    {
+      current: 0,
+      total: 0,
+    },
+  )
+  const [importResult, setImportResult] = useState<RNCImportResult | null>(null)
+  const [error, setError] = useState<string>('')
+  const [previewFilter, setPreviewFilter] = useState<
+    'all' | 'with_evidence' | 'with_whys' | 'with_ishikawa'
+  >('all')
+  const [previewSearch, setPreviewSearch] = useState('')
+  const [showHelp, setShowHelp] = useState(false)
+
+  const excelInputRef = useRef<HTMLInputElement>(null)
+  const pdfInputRef = useRef<HTMLInputElement>(null)
+
+  // Initialize company selection
+  useEffect(() => {
+    if (open) {
+      if (defaultCompanyId && defaultCompanyId !== 'all') {
+        setTargetCompanyId(defaultCompanyId)
+      } else if (companies.length > 0) {
+        setTargetCompanyId(companies[0].id)
+      }
+      setCompanyError('')
+    }
+  }, [open, defaultCompanyId, companies])
+
+  const resetAll = () => {
+    setStep('upload')
+    setExcelFile(null)
+    setRawSheets([])
+    setPdfFiles([])
+    setParsedRows([])
+    setUnmatchedPdfs([])
+    setSheetStats({ totalRows: 0, linkedWhys: 0, linkedIshikawas: 0, linkedPdfs: 0 })
+    setIsParsing(false)
+    setIsImporting(false)
+    setProgress({ current: 0, total: 0 })
+    setImportResult(null)
+    setError('')
+    setPreviewSearch('')
+    setPreviewFilter('all')
+    if (excelInputRef.current) excelInputRef.current.value = ''
+    if (pdfInputRef.current) pdfInputRef.current.value = ''
+  }
+
+  // Handle PDF additions
+  const handlePdfSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    const validPdfs: File[] = []
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i]
+      if (f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf') {
+        validPdfs.push(f)
+      }
+    }
+
+    setPdfFiles((prev) => {
+      const existingNames = new Set(prev.map((p) => p.name.toLowerCase()))
+      const newlyAdded = validPdfs.filter((f) => !existingNames.has(f.name.toLowerCase()))
+      return [...prev, ...newlyAdded]
+    })
+  }
+
+  const removePdf = (fileName: string) => {
+    setPdfFiles((prev) => prev.filter((p) => p.name !== fileName))
+  }
+
+  // Handle Excel Selection
+  const handleExcelSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setError('')
+    setExcelFile(file)
+  }
+
+  /**
+   * Intelligently parses Excel sheets and associates 5 Porquês, Ishikawa and PDFs
+   */
+  const processSpreadsheetAndPdfs = async () => {
+    if (!targetCompanyId) {
+      setCompanyError('Selecione a empresa alvo antes de prosseguir.')
+      return
+    }
+    if (!excelFile) {
+      setError('Selecione o arquivo Excel (.xlsx) das RNCs.')
+      return
+    }
+
+    setIsParsing(true)
+    setError('')
+
+    try {
+      const sheets = await parseSpreadsheetSheets(excelFile)
+      setRawSheets(sheets)
+
+      if (sheets.length === 0) {
+        throw new Error('O arquivo de planilha está vazio ou não possui abas legíveis.')
+      }
+
+      // 1. Identify sheets by name
+      let rncSheet: SheetData | undefined = undefined
+      let whysSheet: SheetData | undefined = undefined
+      let ishikawaSheet: SheetData | undefined = undefined
+      let evidenceSheet: SheetData | undefined = undefined
+
+      for (const s of sheets) {
+        const norm = normalizeText(s.name)
+        if (
+          norm.includes('5 por') ||
+          norm.includes('porques') ||
+          norm.includes('porque') ||
+          norm.includes('5whys') ||
+          norm.includes('whys')
+        ) {
+          whysSheet = s
+        } else if (
+          norm.includes('ishikawa') ||
+          norm.includes('espinha') ||
+          norm.includes('causa e efeito') ||
+          norm.includes('6m')
+        ) {
+          ishikawaSheet = s
+        } else if (
+          norm.includes('evidenc') ||
+          norm.includes('anexo') ||
+          norm.includes('arquivos') ||
+          norm.includes('pdf')
+        ) {
+          evidenceSheet = s
+        } else if (
+          norm.includes('rnc') ||
+          norm.includes('desvio') ||
+          norm.includes('fsgq') ||
+          norm.includes('nao conformidade') ||
+          norm.includes('geral') ||
+          norm.includes('controle')
+        ) {
+          if (!rncSheet) rncSheet = s
+        }
+      }
+
+      // Fallback: If no sheet matched "RNC", use the first sheet that is not whys/ishikawa/evidence
+      if (!rncSheet) {
+        rncSheet =
+          sheets.find((s) => s !== whysSheet && s !== ishikawaSheet && s !== evidenceSheet) ||
+          sheets[0]
+      }
+
+      // 2. Parse 5 Porquês sheet into a map: normalized RNC Number -> FiveWhyItem[]
+      const whysMap = new Map<string, FiveWhyItem[]>()
+      if (whysSheet && whysSheet.data.length > 1) {
+        const wData = whysSheet.data
+        // Find header row or look for columns
+        const wHeadIdx = 0
+        const headerRow = wData[wHeadIdx].map((c) => normalizeText(c))
+
+        let rncColIdx = headerRow.findIndex(
+          (h) =>
+            h.includes('rnc') || h.includes('numero') || h.includes('n°') || h.includes('codigo'),
+        )
+        if (rncColIdx === -1) rncColIdx = 0
+
+        // Look for why/answer pairs or sequential columns (Porquê 1, Resposta 1...)
+        for (let r = wHeadIdx + 1; r < wData.length; r++) {
+          const row = wData[r]
+          const rncNumRaw = row[rncColIdx] || ''
+          const normKey = normalizeRNCNumberForMatch(rncNumRaw)
+          if (!normKey) continue
+
+          const items: FiveWhyItem[] = []
+
+          // Check if row has multiple columns for 1st Why, 2nd Why, etc.
+          for (let c = 0; c < row.length; c++) {
+            if (c === rncColIdx) continue
+            const colName = headerRow[c] || `Coluna ${c + 1}`
+            const val = row[c] ? row[c].trim() : ''
+            if (!val) continue
+
+            if (
+              colName.includes('por que') ||
+              colName.includes('porque') ||
+              colName.includes('why') ||
+              colName.includes('causa') ||
+              colName.includes('resposta') ||
+              colName.includes('pergunta')
+            ) {
+              items.push({
+                why: colName,
+                answer: val,
+              })
+            }
+          }
+
+          // If no specific header keywords matched, capture non-empty columns as sequential whys
+          if (items.length === 0) {
+            for (let c = 1; c < row.length; c++) {
+              const val = row[c] ? row[c].trim() : ''
+              if (val) {
+                items.push({
+                  why: `${items.length + 1}º Por quê`,
+                  answer: val,
+                })
+              }
+            }
+          }
+
+          if (items.length > 0) {
+            whysMap.set(normKey, items)
+          }
+        }
+      }
+
+      // 3. Parse Ishikawa sheet into a map: normalized RNC Number -> IshikawaData
+      const ishikawaMap = new Map<string, IshikawaData>()
+      if (ishikawaSheet && ishikawaSheet.data.length > 1) {
+        const iData = ishikawaSheet.data
+        const headerRow = iData[0].map((c) => normalizeText(c))
+        let rncColIdx = headerRow.findIndex(
+          (h) => h.includes('rnc') || h.includes('numero') || h.includes('n°'),
+        )
+        if (rncColIdx === -1) rncColIdx = 0
+
+        for (let r = 1; r < iData.length; r++) {
+          const row = iData[r]
+          const rncNumRaw = row[rncColIdx] || ''
+          const normKey = normalizeRNCNumberForMatch(rncNumRaw)
+          if (!normKey) continue
+
+          const ishi: IshikawaData = {
+            metodo: [],
+            maquina: [],
+            mao_de_obra: [],
+            material: [],
+            meio_ambiente: [],
+            medicao: [],
+          }
+
+          for (let c = 0; c < row.length; c++) {
+            if (c === rncColIdx) continue
+            const colName = headerRow[c] || ''
+            const val = row[c] ? row[c].trim() : ''
+            if (!val) continue
+
+            if (colName.includes('metod')) {
+              ishi.metodo?.push(val)
+            } else if (colName.includes('maquin') || colName.includes('equipam')) {
+              ishi.maquina?.push(val)
+            } else if (
+              colName.includes('obra') ||
+              colName.includes('pessoal') ||
+              colName.includes('capacit')
+            ) {
+              ishi.mao_de_obra?.push(val)
+            } else if (colName.includes('mater')) {
+              ishi.material?.push(val)
+            } else if (colName.includes('ambient')) {
+              ishi.meio_ambiente?.push(val)
+            } else if (colName.includes('medic') || colName.includes('instru')) {
+              ishi.medicao?.push(val)
+            } else {
+              // Generic fallback into metodo
+              ishi.metodo?.push(`${headerRow[c] || 'Geral'}: ${val}`)
+            }
+          }
+
+          ishikawaMap.set(normKey, ishi)
+        }
+      }
+
+      // 4. Parse RNC Main sheet
+      const rncRows = rncSheet.data
+      if (rncRows.length < 2) {
+        throw new Error(`A aba "${rncSheet.name}" não contém linhas suficientes de dados.`)
+      }
+
+      // Detect header row index (first row with keywords like numero, rnc, data, processo, etc.)
+      let headerIdx = 0
+      for (let i = 0; i < Math.min(10, rncRows.length); i++) {
+        const rowNorm = rncRows[i].map((c) => normalizeText(c))
+        const hasNum = rowNorm.some(
+          (c) => c.includes('rnc') || c.includes('numero') || c.includes('n°') || c.includes('num'),
+        )
+        const hasDate = rowNorm.some(
+          (c) => c.includes('data') || c.includes('emissao') || c.includes('abertura'),
+        )
+        if (hasNum || hasDate) {
+          headerIdx = i
+          break
+        }
+      }
+
+      const headers = rncRows[headerIdx].map((c) => normalizeText(c))
+      const dataRows = rncRows.slice(headerIdx + 1)
+
+      // Column mapping helper
+      const findCol = (keywords: string[]): number => {
+        return headers.findIndex((h) =>
+          keywords.some((kw) => h === kw || (kw.length >= 3 && h.includes(kw))),
+        )
+      }
+
+      const colNum = findCol([
+        'numero rnc',
+        'num rnc',
+        'n rnc',
+        'no rnc',
+        'numero',
+        'rnc',
+        'codigo',
+        'n°',
+      ])
+      const colDate = findCol(['data', 'data abertura', 'data emissao', 'emissao', 'abertura'])
+      const colProcess = findCol(['processo', 'setor', 'area', 'departamento'])
+      const colSeverity = findCol(['grau', 'severidade', 'gravidade', 'classificacao'])
+      const colDesc = findCol([
+        'descricao',
+        'desvio',
+        'descricao da rnc',
+        'nao conformidade',
+        'detalhes',
+        'fato',
+      ])
+      const colSummary = findCol(['resumo', 'titulo', 'assunto', 'objeto'])
+      const colOrigin = findCol(['origem', 'tipo de origem', 'fonte'])
+      const colStatus = findCol(['status', 'situacao', 'estado'])
+      const colResp = findCol([
+        'responsavel',
+        'responsavel pelo plano',
+        'responsavel tratativa',
+        'atribuido',
+      ])
+      const colIssuer = findCol(['emitente', 'emissor', 'aberto por', 'criado por', 'inspetor'])
+      const colOS = findCol(['os', 'ordem de servico', 'o.s.', 'numero os', 'pedido'])
+      const colInvolved = findCol(['envolvidos', 'partes envolvidas', 'equipe'])
+      const colSupplier = findCol(['fornecedor', 'nome fornecedor', 'empresa fornecedora'])
+      const colImmAction = findCol(['acao imediata', 'disposicao', 'contencao', 'correcao'])
+      const colImmType = findCol(['tipo correcao', 'disposicao imediata', 'tipo'])
+      const colCorrAction = findCol(['acao corretiva', 'tratativa', 'plano de acao'])
+      const colDeadline = findCol(['prazo', 'data limite', 'vencimento'])
+      const colCostRaw = findCol(['custo materia prima', 'custo material', 'materia prima'])
+      const colCostSupplies = findCol(['custo insumos', 'insumos', 'suprimentos'])
+      const colCostServices = findCol(['custo servicos', 'servicos', 'terceiros'])
+      const colCostTotal = findCol(['custo total', 'total rnc', 'custo'])
+      const colActionCost = findCol(['custo acao', 'custo da acao', 'investimento'])
+      const colEffectiveness = findCol([
+        'verificacao eficacia',
+        'eficacia',
+        'resultado eficacia',
+        'status eficacia',
+      ])
+      const colVerificationDate = findCol([
+        'data verificacao',
+        'data da eficacia',
+        'data encerramento',
+      ])
+      const colIsEffective = findCol(['foi eficaz', 'eficaz', 'resultado'])
+
+      // Prepare list of PDFs to match
+      const matchedPdfsSet = new Set<string>()
+
+      const parsed: RNCImportRow[] = []
+      let countWithWhys = 0
+      let countWithIshikawa = 0
+      let countWithPdfs = 0
+
+      for (let i = 0; i < dataRows.length; i++) {
+        const row = dataRows[i]
+        // If entire row is blank, skip
+        if (!row.some((cell) => cell && cell.trim())) continue
+
+        const rawNumber = colNum >= 0 ? row[colNum] : row[0]
+        if (!rawNumber || !rawNumber.trim()) continue
+
+        const originalNumber = rawNumber.trim()
+        const normKey = normalizeRNCNumberForMatch(originalNumber)
+
+        // Raw Date
+        const rawDate = colDate >= 0 ? row[colDate] : ''
+        const parsedDate = normalizeDate(rawDate) || new Date().toISOString().split('T')[0]
+
+        // Process
+        const rawProcess = colProcess >= 0 ? row[colProcess] : 'SGQ'
+        const process = rawProcess && rawProcess.trim() ? rawProcess.trim() : 'SGQ'
+
+        // Severity
+        const rawSeverity = colSeverity >= 0 ? row[colSeverity] : ''
+        const severity = normalizeRNCSeverity(rawSeverity)
+
+        // Description
+        const rawDesc = colDesc >= 0 ? row[colDesc] : ''
+        const description = rawDesc && rawDesc.trim() ? rawDesc.trim() : `RNC ${originalNumber}`
+
+        // Summary
+        const summary = colSummary >= 0 && row[colSummary] ? row[colSummary].trim() : ''
+
+        // Origin
+        const rawOrigin = colOrigin >= 0 ? row[colOrigin] : ''
+        const origin = normalizeRNCOrigin(rawOrigin)
+
+        // Status
+        const rawStatus = colStatus >= 0 ? row[colStatus] : ''
+        const status = normalizeRNCStatus(rawStatus)
+
+        // Responsible (Pure text, never create users)
+        const responsible = colResp >= 0 && row[colResp] ? row[colResp].trim() : ''
+        const issuer = colIssuer >= 0 && row[colIssuer] ? row[colIssuer].trim() : ''
+        const serviceOrderNumber = colOS >= 0 && row[colOS] ? row[colOS].trim() : ''
+        const involvedParties = colInvolved >= 0 && row[colInvolved] ? row[colInvolved].trim() : ''
+        const supplierName = colSupplier >= 0 && row[colSupplier] ? row[colSupplier].trim() : ''
+        const immediateAction =
+          colImmAction >= 0 && row[colImmAction] ? row[colImmAction].trim() : ''
+        const immediateCorrectionType =
+          colImmType >= 0 && row[colImmType] ? row[colImmType].trim() : ''
+        const correctiveAction =
+          colCorrAction >= 0 && row[colCorrAction] ? row[colCorrAction].trim() : ''
+        const actionPlan = correctiveAction
+
+        // Deadline
+        const rawDeadline = colDeadline >= 0 ? row[colDeadline] : ''
+        const deadline = normalizeDate(rawDeadline) || undefined
+
+        // Costs
+        const parseNum = (val?: string) => {
+          if (!val) return 0
+          const s = val.replace(/\./g, '').replace(',', '.')
+          const n = parseFloat(s)
+          return isNaN(n) ? 0 : n
+        }
+        const costRaw = parseNum(colCostRaw >= 0 ? row[colCostRaw] : '')
+        const costSup = parseNum(colCostSupplies >= 0 ? row[colCostSupplies] : '')
+        const costServ = parseNum(colCostServices >= 0 ? row[colCostServices] : '')
+        const costTotal =
+          parseNum(colCostTotal >= 0 ? row[colCostTotal] : '') || costRaw + costSup + costServ
+        const actionCost = parseNum(colActionCost >= 0 ? row[colActionCost] : '')
+
+        // Effectiveness
+        const effectivenessVerification =
+          colEffectiveness >= 0 && row[colEffectiveness] ? row[colEffectiveness].trim() : ''
+        const rawVerifDate = colVerificationDate >= 0 ? row[colVerificationDate] : ''
+        const verificationDate = normalizeDate(rawVerifDate) || undefined
+
+        let isEffective: 'SIM' | 'NÃO' | 'Pendente' = 'Pendente'
+        if (colIsEffective >= 0 && row[colIsEffective]) {
+          const eVal = row[colIsEffective].toLowerCase().trim()
+          if (eVal.includes('sim') || eVal === 's' || eVal === 'ok' || eVal.includes('eficaz')) {
+            isEffective = 'SIM'
+          } else if (
+            eVal.includes('nao') ||
+            eVal.includes('não') ||
+            eVal === 'n' ||
+            eVal.includes('ineficaz')
+          ) {
+            isEffective = 'NÃO'
+          }
+        } else if (status === 'Fechada') {
+          isEffective = 'SIM'
+        }
+
+        // Link 5 Whys
+        const linkedWhys = whysMap.get(normKey)
+        if (linkedWhys && linkedWhys.length > 0) countWithWhys++
+
+        // Link Ishikawa
+        const linkedIshikawa = ishikawaMap.get(normKey)
+        if (linkedIshikawa) countWithIshikawa++
+
+        // Match PDF Evidences by tolerant filename:
+        // Ex.: "RNC-007-2025.pdf" matches "RNC-007/2025", "RNC 007-25", etc.
+        const matchedFiles: File[] = []
+        const matchedNames: string[] = []
+
+        for (const pdf of pdfFiles) {
+          const pdfNorm = normalizeRNCNumberForMatch(pdf.name)
+          if (!pdfNorm) continue
+
+          // Exact match of digits or substring containment
+          const isDirectMatch =
+            pdfNorm === normKey || pdfNorm.includes(normKey) || normKey.includes(pdfNorm)
+
+          // Extra check: extract digits
+          const numDigits = originalNumber.replace(/\D/g, '')
+          const pdfDigits = pdf.name.replace(/\D/g, '')
+          const isDigitMatch =
+            numDigits.length >= 2 &&
+            pdfDigits.length >= 2 &&
+            (pdfDigits === numDigits || pdfDigits.includes(numDigits))
+
+          if (isDirectMatch || isDigitMatch) {
+            matchedFiles.push(pdf)
+            matchedNames.push(pdf.name)
+            matchedPdfsSet.add(pdf.name)
+          }
+        }
+
+        if (matchedFiles.length > 0) {
+          countWithPdfs++
+        }
+
+        parsed.push({
+          number: originalNumber,
+          date: parsedDate,
+          process,
+          severity,
+          description,
+          origin,
+          status,
+          responsible,
+          issuer,
+          service_order_number: serviceOrderNumber,
+          summary,
+          involved_parties: involvedParties,
+          supplier_name: supplierName,
+          immediate_correction_type: immediateCorrectionType,
+          immediate_action: immediateAction,
+          corrective_action: correctiveAction,
+          action_plan: actionPlan,
+          deadline,
+          cost_raw_material: costRaw,
+          cost_supplies: costSup,
+          cost_services: costServ,
+          cost_total: costTotal,
+          action_cost: actionCost,
+          effectiveness_verification: effectivenessVerification,
+          verification_date: verificationDate,
+          is_effective: isEffective,
+          five_whys: linkedWhys,
+          ishikawa_data: linkedIshikawa,
+          matched_evidence_files: matchedFiles,
+          matched_evidence_names: matchedNames,
+        })
+      }
+
+      // Check unmatched PDFs
+      const unmatched = pdfFiles.filter((p) => !matchedPdfsSet.has(p.name)).map((p) => p.name)
+
+      setUnmatchedPdfs(unmatched)
+      setParsedRows(parsed)
+      setSheetStats({
+        rncSheetName: rncSheet.name,
+        whysSheetName: whysSheet?.name,
+        ishikawaSheetName: ishikawaSheet?.name,
+        evidenceSheetName: evidenceSheet?.name,
+        totalRows: parsed.length,
+        linkedWhys: countWithWhys,
+        linkedIshikawas: countWithIshikawa,
+        linkedPdfs: countWithPdfs,
+      })
+
+      if (parsed.length === 0) {
+        throw new Error('Nenhuma RNC válida foi identificada na planilha.')
+      }
+
+      setStep('preview')
+      toast({
+        title: 'Planilha processada com sucesso!',
+        description: `${parsed.length} RNCs identificadas para conferência no preview.`,
+      })
+    } catch (err: any) {
+      console.error(err)
+      setError(err?.message || 'Falha ao processar o arquivo Excel.')
+    } finally {
+      setIsParsing(false)
+    }
+  }
+
+  // Execute the database write
+  const handleConfirmImport = async () => {
+    if (!targetCompanyId) {
+      setError('Selecione uma empresa válida.')
+      return
+    }
+
+    setIsImporting(true)
+    setError('')
+    setProgress({ current: 0, total: parsedRows.length })
+
+    try {
+      const res = await bulkImportRNCs(
+        parsedRows,
+        targetCompanyId,
+        (current, total, currentNumber) => {
+          setProgress({ current, total, currentNum: currentNumber })
+        },
+      )
+
+      res.unmatchedPdfFiles = unmatchedPdfs
+      setImportResult(res)
+      setStep('result')
+
+      if (res.success > 0) {
+        toast({
+          title: 'Importação concluída!',
+          description: `${res.success} Não Conformidades foram salvas com sucesso.`,
+        })
+        onSuccess()
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Erro durante a gravação das RNCs.')
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  // Filter preview records
+  const filteredPreviewRows = useMemo(() => {
+    return parsedRows.filter((r) => {
+      if (
+        previewFilter === 'with_evidence' &&
+        (!r.matched_evidence_names || r.matched_evidence_names.length === 0)
+      ) {
+        return false
+      }
+      if (previewFilter === 'with_whys' && (!r.five_whys || r.five_whys.length === 0)) {
+        return false
+      }
+      if (previewFilter === 'with_ishikawa' && !r.ishikawa_data) {
+        return false
+      }
+      if (previewSearch.trim()) {
+        const q = previewSearch.toLowerCase()
+        const matchNum = r.number.toLowerCase().includes(q)
+        const matchProc = r.process.toLowerCase().includes(q)
+        const matchDesc = r.description.toLowerCase().includes(q)
+        const matchResp = (r.responsible || '').toLowerCase().includes(q)
+        return matchNum || matchProc || matchDesc || matchResp
+      }
+      return true
+    })
+  }, [parsedRows, previewFilter, previewSearch])
+
+  // Download template CSV helper
+  const handleDownloadTemplate = () => {
+    const csvContent =
+      'Nº RNC;Data;Processo;Grau;Origem;Status;Responsável;OS;Resumo;Descrição;Ação Imediata;Ação Corretiva;Prazo;Custo Matéria-Prima;Custo Insumos;Custo Serviços;Custo Ação;Eficácia;Data Eficácia\n' +
+      'RNC-007/2025;15/03/2025;CQ;Médio;Auditoria Interna;Fechada;Carlos CQ;OS-2025-01;Instrumento descalibrado;Paquímetro utilizado com aferição vencida;Segregação imediata;Recalibração RBC e treinamento;25/03/2025;0;120;450;0;SIM;28/03/2025\n' +
+      'RNC 015-26;10/01/2026;Caldeiraria;Grave;Reclamação de Cliente;Em Andamento;João Solda;OS-2026-08;Trinca em chanfro;Trinca detectada na raiz da junta soldada;Retrabalho e esmerilhamento;Requalificação de soldador e EPS revisada;15/02/2026;500;300;1200;800;Pendente;'
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'modelo_importacao_rncs.csv')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const selectedCompany = companies.find((c) => c.id === targetCompanyId)
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        onOpenChange(v)
+        if (!v) resetAll()
+      }}
+    >
+      <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto bg-card border-white/10 p-6">
+        <DialogHeader>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-primary/10 text-primary border border-primary/20">
+                <FileSpreadsheet className="w-6 h-6" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-heading font-bold text-white flex items-center gap-2">
+                  Assistente de Importação em Lote de RNCs
+                  <Badge
+                    variant="outline"
+                    className="border-primary/40 text-primary text-[11px] font-mono"
+                  >
+                    FSGQ 8.7-1 / 8.7-2
+                  </Badge>
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Importação direta pelo navegador: planilha Excel (RNC, 5 Porquês, Ishikawa) +
+                  pasta de PDFs escaneados
+                </DialogDescription>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadTemplate}
+                className="text-xs border-white/10 hover:bg-white/10 gap-1.5 h-8 text-white/80"
+              >
+                <Download className="w-3.5 h-3.5" /> Modelo de Planilha
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowHelp(!showHelp)}
+                className="text-xs text-muted-foreground hover:text-white h-8 gap-1"
+              >
+                <HelpCircle className="w-3.5 h-3.5" />{' '}
+                {showHelp ? 'Ocultar Dicas' : 'Como Funciona'}
+              </Button>
+            </div>
+          </div>
+        </DialogHeader>
+
+        {showHelp && (
+          <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 text-xs space-y-2 text-white/90 animate-fade-in">
+            <h4 className="font-bold text-primary flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4" /> Diretrizes de Importação Histórica (Gestor da
+              Qualidade):
+            </h4>
+            <ul className="space-y-1 list-disc list-inside text-muted-foreground text-[11px]">
+              <li>
+                <strong>Uma empresa por vez:</strong> Selecione PSC INDÚSTRIA (81 registros) ou
+                KOALA SYSTEM (35 registros).
+              </li>
+              <li>
+                <strong>Numeração original intocada:</strong> O formato de código (ex:{' '}
+                <code>RNC-007/2025</code> ou <code>RNC 015-26</code>) é preservado sem modificações.
+              </li>
+              <li>
+                <strong>Mapeamento das 4 Abas:</strong> O assistente reconhece automaticamente as
+                abas <code>RNC</code>, <code>5 Porquês</code>, <code>Ishikawa</code> e{' '}
+                <code>Evidências</code> vinculando os dados pelo número da RNC.
+              </li>
+              <li>
+                <strong>Vínculo tolerante de PDFs:</strong> Arraste todos os PDFs da pasta de
+                evidências escaneadas de uma vez só. O assistente liga cada arquivo pelo número (ex:{' '}
+                <code>RNC-007-2025.pdf</code> → <code>RNC-007/2025</code>).
+              </li>
+              <li>
+                <strong>Auditoria e Preview obrigatório:</strong> Você revisa todas as linhas antes
+                da gravação no banco, com contagens de desvios, 5 Porquês e arquivos anexados.
+              </li>
+            </ul>
+          </div>
+        )}
+
+        {/* STEP 1: UPLOAD EXCEL + PDFS */}
+        {step === 'upload' && (
+          <div className="space-y-5 py-2">
+            {/* Target Company Selection */}
+            <div className="space-y-2 bg-black/20 p-4 rounded-lg border border-white/10">
+              <Label className="text-white flex items-center gap-2 text-sm font-semibold">
+                <Building2 className="w-4 h-4 text-primary" /> 1. Empresa Destino das RNCs *
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Selecione a empresa à qual o arquivo de Não Conformidades pertence.
+              </p>
+              <Select
+                value={targetCompanyId}
+                onValueChange={(val) => {
+                  setTargetCompanyId(val)
+                  setCompanyError('')
+                }}
+              >
+                <SelectTrigger
+                  className={`bg-black/30 border-white/10 text-white ${
+                    companyError ? 'border-rose-500 ring-1 ring-rose-500' : ''
+                  }`}
+                >
+                  <SelectValue placeholder="Selecione a empresa correspondente..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name} {c.tax_id ? `(${c.tax_id})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {companyError && <p className="text-xs text-rose-400 font-medium">{companyError}</p>}
+            </div>
+
+            {/* Grid for Excel and PDFs dropzones */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Box 1: Excel File */}
+              <div className="p-4 rounded-lg bg-black/20 border border-white/10 space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-white text-sm font-semibold flex items-center gap-2">
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-400" /> 2. Planilha Excel
+                      (.xlsx) *
+                    </Label>
+                    {excelFile && (
+                      <Badge
+                        variant="outline"
+                        className="border-emerald-500/40 text-emerald-400 text-[10px]"
+                      >
+                        Carregado
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Planilha com as abas <strong>RNC</strong>, <strong>5 Porquês</strong> e{' '}
+                    <strong>Ishikawa</strong>.
+                  </p>
+                </div>
+
+                <div
+                  onClick={() => excelInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all ${
+                    excelFile
+                      ? 'border-emerald-500/50 bg-emerald-500/5'
+                      : 'border-white/15 hover:border-primary/50 bg-black/30'
+                  }`}
+                >
+                  <input
+                    ref={excelInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={handleExcelSelection}
+                  />
+                  {excelFile ? (
+                    <div className="space-y-1">
+                      <FileCheck className="w-8 h-8 text-emerald-400 mx-auto" />
+                      <p className="text-xs font-semibold text-white break-all">{excelFile.name}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {(excelFile.size / 1024).toFixed(1)} KB — clique para trocar
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <Upload className="w-7 h-7 text-white/40 mx-auto" />
+                      <p className="text-xs text-white/80 font-medium">
+                        Clique ou arraste o arquivo .xlsx
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Suporta pastas com múltiplas abas
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Box 2: Scanned PDFs Multi-upload */}
+              <div className="p-4 rounded-lg bg-black/20 border border-white/10 space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-white text-sm font-semibold flex items-center gap-2">
+                      <Files className="w-4 h-4 text-sky-400" /> 3. PDFs de Evidências Escaneadas
+                    </Label>
+                    <Badge variant="outline" className="border-sky-500/40 text-sky-400 text-[10px]">
+                      {pdfFiles.length} selecionado(s)
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Selecione todos os relatórios/fotos escaneados da pasta da empresa de uma vez
+                    só.
+                  </p>
+                </div>
+
+                <div
+                  onClick={() => pdfInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all ${
+                    pdfFiles.length > 0
+                      ? 'border-sky-500/50 bg-sky-500/5'
+                      : 'border-white/15 hover:border-primary/50 bg-black/30'
+                  }`}
+                >
+                  <input
+                    ref={pdfInputRef}
+                    type="file"
+                    multiple
+                    accept=".pdf,application/pdf"
+                    className="hidden"
+                    onChange={handlePdfSelection}
+                  />
+                  {pdfFiles.length > 0 ? (
+                    <div className="space-y-1">
+                      <Files className="w-8 h-8 text-sky-400 mx-auto" />
+                      <p className="text-xs font-semibold text-white">
+                        {pdfFiles.length} arquivo(s) PDF carregado(s)
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Clique para adicionar mais arquivos à lista
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <Upload className="w-7 h-7 text-white/40 mx-auto" />
+                      <p className="text-xs text-white/80 font-medium">
+                        Selecionar PDFs de Evidências
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Arraste múltiplos arquivos .pdf (ex: RNC-007-2025.pdf)
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* List of Loaded PDFs with remove tag */}
+            {pdfFiles.length > 0 && (
+              <div className="p-3 rounded-lg bg-black/30 border border-white/5 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-white/80 font-medium flex items-center gap-1.5">
+                    <Files className="w-3.5 h-3.5 text-sky-400" />
+                    PDFs aguardando vínculo automático com o Excel ({pdfFiles.length}):
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setPdfFiles([])}
+                    className="h-6 text-[10px] text-rose-400 hover:text-rose-300"
+                  >
+                    Remover todos os PDFs
+                  </Button>
+                </div>
+                <div className="max-h-28 overflow-y-auto flex flex-wrap gap-1.5 pr-1">
+                  {pdfFiles.map((f) => (
+                    <span
+                      key={f.name}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-white/5 border border-white/10 text-white/80 font-mono"
+                    >
+                      {f.name}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removePdf(f.name)
+                        }}
+                        className="text-white/40 hover:text-rose-400 ml-1"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs text-rose-400 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* STEP 2: PREVIEW TABLE & DIAGNOSTICS */}
+        {step === 'preview' && (
+          <div className="space-y-4 py-2">
+            {/* Top Summary Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 rounded-lg bg-black/30 border border-white/10">
+                <p className="text-[10px] text-muted-foreground uppercase font-semibold">
+                  Total RNCs
+                </p>
+                <p className="text-xl font-bold text-white mt-0.5">{sheetStats.totalRows}</p>
+                <p className="text-[10px] text-white/60 truncate">
+                  Aba: {sheetStats.rncSheetName || 'Principal'}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-lg bg-black/30 border border-white/10">
+                <p className="text-[10px] text-muted-foreground uppercase font-semibold">
+                  5 Porquês Vinculados
+                </p>
+                <p className="text-xl font-bold text-amber-400 mt-0.5">{sheetStats.linkedWhys}</p>
+                <p className="text-[10px] text-white/60 truncate">
+                  {sheetStats.whysSheetName ? `Aba: ${sheetStats.whysSheetName}` : 'Não localizada'}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-lg bg-black/30 border border-white/10">
+                <p className="text-[10px] text-muted-foreground uppercase font-semibold">
+                  Ishikawa Vinculados
+                </p>
+                <p className="text-xl font-bold text-purple-400 mt-0.5">
+                  {sheetStats.linkedIshikawas}
+                </p>
+                <p className="text-[10px] text-white/60 truncate">
+                  {sheetStats.ishikawaSheetName
+                    ? `Aba: ${sheetStats.ishikawaSheetName}`
+                    : 'Não localizada'}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-lg bg-black/30 border border-white/10">
+                <p className="text-[10px] text-muted-foreground uppercase font-semibold">
+                  PDFs Vinculados
+                </p>
+                <p className="text-xl font-bold text-sky-400 mt-0.5">{sheetStats.linkedPdfs}</p>
+                <p className="text-[10px] text-white/60">
+                  {unmatchedPdfs.length > 0
+                    ? `${unmatchedPdfs.length} não correspondentes`
+                    : '100% correspondentes'}
+                </p>
+              </div>
+            </div>
+
+            {/* Warning if there are unmatched PDFs */}
+            {unmatchedPdfs.length > 0 && (
+              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 space-y-1">
+                <div className="flex items-center gap-1.5 font-semibold">
+                  <FileWarning className="w-4 h-4 shrink-0 text-amber-400" />
+                  <span>
+                    Aviso: {unmatchedPdfs.length} arquivo(s) PDF não correspondem a nenhuma RNC
+                    desta planilha:
+                  </span>
+                </div>
+                <div className="text-[11px] text-amber-200/80 font-mono truncate">
+                  {unmatchedPdfs.join(', ')}
+                </div>
+                <p className="text-[10px] text-white/60">
+                  Esses PDFs não serão descartados silenciosamente; eles ficam registrados como
+                  avulsos para conferência.
+                </p>
+              </div>
+            )}
+
+            {/* Filter and Search Bar for Preview */}
+            <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
+              <div className="flex items-center gap-2 flex-1 max-w-sm">
+                <div className="relative w-full">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={previewSearch}
+                    onChange={(e) => setPreviewSearch(e.target.value)}
+                    placeholder="Filtrar por número, processo ou responsável..."
+                    className="h-8 pl-8 text-xs bg-black/20 border-white/10 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Button
+                  size="sm"
+                  variant={previewFilter === 'all' ? 'secondary' : 'outline'}
+                  onClick={() => setPreviewFilter('all')}
+                  className="text-[11px] h-7 border-white/10"
+                >
+                  Todas ({parsedRows.length})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={previewFilter === 'with_evidence' ? 'secondary' : 'outline'}
+                  onClick={() => setPreviewFilter('with_evidence')}
+                  className="text-[11px] h-7 border-white/10 gap-1 text-sky-400"
+                >
+                  Com PDF ({sheetStats.linkedPdfs})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={previewFilter === 'with_whys' ? 'secondary' : 'outline'}
+                  onClick={() => setPreviewFilter('with_whys')}
+                  className="text-[11px] h-7 border-white/10 gap-1 text-amber-400"
+                >
+                  Com 5 Porquês ({sheetStats.linkedWhys})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={previewFilter === 'with_ishikawa' ? 'secondary' : 'outline'}
+                  onClick={() => setPreviewFilter('with_ishikawa')}
+                  className="text-[11px] h-7 border-white/10 gap-1 text-purple-400"
+                >
+                  Com Ishikawa ({sheetStats.linkedIshikawas})
+                </Button>
+              </div>
+            </div>
+
+            {/* Preview Table */}
+            <div className="border border-white/10 rounded-lg overflow-x-auto max-h-[380px] overflow-y-auto">
+              <Table>
+                <TableHeader className="bg-black/40 sticky top-0 z-10">
+                  <TableRow className="border-white/10">
+                    <TableHead className="text-[11px] text-white/70 font-semibold w-12">
+                      #
+                    </TableHead>
+                    <TableHead className="text-[11px] text-white/70 font-semibold">
+                      Nº RNC (Original)
+                    </TableHead>
+                    <TableHead className="text-[11px] text-white/70 font-semibold">Data</TableHead>
+                    <TableHead className="text-[11px] text-white/70 font-semibold">
+                      Processo
+                    </TableHead>
+                    <TableHead className="text-[11px] text-white/70 font-semibold">Grau</TableHead>
+                    <TableHead className="text-[11px] text-white/70 font-semibold">
+                      Status Mapeado
+                    </TableHead>
+                    <TableHead className="text-[11px] text-white/70 font-semibold">
+                      Responsável
+                    </TableHead>
+                    <TableHead className="text-[11px] text-white/70 font-semibold">
+                      Descrição Resumida
+                    </TableHead>
+                    <TableHead className="text-[11px] text-white/70 font-semibold text-center">
+                      5 Porquês
+                    </TableHead>
+                    <TableHead className="text-[11px] text-white/70 font-semibold text-center">
+                      Ishikawa
+                    </TableHead>
+                    <TableHead className="text-[11px] text-white/70 font-semibold text-center">
+                      Evidências (PDFs)
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredPreviewRows.map((row, idx) => {
+                    const hasWhys = row.five_whys && row.five_whys.length > 0
+                    const hasIshi = !!row.ishikawa_data
+                    const hasPdf =
+                      row.matched_evidence_names && row.matched_evidence_names.length > 0
+
+                    return (
+                      <TableRow key={idx} className="border-white/5 hover:bg-white/5 text-xs">
+                        <TableCell className="font-mono text-[10px] text-muted-foreground">
+                          {idx + 1}
+                        </TableCell>
+                        <TableCell className="font-mono font-bold text-primary whitespace-nowrap">
+                          {row.number}
+                        </TableCell>
+                        <TableCell className="text-white/80 whitespace-nowrap">
+                          {row.date}
+                        </TableCell>
+                        <TableCell className="text-white/90 font-medium whitespace-nowrap">
+                          {row.process}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <Badge variant="outline" className="text-[10px]">
+                            {row.severity}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] ${
+                              row.status === 'Fechada'
+                                ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
+                                : 'border-amber-500/40 text-amber-400 bg-amber-500/10'
+                            }`}
+                          >
+                            {row.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-white/80 whitespace-nowrap">
+                          {row.responsible || '—'}
+                        </TableCell>
+                        <TableCell
+                          className="text-white/80 max-w-xs truncate"
+                          title={row.description}
+                        >
+                          {row.summary || row.description}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {hasWhys ? (
+                            <Badge
+                              variant="outline"
+                              className="border-amber-500/40 text-amber-400 text-[10px]"
+                            >
+                              {row.five_whys?.length} itens
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-[11px]">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {hasIshi ? (
+                            <Badge
+                              variant="outline"
+                              className="border-purple-500/40 text-purple-400 text-[10px]"
+                            >
+                              6M Pronto
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-[11px]">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {hasPdf ? (
+                            <Badge
+                              variant="outline"
+                              className="border-sky-500/40 text-sky-400 text-[10px] truncate max-w-[120px]"
+                              title={row.matched_evidence_names?.join(', ')}
+                            >
+                              {row.matched_evidence_names?.length} PDF(s)
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-[11px]">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="p-3 rounded-lg bg-black/20 border border-white/5 text-xs text-muted-foreground flex items-center justify-between">
+              <span>
+                Destino:{' '}
+                <strong className="text-white">
+                  {selectedCompany?.name || 'Empresa selecionada'}
+                </strong>
+              </span>
+              <span>
+                Pronto para gravação de <strong>{parsedRows.length}</strong> Não Conformidades
+                históricas.
+              </span>
+            </div>
+
+            {error && (
+              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs text-rose-400 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* STEP 3: RESULT REPORT */}
+        {step === 'result' && importResult && (
+          <div className="py-6 space-y-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 mx-auto flex items-center justify-center text-emerald-400">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-xl font-bold text-white">Importação Concluída com Sucesso!</h3>
+              <p className="text-xs text-muted-foreground">
+                As Não Conformidades foram registradas na collection <code>non_conformities</code> e
+                integradas aos indicadores de qualidade.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto">
+              <div className="p-3 rounded-lg bg-black/30 border border-white/10">
+                <p className="text-[10px] text-muted-foreground uppercase font-semibold">
+                  Total Processado
+                </p>
+                <p className="text-2xl font-bold text-white mt-1">{importResult.total}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                <p className="text-[10px] text-emerald-400 uppercase font-semibold">
+                  Salvas com Sucesso
+                </p>
+                <p className="text-2xl font-bold text-emerald-400 mt-1">{importResult.success}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-black/30 border border-white/10">
+                <p className="text-[10px] text-muted-foreground uppercase font-semibold">
+                  Falhas / Erros
+                </p>
+                <p
+                  className={`text-2xl font-bold mt-1 ${importResult.failed > 0 ? 'text-rose-400' : 'text-white/60'}`}
+                >
+                  {importResult.failed}
+                </p>
+              </div>
+            </div>
+
+            {importResult.unmatchedPdfFiles && importResult.unmatchedPdfFiles.length > 0 && (
+              <div className="max-w-xl mx-auto p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-left space-y-1">
+                <p className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
+                  <FileWarning className="w-3.5 h-3.5 text-amber-400" />
+                  PDFs avulsos não vinculados a nenhuma linha do Excel:
+                </p>
+                <p className="text-[11px] font-mono text-amber-200/80">
+                  {importResult.unmatchedPdfFiles.join(', ')}
+                </p>
+              </div>
+            )}
+
+            {importResult.errors && importResult.errors.length > 0 && (
+              <div className="max-w-xl mx-auto p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-left space-y-2">
+                <p className="text-xs font-semibold text-rose-300">
+                  Falhas registradas durante a importação:
+                </p>
+                <div className="max-h-32 overflow-y-auto space-y-1 text-[11px] text-rose-200">
+                  {importResult.errors.map((e, idx) => (
+                    <div key={idx} className="font-mono">
+                      • Linha {e.row} ({e.number}): {e.error}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* PROGRESS BAR WHILE IMPORTING */}
+        {isImporting && (
+          <div className="space-y-2 py-4 bg-black/40 p-4 rounded-lg border border-white/10">
+            <div className="flex justify-between text-xs text-white">
+              <span className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                Gravando Não Conformidades no banco de dados...
+              </span>
+              <span className="font-mono text-primary font-bold">
+                {progress.current} de {progress.total} (
+                {Math.round((progress.current / (progress.total || 1)) * 100)}%)
+              </span>
+            </div>
+            <Progress
+              value={Math.round((progress.current / (progress.total || 1)) * 100)}
+              className="h-2"
+            />
+            {progress.currentNum && (
+              <p className="text-[11px] text-muted-foreground font-mono">
+                Processando: <strong>{progress.currentNum}</strong>
+              </p>
+            )}
+          </div>
+        )}
+
+        <DialogFooter className="pt-3 border-t border-white/10 flex items-center justify-between sm:justify-between w-full">
+          <div>
+            {step === 'preview' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setStep('upload')}
+                disabled={isImporting}
+                className="text-xs text-muted-foreground hover:text-white"
+              >
+                ← Voltar e Trocar Arquivos
+              </Button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {step === 'upload' && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="text-xs border-white/10 text-white/80"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={processSpreadsheetAndPdfs}
+                  disabled={!excelFile || isParsing}
+                  className="bg-primary text-primary-foreground text-xs font-semibold gap-1.5"
+                >
+                  {isParsing ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Processando Abas...
+                    </>
+                  ) : (
+                    <>
+                      Avançar para Preview <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
+
+            {step === 'preview' && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isImporting}
+                  className="text-xs border-white/10 text-white/80"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleConfirmImport}
+                  disabled={isImporting || parsedRows.length === 0}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold gap-1.5 shadow-lg shadow-emerald-900/20"
+                >
+                  {isImporting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Gravando no Banco...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Confirmar e Gravar{' '}
+                      {parsedRows.length} RNCs
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
+
+            {step === 'result' && (
+              <Button
+                onClick={() => {
+                  onOpenChange(false)
+                  resetAll()
+                }}
+                className="bg-primary text-primary-foreground text-xs font-semibold"
+              >
+                Concluir e Ver RNCs
+              </Button>
+            )}
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}

@@ -501,3 +501,302 @@ export async function createChildRNC(parentRNC: NonConformity): Promise<NonConfo
 
   return child
 }
+
+/* ------------------------------------------------------------------ */
+/* Bulk Import Service for RNCs (Client-Side Parser & Importer)        */
+/* ------------------------------------------------------------------ */
+
+export interface RNCImportRow {
+  number: string
+  date: string
+  process: string
+  severity: 'Leve' | 'Médio' | 'Grave' | 'Crítico'
+  description: string
+  origin?: RNCOrigin
+  status: 'Em Andamento' | 'Fechada' | 'Cancelada'
+  responsible?: string
+  issuer?: string
+  service_order_number?: string
+  summary?: string
+  involved_parties?: string
+  supplier_name?: string
+  immediate_correction_type?: string
+  immediate_action?: string
+  corrective_action?: string
+  action_plan?: string
+  deadline?: string
+  cost_raw_material?: number
+  cost_supplies?: number
+  cost_services?: number
+  cost_total?: number
+  action_cost?: number
+  effectiveness_verification?: string
+  verification_date?: string
+  is_effective?: 'SIM' | 'NÃO' | 'Pendente'
+  five_whys?: FiveWhyItem[]
+  ishikawa_data?: IshikawaData
+  matched_evidence_files?: File[]
+  matched_evidence_names?: string[]
+}
+
+export interface RNCImportResult {
+  total: number
+  success: number
+  failed: number
+  errors: Array<{ row: number; number: string; error: string }>
+  unmatchedPdfFiles: string[]
+}
+
+export type RNCImportProgressCallback = (
+  current: number,
+  total: number,
+  currentNumber?: string,
+) => void
+
+/**
+ * Normalizes an RNC number string for tolerant comparison:
+ * e.g. "RNC-007/2025", "RNC 007-2025", "RNC 007/25" -> normalized comparison key
+ */
+export function normalizeRNCNumberForMatch(raw: string): string {
+  if (!raw) return ''
+  return raw
+    .toUpperCase()
+    .replace(/\.PDF$/i, '')
+    .replace(/[^A-Z0-9]/g, '') // remove spaces, hyphens, slashes, underscores
+}
+
+/**
+ * Normalizes legacy status from Excel into non_conformities schema:
+ * Collection accepts: 'Em Andamento' | 'Fechada' | 'Cancelada'
+ * Rule: "fechadas continuam fechadas, em aberto como Em Andamento"
+ */
+export function normalizeRNCStatus(rawStatus?: string): 'Em Andamento' | 'Fechada' | 'Cancelada' {
+  if (!rawStatus) return 'Em Andamento'
+  const s = rawStatus.toLowerCase().trim()
+  if (
+    s.includes('fechad') ||
+    s.includes('concluid') ||
+    s.includes('finalizad') ||
+    s.includes('encerrad') ||
+    s === 'ok'
+  ) {
+    return 'Fechada'
+  }
+  if (s.includes('cancel')) {
+    return 'Cancelada'
+  }
+  // 'Aberta', 'Em Aberto', 'Em Andamento', 'Pendente', 'Em Análise', etc.
+  return 'Em Andamento'
+}
+
+/**
+ * Normalizes severity into valid collection options: 'Leve' | 'Médio' | 'Grave' | 'Crítico'
+ */
+export function normalizeRNCSeverity(raw?: string): 'Leve' | 'Médio' | 'Grave' | 'Crítico' {
+  if (!raw) return 'Médio'
+  const s = raw.toLowerCase().trim()
+  if (s.includes('crit') || s.includes('gravissim')) return 'Crítico'
+  if (s.includes('grav')) return 'Grave'
+  if (s.includes('med') || s.includes('moder')) return 'Médio'
+  if (s.includes('lev') || s.includes('baix')) return 'Leve'
+  return 'Médio'
+}
+
+/**
+ * Normalizes origin into collection valid values
+ */
+export function normalizeRNCOrigin(raw?: string): RNCOrigin {
+  if (!raw) return 'Auditoria Interna'
+  const s = raw.toLowerCase().trim()
+  if (s.includes('cliente') || s.includes('reclamacao') || s.includes('reclam'))
+    return 'Reclamação de Cliente'
+  if (s.includes('extern')) return 'Auditoria Externa'
+  if (s.includes('intern')) return 'Auditoria Interna'
+  if (s.includes('fornec') || s.includes('terceir')) return 'Fornecedor'
+  if (s.includes('r.o.') || s.includes('ro') || s.includes('receb')) return 'R.O.'
+  if (s.includes('sms') || s.includes('seguran') || s.includes('meio ambient')) return 'SMS'
+  if (s.includes('critica') || s.includes('analise')) return 'Análise Crítica'
+  return 'Outro'
+}
+
+/**
+ * Imports a batch of parsed RNC records into non_conformities
+ */
+export async function bulkImportRNCs(
+  rows: RNCImportRow[],
+  companyId: string,
+  onProgress?: RNCImportProgressCallback,
+): Promise<RNCImportResult> {
+  const result: RNCImportResult = {
+    total: rows.length,
+    success: 0,
+    failed: 0,
+    errors: [],
+    unmatchedPdfFiles: [],
+  }
+
+  // Pre-load service orders for potential linking
+  let soMap = new Map<string, string>() // normalized SO number -> SO id
+  try {
+    const orders = await pb.collection('service_orders').getFullList({
+      filter: `owner_company_id = "${companyId}"`,
+      fields: 'id,number',
+    })
+    for (const ord of orders) {
+      if (ord.number) {
+        soMap.set(ord.number.trim().toLowerCase(), ord.id)
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
+  // Pre-load existing RNC numbers for this company to avoid duplicates or update them
+  let existingRncMap = new Map<string, string>() // normalized number -> existing record ID
+  try {
+    const existing = await pb
+      .collection('non_conformities')
+      .getFullList<{ id: string; number: string }>({
+        filter: `company_id = "${companyId}"`,
+        fields: 'id,number',
+      })
+    for (const item of existing) {
+      if (item.number) {
+        existingRncMap.set(normalizeRNCNumberForMatch(item.number), item.id)
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]
+    onProgress?.(i + 1, rows.length, row.number)
+
+    try {
+      if (!row.number || !row.number.trim()) {
+        result.failed++
+        result.errors.push({
+          row: i + 1,
+          number: '—',
+          error: 'Número da RNC está em branco.',
+        })
+        continue
+      }
+
+      // Check OS link
+      let linkedSoId: string | undefined = undefined
+      if (row.service_order_number) {
+        const soKey = row.service_order_number.trim().toLowerCase()
+        linkedSoId = soMap.get(soKey)
+      }
+
+      const rawMaterial = Number(row.cost_raw_material) || 0
+      const supplies = Number(row.cost_supplies) || 0
+      const services = Number(row.cost_services) || 0
+      const computedTotalCost = Number(row.cost_total) || rawMaterial + supplies + services
+
+      const payload: Record<string, any> = {
+        number: row.number.trim(), // EXACT original numbering preserved!
+        date: row.date
+          ? row.date.includes('T')
+            ? row.date
+            : `${row.date} 12:00:00.000Z`
+          : new Date().toISOString(),
+        company_id: companyId,
+        process: row.process ? row.process.trim() : 'SGQ',
+        severity: row.severity || 'Médio',
+        description: row.description ? row.description.trim() : `RNC ${row.number.trim()}`,
+        status: normalizeRNCStatus(row.status),
+        origin: row.origin || 'Auditoria Interna',
+        responsible: row.responsible ? row.responsible.trim() : '', // pure text, no user creation
+        issuer: row.issuer ? row.issuer.trim() : '',
+        summary: row.summary ? row.summary.trim() : '',
+        involved_parties: row.involved_parties ? row.involved_parties.trim() : '',
+        supplier_name: row.supplier_name ? row.supplier_name.trim() : '',
+        immediate_correction_type: row.immediate_correction_type || '',
+        immediate_action: row.immediate_action ? row.immediate_action.trim() : '',
+        corrective_action: row.corrective_action ? row.corrective_action.trim() : '',
+        action_plan: row.action_plan ? row.action_plan.trim() : '',
+        cost_raw_material: rawMaterial,
+        cost_supplies: supplies,
+        cost_services: services,
+        cost_total: computedTotalCost,
+        action_cost: Number(row.action_cost) || 0,
+        effectiveness_verification: row.effectiveness_verification
+          ? row.effectiveness_verification.trim()
+          : '',
+        is_effective: row.is_effective || (row.status === 'Fechada' ? 'SIM' : 'Pendente'),
+      }
+
+      if (row.deadline) {
+        payload.deadline = row.deadline.includes('T')
+          ? row.deadline
+          : `${row.deadline} 12:00:00.000Z`
+      }
+      if (row.verification_date) {
+        payload.verification_date = row.verification_date.includes('T')
+          ? row.verification_date
+          : `${row.verification_date} 12:00:00.000Z`
+      }
+      if (linkedSoId) {
+        payload.service_order_id = linkedSoId
+      }
+      if (row.five_whys && row.five_whys.length > 0) {
+        payload.five_whys = JSON.stringify(row.five_whys)
+      }
+      if (row.ishikawa_data) {
+        payload.ishikawa_data = JSON.stringify(row.ishikawa_data)
+      }
+
+      const normKey = normalizeRNCNumberForMatch(row.number)
+      const existingId = existingRncMap.get(normKey)
+
+      const filesToAttach = row.matched_evidence_files || []
+
+      if (filesToAttach.length > 0) {
+        const formData = new FormData()
+        Object.entries(payload).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) {
+            formData.append(k, String(v))
+          }
+        })
+        filesToAttach.forEach((file) => {
+          formData.append('evidences', file)
+        })
+
+        if (existingId) {
+          await pb.collection('non_conformities').update(existingId, formData)
+        } else {
+          const created = await pb.collection('non_conformities').create(formData)
+          existingRncMap.set(normKey, created.id)
+        }
+      } else {
+        if (existingId) {
+          await pb.collection('non_conformities').update(existingId, payload)
+        } else {
+          const created = await pb.collection('non_conformities').create(payload)
+          existingRncMap.set(normKey, created.id)
+        }
+      }
+
+      result.success++
+    } catch (err: any) {
+      result.failed++
+      result.errors.push({
+        row: i + 1,
+        number: row.number || `Linha ${i + 1}`,
+        error: err?.message || 'Falha ao salvar no banco de dados',
+      })
+    }
+  }
+
+  // Recalculate indicators for this company after bulk import
+  try {
+    await recalculateRNCIndicators({ companyId })
+  } catch (err) {
+    console.warn('recalculateRNCIndicators warning:', err)
+  }
+
+  return result
+}
