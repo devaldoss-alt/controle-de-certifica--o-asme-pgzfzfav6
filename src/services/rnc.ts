@@ -1,24 +1,16 @@
 import pb from '@/lib/pocketbase/client'
 import { safeArray } from '@/lib/safe-data'
 
-export type RNCOrigin =
-  | 'R.O.'
-  | 'Reclamação de Cliente'
-  | 'Auditoria Interna'
-  | 'Auditoria Externa'
-  | 'Fornecedor'
-  | 'SMS'
-  | 'Análise Crítica'
-  | 'Outro'
+export type RNCOrigin = 'R.O.' | 'R.C.' | 'Auditorias' | 'Fornecedor' | 'SMS' | 'Análise Crítica'
 
-export type RNCActionType = 'Corretiva' | 'Preventiva' | 'N/A'
-export type RNCSeverity = 'Leve' | 'Médio' | 'Grave' | 'Crítico' | 'Gravíssimo'
+export type RNCActionType = 'Ação Corretiva' | 'Ação Preventiva' | 'N/A'
+export type RNCSeverity = 'Leve' | 'Médio' | 'Grave' | 'Gravíssimo'
 export type RNCStatus = 'Aberta' | 'Em Andamento' | 'Fechada' | 'Cancelada'
 export type RNCCorrectionType =
   | 'Retrabalhar'
   | 'Reparar'
-  | 'Rejeitar-Sucatar'
-  | 'Concessão'
+  | 'Rejeitar ou Sucatar'
+  | 'Autorizado sob concessão'
   | 'Outra'
 
 export interface FiveWhyItem {
@@ -40,8 +32,13 @@ export interface NonConformity {
   number: string
   date: string
   process: string
-  severity: 'Leve' | 'Médio' | 'Grave' | 'Crítico' | 'Gravíssimo'
+  severity: RNCSeverity
   status: 'Aberta' | 'Em Andamento' | 'Fechada' | 'Cancelada'
+
+  // 3 Header Yes/No flags (FSGQ 8.7-2 Rev.04)
+  interferes_subsequent_process?: boolean
+  interferes_delivery_deadline?: boolean
+  requested_by_client?: boolean
 
   // Header & Context
   origin?: RNCOrigin
@@ -59,7 +56,7 @@ export interface NonConformity {
   supplier_name?: string
 
   // Section 2: Immediate correction & Cost of Non-Quality
-  immediate_correction_type?: RNCCorrectionType
+  immediate_correction_type?: RNCCorrectionType | string
   immediate_correction_other?: string
   immediate_action?: string
   cost_raw_material?: number
@@ -68,6 +65,7 @@ export interface NonConformity {
   cost_total?: number
 
   // Section 3: Reinspection
+  is_reinspected?: boolean
   reinspection_result?: 'Aprovado' | 'Não Aprovado' | 'N/A'
   reinspection_inspector?: string
   reinspection_date?: string
@@ -84,9 +82,10 @@ export interface NonConformity {
   corrective_action?: string
   action_plan?: string
   deadline?: string
+  completion_actual_date?: string
   action_cost?: number
 
-  // Section 6: Risk & Opportunity Assessment
+  // Section 6: Risk & Opportunity Assessment (novos riscos e/ou oportunidades identificadas)
   risk_assessment?: string
 
   // Section 7: Effectiveness Verification
@@ -129,30 +128,39 @@ export const RNC_PROCESS_LIST = [
   'Produção',
   'SMS',
   'Fornecedor',
+  'Expedição',
 ] as const
 
 export const RNC_ORIGINS: RNCOrigin[] = [
   'R.O.',
-  'Reclamação de Cliente',
-  'Auditoria Interna',
-  'Auditoria Externa',
+  'R.C.',
+  'Auditorias',
   'Fornecedor',
   'SMS',
   'Análise Crítica',
-  'Outro',
 ]
 
 export const ROOT_CAUSE_CATEGORIES = [
-  'Método / Procedimento',
-  'Mão de Obra / Capacitação',
-  'Máquina / Equipamento',
-  'Material / Matéria-Prima',
-  'Meio Ambiente / Condições',
-  'Medição / Instrumento',
-  'Fornecedor / Terceiro',
-  'Projeto / Engenharia',
-  'Planejamento / Gestão',
+  'Máquina e Ferramenta',
+  'Pessoa',
+  'Processo e Programa',
+  'Material',
+  'SMS',
+  'Instrumentos de Medição',
+  'Fornecedor',
+  'Especificação e Projeto',
+  'Outros',
 ] as const
+
+export const RNC_CORRECTION_TYPES: RNCCorrectionType[] = [
+  'Retrabalhar',
+  'Reparar',
+  'Rejeitar ou Sucatar',
+  'Autorizado sob concessão',
+  'Outra',
+]
+
+export const RNC_ACTION_TYPES: RNCActionType[] = ['Ação Corretiva', 'Ação Preventiva', 'N/A']
 
 export async function getNonConformities(
   params: {
@@ -297,13 +305,13 @@ export async function recalculateRNCIndicators(params: { companyId?: string }): 
       filter: companyFilter || undefined,
     })
 
-    // 1. IRPI = Total de reclamações de produtos/inspeções (Origem = 'Reclamação de Cliente' ou 'R.O.')
+    // 1. IRPI = Total de reclamações de produtos/inspeções (Origem = 'R.C.', 'Reclamação de Cliente' ou 'R.O.')
     const irpiCount = allRNCs.filter(
       (r) =>
-        r.origin === 'Reclamação de Cliente' ||
+        r.origin === 'R.C.' ||
+        (r.origin as any) === 'Reclamação de Cliente' ||
         r.origin === 'R.O.' ||
         r.severity === 'Grave' ||
-        r.severity === 'Crítico' ||
         r.severity === 'Gravíssimo',
     ).length
 
@@ -482,8 +490,8 @@ export async function createChildRNC(parentRNC: NonConformity): Promise<NonConfo
     service_order_id: parentRNC.service_order_id,
     process: parentRNC.process,
     severity: parentRNC.severity,
-    origin: parentRNC.origin || 'Auditoria Interna',
-    action_type: 'Corretiva',
+    origin: parentRNC.origin || 'Auditorias',
+    action_type: 'Ação Corretiva',
     issuer: parentRNC.verifier || 'Gestor da Qualidade',
     summary: `Reincidência / Ineficácia da RNC ${parentRNC.number}`,
     description:
@@ -510,10 +518,14 @@ export interface RNCImportRow {
   number: string
   date: string
   process: string
-  severity: 'Leve' | 'Médio' | 'Grave' | 'Crítico'
+  severity: RNCSeverity
   description: string
   origin?: RNCOrigin
+  action_type?: RNCActionType
   status: 'Em Andamento' | 'Fechada' | 'Cancelada'
+  interferes_subsequent_process?: boolean
+  interferes_delivery_deadline?: boolean
+  requested_by_client?: boolean
   responsible?: string
   issuer?: string
   service_order_number?: string
@@ -522,17 +534,29 @@ export interface RNCImportRow {
   supplier_name?: string
   immediate_correction_type?: string
   immediate_action?: string
+  is_reinspected?: boolean
+  reinspection_result?: 'Aprovado' | 'Não Aprovado' | 'N/A'
+  reinspection_inspector?: string
+  reinspection_date?: string
+  reinspection_notes?: string
+  root_cause_category?: string
+  root_cause_details?: string
+  risk_assessment?: string
   corrective_action?: string
   action_plan?: string
   deadline?: string
+  completion_actual_date?: string
   cost_raw_material?: number
   cost_supplies?: number
   cost_services?: number
   cost_total?: number
   action_cost?: number
+  effectiveness_target_date?: string
   effectiveness_verification?: string
   verification_date?: string
+  verifier?: string
   is_effective?: 'SIM' | 'NÃO' | 'Pendente'
+  parent_rnc_number?: string
   five_whys?: FiveWhyItem[]
   ishikawa_data?: IshikawaData
   matched_evidence_files?: File[]
@@ -590,12 +614,12 @@ export function normalizeRNCStatus(rawStatus?: string): 'Em Andamento' | 'Fechad
 }
 
 /**
- * Normalizes severity into valid collection options: 'Leve' | 'Médio' | 'Grave' | 'Crítico'
+ * Normalizes severity into valid collection options: 'Leve' | 'Médio' | 'Grave' | 'Gravíssimo'
  */
-export function normalizeRNCSeverity(raw?: string): 'Leve' | 'Médio' | 'Grave' | 'Crítico' {
+export function normalizeRNCSeverity(raw?: string): RNCSeverity {
   if (!raw) return 'Médio'
   const s = raw.toLowerCase().trim()
-  if (s.includes('crit') || s.includes('gravissim')) return 'Crítico'
+  if (s.includes('gravissim') || s.includes('crit')) return 'Gravíssimo'
   if (s.includes('grav')) return 'Grave'
   if (s.includes('med') || s.includes('moder')) return 'Médio'
   if (s.includes('lev') || s.includes('baix')) return 'Leve'
@@ -603,20 +627,119 @@ export function normalizeRNCSeverity(raw?: string): 'Leve' | 'Médio' | 'Grave' 
 }
 
 /**
- * Normalizes origin into collection valid values
+ * Normalizes origin into collection valid values (FSGQ 8.7-1 / 8.7-2):
+ * 'R.O.' | 'R.C.' | 'Auditorias' | 'Fornecedor' | 'SMS' | 'Análise Crítica'
  */
 export function normalizeRNCOrigin(raw?: string): RNCOrigin {
-  if (!raw) return 'Auditoria Interna'
+  if (!raw) return 'Auditorias'
   const s = raw.toLowerCase().trim()
-  if (s.includes('cliente') || s.includes('reclamacao') || s.includes('reclam'))
-    return 'Reclamação de Cliente'
-  if (s.includes('extern')) return 'Auditoria Externa'
-  if (s.includes('intern')) return 'Auditoria Interna'
+  if (s.includes('r.c.') || s.includes('rc') || s.includes('cliente') || s.includes('reclam')) {
+    return 'R.C.'
+  }
+  if (s.includes('r.o.') || s.includes('ro') || s.includes('recebimento')) {
+    return 'R.O.'
+  }
+  if (s.includes('fornec') || s.includes('terceir')) {
+    return 'Fornecedor'
+  }
+  if (s.includes('sms') || s.includes('seguran') || s.includes('meio ambient')) {
+    return 'SMS'
+  }
+  if (s.includes('critica') || s.includes('analise')) {
+    return 'Análise Crítica'
+  }
+  if (s.includes('audit')) {
+    return 'Auditorias'
+  }
+  return 'Auditorias'
+}
+
+/**
+ * Normalizes Action Type into: 'Ação Corretiva' | 'Ação Preventiva' | 'N/A'
+ */
+export function normalizeRNCActionType(raw?: string): RNCActionType {
+  if (!raw) return 'Ação Corretiva'
+  const s = raw.toLowerCase().trim()
+  if (s.includes('prev')) return 'Ação Preventiva'
+  if (s.includes('corret')) return 'Ação Corretiva'
+  if (s.includes('n/a') || s.includes('na') || s === 'n') return 'N/A'
+  return 'Ação Corretiva'
+}
+
+/**
+ * Normalizes Immediate Correction Type:
+ * 'Retrabalhar' | 'Reparar' | 'Rejeitar ou Sucatar' | 'Autorizado sob concessão' | 'Outra'
+ */
+export function normalizeRNCCorrectionType(raw?: string): RNCCorrectionType {
+  if (!raw) return 'Retrabalhar'
+  const s = raw.toLowerCase().trim()
+  if (s.includes('retrabalh')) return 'Retrabalhar'
+  if (s.includes('repar')) return 'Reparar'
+  if (s.includes('rejeit') || s.includes('sucat')) return 'Rejeitar ou Sucatar'
+  if (s.includes('concess') || s.includes('autoriz')) return 'Autorizado sob concessão'
+  return 'Outra'
+}
+
+/**
+ * Normalizes Root Cause Category into official 9 categories
+ */
+export function normalizeRNCRootCauseCategory(raw?: string): string {
+  if (!raw) return 'Processo e Programa'
+  const s = raw.toLowerCase().trim()
+  if (s.includes('maquin') || s.includes('ferram')) return 'Máquina e Ferramenta'
+  if (
+    s.includes('pess') ||
+    s.includes('mao de obra') ||
+    s.includes('colaborador') ||
+    s.includes('treina')
+  )
+    return 'Pessoa'
+  if (s.includes('mater') || s.includes('materia')) return 'Material'
+  if (s.includes('sms') || s.includes('seguran') || s.includes('ambient')) return 'SMS'
+  if (s.includes('instrument') || s.includes('medic') || s.includes('calibr'))
+    return 'Instrumentos de Medição'
   if (s.includes('fornec') || s.includes('terceir')) return 'Fornecedor'
-  if (s.includes('r.o.') || s.includes('ro') || s.includes('receb')) return 'R.O.'
-  if (s.includes('sms') || s.includes('seguran') || s.includes('meio ambient')) return 'SMS'
-  if (s.includes('critica') || s.includes('analise')) return 'Análise Crítica'
-  return 'Outro'
+  if (s.includes('especific') || s.includes('projet') || s.includes('engenhar'))
+    return 'Especificação e Projeto'
+  if (s.includes('process') || s.includes('program') || s.includes('metod'))
+    return 'Processo e Programa'
+  return 'Outros'
+}
+
+/**
+ * Normalizes Process into official dashboard list:
+ * SGQ, Projetos, Engenharia, Suprimentos, RH, Financeiro, Comercial, TI,
+ * Diretoria, PCP, CQ, Almoxarifado, Manutenção, Corte, Solda, Caldeiraria,
+ * Usinagem, Produção, SMS, Fornecedor, Expedição
+ */
+export function normalizeRNCProcess(raw?: string): string {
+  if (!raw) return 'SGQ'
+  const s = raw.trim()
+  const found = RNC_PROCESS_LIST.find((p) => p.toLowerCase() === s.toLowerCase())
+  if (found) return found
+  const sLow = s.toLowerCase()
+  if (sLow.includes('sold')) return 'Solda'
+  if (sLow.includes('caldeir')) return 'Caldeiraria'
+  if (sLow.includes('usin')) return 'Usinagem'
+  if (sLow.includes('cort')) return 'Corte'
+  if (sLow.includes('cq') || sLow.includes('qualidade')) return 'CQ'
+  if (sLow.includes('almox')) return 'Almoxarifado'
+  if (sLow.includes('manuten')) return 'Manutenção'
+  if (sLow.includes('pcp')) return 'PCP'
+  if (sLow.includes('suprim') || sLow.includes('compr')) return 'Suprimentos'
+  if (sLow.includes('engenh')) return 'Engenharia'
+  if (sLow.includes('proj')) return 'Projetos'
+  if (sLow.includes('exped')) return 'Expedição'
+  if (sLow.includes('prod')) return 'Produção'
+  if (sLow.includes('comerc')) return 'Comercial'
+  if (sLow.includes('financ')) return 'Financeiro'
+  if (sLow.includes('diret')) return 'Diretoria'
+  if (sLow.includes('ti') || sLow.includes('informat')) return 'TI'
+  if (sLow.includes('rh') || sLow.includes('human')) return 'RH'
+  if (sLow.includes('sms') || sLow.includes('seguran')) return 'SMS'
+  if (sLow.includes('fornec')) return 'Fornecedor'
+  if (sLow.includes('sgq')) return 'SGQ'
+  return 'SGQ'
 }
 
 /**
@@ -704,18 +827,31 @@ export async function bulkImportRNCs(
             : `${row.date} 12:00:00.000Z`
           : new Date().toISOString(),
         company_id: companyId,
-        process: row.process ? row.process.trim() : 'SGQ',
+        process: normalizeRNCProcess(row.process),
         severity: row.severity || 'Médio',
         description: row.description ? row.description.trim() : `RNC ${row.number.trim()}`,
         status: normalizeRNCStatus(row.status),
-        origin: row.origin || 'Auditoria Interna',
-        responsible: row.responsible ? row.responsible.trim() : '', // pure text, no user creation
+        origin: row.origin || 'Auditorias',
+        action_type: row.action_type || 'Ação Corretiva',
+        interferes_subsequent_process: !!row.interferes_subsequent_process,
+        interferes_delivery_deadline: !!row.interferes_delivery_deadline,
+        requested_by_client: !!row.requested_by_client,
+        responsible: row.responsible ? row.responsible.trim() : '',
         issuer: row.issuer ? row.issuer.trim() : '',
         summary: row.summary ? row.summary.trim() : '',
         involved_parties: row.involved_parties ? row.involved_parties.trim() : '',
         supplier_name: row.supplier_name ? row.supplier_name.trim() : '',
         immediate_correction_type: row.immediate_correction_type || '',
         immediate_action: row.immediate_action ? row.immediate_action.trim() : '',
+        is_reinspected: !!row.is_reinspected,
+        reinspection_result: row.reinspection_result || 'N/A',
+        reinspection_inspector: row.reinspection_inspector ? row.reinspection_inspector.trim() : '',
+        reinspection_notes: row.reinspection_notes ? row.reinspection_notes.trim() : '',
+        root_cause_category: row.root_cause_category
+          ? normalizeRNCRootCauseCategory(row.root_cause_category)
+          : 'Processo e Programa',
+        root_cause_details: row.root_cause_details ? row.root_cause_details.trim() : '',
+        risk_assessment: row.risk_assessment ? row.risk_assessment.trim() : '',
         corrective_action: row.corrective_action ? row.corrective_action.trim() : '',
         action_plan: row.action_plan ? row.action_plan.trim() : '',
         cost_raw_material: rawMaterial,
@@ -726,6 +862,7 @@ export async function bulkImportRNCs(
         effectiveness_verification: row.effectiveness_verification
           ? row.effectiveness_verification.trim()
           : '',
+        verifier: row.verifier ? row.verifier.trim() : '',
         is_effective: row.is_effective || (row.status === 'Fechada' ? 'SIM' : 'Pendente'),
       }
 
@@ -733,6 +870,21 @@ export async function bulkImportRNCs(
         payload.deadline = row.deadline.includes('T')
           ? row.deadline
           : `${row.deadline} 12:00:00.000Z`
+      }
+      if (row.completion_actual_date) {
+        payload.completion_actual_date = row.completion_actual_date.includes('T')
+          ? row.completion_actual_date
+          : `${row.completion_actual_date} 12:00:00.000Z`
+      }
+      if (row.reinspection_date) {
+        payload.reinspection_date = row.reinspection_date.includes('T')
+          ? row.reinspection_date
+          : `${row.reinspection_date} 12:00:00.000Z`
+      }
+      if (row.effectiveness_target_date) {
+        payload.effectiveness_target_date = row.effectiveness_target_date.includes('T')
+          ? row.effectiveness_target_date
+          : `${row.effectiveness_target_date} 12:00:00.000Z`
       }
       if (row.verification_date) {
         payload.verification_date = row.verification_date.includes('T')

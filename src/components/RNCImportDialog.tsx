@@ -61,6 +61,9 @@ import {
   normalizeRNCStatus,
   normalizeRNCSeverity,
   normalizeRNCOrigin,
+  normalizeRNCActionType,
+  normalizeRNCProcess,
+  normalizeRNCRootCauseCategory,
   type RNCImportRow,
   type RNCImportResult,
   type FiveWhyItem,
@@ -191,23 +194,30 @@ export function RNCImportDialog({
     setPdfFiles((prev) => prev.filter((p) => p.name !== fileName))
   }
 
-  // Handle Excel Selection
+  // Handle Multiple Excel Selections (Planilha de Controle e/ou Formulários Individuais)
+  const [selectedExcelFiles, setSelectedExcelFiles] = useState<File[]>([])
+
   const handleExcelSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = e.target.files ? Array.from(e.target.files) : []
+    if (files.length === 0) return
     setError('')
-    setExcelFile(file)
+    setSelectedExcelFiles(files)
+    setExcelFile(files[0]) // Primary file for backwards-compat display
   }
 
   /**
    * Intelligently parses Excel sheets and associates 5 Porquês, Ishikawa and PDFs
+   * Supports:
+   * (a) FSGQ 8.7-1 Rev.06 Planilha de Controle de RNCs (aba CONTROLE_RNC)
+   * (b) FSGQ 8.7-2 Rev.04 Formulários Individuais (abas FSGQ 8.7-2 / Relatório, Evidências-Evidence, "5 Por quês - 5 Whys", Ishikawa)
+   * (c) Multiple files merging by RNC number
    */
   const processSpreadsheetAndPdfs = async () => {
     if (!targetCompanyId) {
       setCompanyError('Selecione a empresa alvo antes de prosseguir.')
       return
     }
-    if (!excelFile) {
+    if (selectedExcelFiles.length === 0 && !excelFile) {
       setError('Selecione o arquivo Excel (.xlsx) das RNCs.')
       return
     }
@@ -216,184 +226,281 @@ export function RNCImportDialog({
     setError('')
 
     try {
-      const sheets = await parseSpreadsheetSheets(excelFile)
-      setRawSheets(sheets)
+      const filesToProcess =
+        selectedExcelFiles.length > 0 ? selectedExcelFiles : excelFile ? [excelFile] : []
+      const allFilesSheets: { file: File; sheets: SheetData[] }[] = []
 
-      if (sheets.length === 0) {
-        throw new Error('O arquivo de planilha está vazio ou não possui abas legíveis.')
+      for (const f of filesToProcess) {
+        const sheets = await parseSpreadsheetSheets(f)
+        allFilesSheets.push({ file: f, sheets })
       }
 
-      // 1. Identify sheets by name
-      let rncSheet: SheetData | undefined = undefined
-      let whysSheet: SheetData | undefined = undefined
-      let ishikawaSheet: SheetData | undefined = undefined
-      let evidenceSheet: SheetData | undefined = undefined
+      const allParsedSheets = allFilesSheets.flatMap((x) => x.sheets)
+      setRawSheets(allParsedSheets)
 
-      for (const s of sheets) {
-        const norm = normalizeText(s.name)
-        if (
-          norm.includes('5 por') ||
-          norm.includes('porques') ||
-          norm.includes('porque') ||
-          norm.includes('5whys') ||
-          norm.includes('whys')
-        ) {
-          whysSheet = s
-        } else if (
-          norm.includes('ishikawa') ||
-          norm.includes('espinha') ||
-          norm.includes('causa e efeito') ||
-          norm.includes('6m')
-        ) {
-          ishikawaSheet = s
-        } else if (
-          norm.includes('evidenc') ||
-          norm.includes('anexo') ||
-          norm.includes('arquivos') ||
-          norm.includes('pdf')
-        ) {
-          evidenceSheet = s
-        } else if (
-          norm.includes('rnc') ||
-          norm.includes('desvio') ||
-          norm.includes('fsgq') ||
-          norm.includes('nao conformidade') ||
-          norm.includes('geral') ||
-          norm.includes('controle')
-        ) {
-          if (!rncSheet) rncSheet = s
-        }
+      if (allParsedSheets.length === 0) {
+        throw new Error('Os arquivos de planilha estão vazios ou não possuem abas legíveis.')
       }
 
-      // Fallback: If no sheet matched "RNC", use the first sheet that is not whys/ishikawa/evidence
-      if (!rncSheet) {
-        rncSheet =
-          sheets.find((s) => s !== whysSheet && s !== ishikawaSheet && s !== evidenceSheet) ||
-          sheets[0]
-      }
-
-      // 2. Parse 5 Porquês sheet into a map: normalized RNC Number -> FiveWhyItem[]
+      // Maps for merged secondary data across all files
       const whysMap = new Map<string, FiveWhyItem[]>()
-      if (whysSheet && whysSheet.data.length > 1) {
-        const wData = whysSheet.data
-        // Find header row or look for columns
-        const wHeadIdx = 0
-        const headerRow = wData[wHeadIdx].map((c) => normalizeText(c))
+      const ishikawaMap = new Map<string, IshikawaData>()
+      const evidenceSheetNotesMap = new Map<string, string>()
+      const individualFormRncMap = new Map<string, Partial<RNCImportRow>>()
 
-        let rncColIdx = headerRow.findIndex(
-          (h) =>
-            h.includes('rnc') || h.includes('numero') || h.includes('n°') || h.includes('codigo'),
-        )
-        if (rncColIdx === -1) rncColIdx = 0
+      // Process each file's sheets
+      for (const { file, sheets } of allFilesSheets) {
+        for (const s of sheets) {
+          const norm = normalizeText(s.name)
 
-        // Look for why/answer pairs or sequential columns (Porquê 1, Resposta 1...)
-        for (let r = wHeadIdx + 1; r < wData.length; r++) {
-          const row = wData[r]
-          const rncNumRaw = row[rncColIdx] || ''
-          const normKey = normalizeRNCNumberForMatch(rncNumRaw)
-          if (!normKey) continue
-
-          const items: FiveWhyItem[] = []
-
-          // Check if row has multiple columns for 1st Why, 2nd Why, etc.
-          for (let c = 0; c < row.length; c++) {
-            if (c === rncColIdx) continue
-            const colName = headerRow[c] || `Coluna ${c + 1}`
-            const val = row[c] ? row[c].trim() : ''
-            if (!val) continue
-
-            if (
-              colName.includes('por que') ||
-              colName.includes('porque') ||
-              colName.includes('why') ||
-              colName.includes('causa') ||
-              colName.includes('resposta') ||
-              colName.includes('pergunta')
-            ) {
-              items.push({
-                why: colName,
-                answer: val,
-              })
-            }
-          }
-
-          // If no specific header keywords matched, capture non-empty columns as sequential whys
-          if (items.length === 0) {
-            for (let c = 1; c < row.length; c++) {
-              const val = row[c] ? row[c].trim() : ''
-              if (val) {
-                items.push({
-                  why: `${items.length + 1}º Por quê`,
-                  answer: val,
-                })
+          // 1. Check for 5 Whys ("5 Por quês - 5 Whys", "5 Porques", etc.)
+          if (
+            norm.includes('5 por') ||
+            norm.includes('why') ||
+            norm.includes('5whys') ||
+            norm.includes('porques')
+          ) {
+            const wData = s.data
+            if (wData.length >= 2) {
+              const headerRow = wData[0].map((c) => normalizeText(c))
+              let rncColIdx = headerRow.findIndex(
+                (h) =>
+                  h.includes('rnc') ||
+                  h.includes('numero') ||
+                  h.includes('n°') ||
+                  h.includes('codigo'),
+              )
+              if (rncColIdx === -1) {
+                // If this is an individual form with no explicit RNC column, find RNC number in top rows
+                let foundRncNum = ''
+                for (let r = 0; r < Math.min(8, wData.length); r++) {
+                  for (let c = 0; c < wData[r].length; c++) {
+                    const txt = wData[r][c] || ''
+                    if (txt.toLowerCase().includes('rnc')) {
+                      const match = txt.match(/rnc[\s\-#:]*([0-9a-z/\-_]+)/i)
+                      if (match) {
+                        foundRncNum = match[1]
+                        break
+                      }
+                    }
+                  }
+                  if (foundRncNum) break
+                }
+                const fallbackNorm = normalizeRNCNumberForMatch(foundRncNum || file.name)
+                if (fallbackNorm) {
+                  const items: FiveWhyItem[] = []
+                  for (let r = 1; r < wData.length; r++) {
+                    const lineText = wData[r].filter(Boolean).join(' ')
+                    if (lineText.trim()) {
+                      items.push({
+                        why: `${items.length + 1}º Por quê`,
+                        answer: lineText.trim(),
+                      })
+                    }
+                  }
+                  if (items.length > 0) whysMap.set(fallbackNorm, items)
+                }
+              } else {
+                for (let r = 1; r < wData.length; r++) {
+                  const row = wData[r]
+                  const rncNumRaw = row[rncColIdx] || ''
+                  const normKey = normalizeRNCNumberForMatch(rncNumRaw)
+                  if (!normKey) continue
+                  const items: FiveWhyItem[] = []
+                  for (let c = 0; c < row.length; c++) {
+                    if (c === rncColIdx) continue
+                    const colName = headerRow[c] || `Coluna ${c + 1}`
+                    const val = row[c] ? row[c].trim() : ''
+                    if (!val) continue
+                    items.push({ why: colName, answer: val })
+                  }
+                  if (items.length > 0) whysMap.set(normKey, items)
+                }
               }
             }
           }
 
-          if (items.length > 0) {
-            whysMap.set(normKey, items)
-          }
-        }
-      }
+          // 2. Check for Ishikawa
+          if (
+            norm.includes('ishikawa') ||
+            norm.includes('espinha') ||
+            norm.includes('causa e efeito') ||
+            norm.includes('6m')
+          ) {
+            const iData = s.data
+            if (iData.length >= 2) {
+              const headerRow = iData[0].map((c) => normalizeText(c))
+              let rncColIdx = headerRow.findIndex(
+                (h) => h.includes('rnc') || h.includes('numero') || h.includes('n°'),
+              )
+              const fallbackNorm = normalizeRNCNumberForMatch(file.name)
+              const ishi: IshikawaData = {
+                metodo: [],
+                maquina: [],
+                mao_de_obra: [],
+                material: [],
+                meio_ambiente: [],
+                medicao: [],
+              }
 
-      // 3. Parse Ishikawa sheet into a map: normalized RNC Number -> IshikawaData
-      const ishikawaMap = new Map<string, IshikawaData>()
-      if (ishikawaSheet && ishikawaSheet.data.length > 1) {
-        const iData = ishikawaSheet.data
-        const headerRow = iData[0].map((c) => normalizeText(c))
-        let rncColIdx = headerRow.findIndex(
-          (h) => h.includes('rnc') || h.includes('numero') || h.includes('n°'),
-        )
-        if (rncColIdx === -1) rncColIdx = 0
-
-        for (let r = 1; r < iData.length; r++) {
-          const row = iData[r]
-          const rncNumRaw = row[rncColIdx] || ''
-          const normKey = normalizeRNCNumberForMatch(rncNumRaw)
-          if (!normKey) continue
-
-          const ishi: IshikawaData = {
-            metodo: [],
-            maquina: [],
-            mao_de_obra: [],
-            material: [],
-            meio_ambiente: [],
-            medicao: [],
-          }
-
-          for (let c = 0; c < row.length; c++) {
-            if (c === rncColIdx) continue
-            const colName = headerRow[c] || ''
-            const val = row[c] ? row[c].trim() : ''
-            if (!val) continue
-
-            if (colName.includes('metod')) {
-              ishi.metodo?.push(val)
-            } else if (colName.includes('maquin') || colName.includes('equipam')) {
-              ishi.maquina?.push(val)
-            } else if (
-              colName.includes('obra') ||
-              colName.includes('pessoal') ||
-              colName.includes('capacit')
-            ) {
-              ishi.mao_de_obra?.push(val)
-            } else if (colName.includes('mater')) {
-              ishi.material?.push(val)
-            } else if (colName.includes('ambient')) {
-              ishi.meio_ambiente?.push(val)
-            } else if (colName.includes('medic') || colName.includes('instru')) {
-              ishi.medicao?.push(val)
-            } else {
-              // Generic fallback into metodo
-              ishi.metodo?.push(`${headerRow[c] || 'Geral'}: ${val}`)
+              for (let r = 1; r < iData.length; r++) {
+                const row = iData[r]
+                const rowRnc =
+                  rncColIdx >= 0 ? normalizeRNCNumberForMatch(row[rncColIdx] || '') : fallbackNorm
+                for (let c = 0; c < row.length; c++) {
+                  if (c === rncColIdx) continue
+                  const colName = headerRow[c] || ''
+                  const val = row[c] ? row[c].trim() : ''
+                  if (!val) continue
+                  if (colName.includes('metod') || colName.includes('process'))
+                    ishi.metodo?.push(val)
+                  else if (colName.includes('maquin') || colName.includes('ferram'))
+                    ishi.maquina?.push(val)
+                  else if (colName.includes('obra') || colName.includes('pess'))
+                    ishi.mao_de_obra?.push(val)
+                  else if (colName.includes('mater')) ishi.material?.push(val)
+                  else if (colName.includes('ambient') || colName.includes('sms'))
+                    ishi.meio_ambiente?.push(val)
+                  else if (colName.includes('medic') || colName.includes('instru'))
+                    ishi.medicao?.push(val)
+                  else ishi.metodo?.push(val)
+                }
+                if (rowRnc) {
+                  ishikawaMap.set(rowRnc, ishi)
+                }
+              }
             }
           }
 
-          ishikawaMap.set(normKey, ishi)
+          // 3. Check for Evidências (Evidências-Evidence)
+          if (norm.includes('evidenc') || norm.includes('evidence')) {
+            const eData = s.data
+            let textAcc = ''
+            for (let r = 0; r < Math.min(25, eData.length); r++) {
+              const rowText = eData[r].filter(Boolean).join(' ')
+              if (rowText.trim()) textAcc += `${rowText.trim()} \n`
+            }
+            if (textAcc) {
+              const rncKey = normalizeRNCNumberForMatch(file.name)
+              if (rncKey) evidenceSheetNotesMap.set(rncKey, textAcc.trim())
+            }
+          }
+
+          // 4. Check for Individual Form Sheet ("FSGQ 8.7-2", "Relatório de RNC", etc.)
+          if (
+            norm.includes('8.7-2') ||
+            (norm.includes('relatorio') && !norm.includes('controle'))
+          ) {
+            // Extract individual form fields from sheet key-value cells
+            const grid = s.data
+            let formRncNum = ''
+            let formProcess = ''
+            let formSeverity = ''
+            let formOrigin = ''
+            let formActionType = ''
+            let formDesc = ''
+            let formImmediateAction = ''
+            let formImmediateType = ''
+            let formCorrectiveAction = ''
+            let formDeadline = ''
+            let formCost = 0
+            let formRisk = ''
+            let formIsReinspected = false
+            let formInterferesSubsequent = false
+            let formInterferesDeadline = false
+            let formRequestedByClient = false
+
+            for (let r = 0; r < grid.length; r++) {
+              for (let c = 0; c < grid[r].length; c++) {
+                const cell = (grid[r][c] || '').trim()
+                const cellNorm = normalizeText(cell)
+                const nextCell = (grid[r][c + 1] || '').trim()
+
+                // Check 3 flags Sim/Não
+                if (cellNorm.includes('processo subsequente')) {
+                  const checkArea = `${cell} ${nextCell} ${grid[r][c + 2] || ''}`.toLowerCase()
+                  if (checkArea.includes('sim') || checkArea.includes('[x] sim'))
+                    formInterferesSubsequent = true
+                }
+                if (cellNorm.includes('prazo de entrega')) {
+                  const checkArea = `${cell} ${nextCell} ${grid[r][c + 2] || ''}`.toLowerCase()
+                  if (checkArea.includes('sim') || checkArea.includes('[x] sim'))
+                    formInterferesDeadline = true
+                }
+                if (cellNorm.includes('solicitado pelo cliente')) {
+                  const checkArea = `${cell} ${nextCell} ${grid[r][c + 2] || ''}`.toLowerCase()
+                  if (checkArea.includes('sim') || checkArea.includes('[x] sim'))
+                    formRequestedByClient = true
+                }
+
+                // Check RNC Number
+                if (
+                  (cellNorm === 'numero' ||
+                    cellNorm === 'n rnc' ||
+                    cellNorm.includes('numero da rnc')) &&
+                  nextCell
+                ) {
+                  formRncNum = nextCell
+                }
+                // Check Risk assessment
+                if (cellNorm.includes('avaliacao de risco') || cellNorm.includes('novos riscos')) {
+                  formRisk = nextCell || (grid[r + 1] ? grid[r + 1][c] : '')
+                }
+                // Check Action type
+                if (cellNorm.includes('tipo de acao')) {
+                  formActionType = nextCell
+                }
+              }
+            }
+
+            const rncKey = normalizeRNCNumberForMatch(formRncNum || file.name)
+            if (rncKey) {
+              individualFormRncMap.set(rncKey, {
+                number: formRncNum || file.name.replace(/\.[^/.]+$/, ''),
+                interferes_subsequent_process: formInterferesSubsequent,
+                interferes_delivery_deadline: formInterferesDeadline,
+                requested_by_client: formRequestedByClient,
+                risk_assessment: formRisk,
+                action_type: formActionType ? normalizeRNCActionType(formActionType) : undefined,
+              })
+            }
+          }
         }
       }
 
-      // 4. Parse RNC Main sheet
+      // 5. Identify the main CONTROL sheet (prioritize "CONTROLE_RNC" from FSGQ 8.7-1 Rev.06)
+      let rncSheet: SheetData | undefined = undefined
+      for (const s of allParsedSheets) {
+        const norm = normalizeText(s.name)
+        if (norm.includes('controle_rnc') || norm === 'controle rnc' || norm.includes('controle')) {
+          rncSheet = s
+          break
+        }
+      }
+
+      // If no sheet is named CONTROLE_RNC, search for standard RNC sheet or individual form sheet
+      if (!rncSheet) {
+        for (const s of allParsedSheets) {
+          const norm = normalizeText(s.name)
+          if (
+            norm.includes('fsgq 8.7-1') ||
+            norm.includes('fsgq 8.7-2') ||
+            norm.includes('rnc') ||
+            norm.includes('desvio') ||
+            norm.includes('geral')
+          ) {
+            rncSheet = s
+            break
+          }
+        }
+      }
+
+      // Fallback: use first sheet with largest number of rows
+      if (!rncSheet) {
+        rncSheet = allParsedSheets.slice().sort((a, b) => b.data.length - a.data.length)[0]
+      }
+
+      // Parse RNC Main / Control sheet
       const rncRows = rncSheet.data
       if (rncRows.length < 2) {
         throw new Error(`A aba "${rncSheet.name}" não contém linhas suficientes de dados.`)
@@ -437,7 +544,13 @@ export function RNCImportDialog({
       ])
       const colDate = findCol(['data', 'data abertura', 'data emissao', 'emissao', 'abertura'])
       const colProcess = findCol(['processo', 'setor', 'area', 'departamento'])
-      const colSeverity = findCol(['grau', 'severidade', 'gravidade', 'classificacao'])
+      const colSeverity = findCol([
+        'grau',
+        'grau do desvio',
+        'severidade',
+        'gravidade',
+        'classificacao',
+      ])
       const colDesc = findCol([
         'descricao',
         'desvio',
@@ -448,6 +561,7 @@ export function RNCImportDialog({
       ])
       const colSummary = findCol(['resumo', 'titulo', 'assunto', 'objeto'])
       const colOrigin = findCol(['origem', 'tipo de origem', 'fonte'])
+      const colActionType = findCol(['tipo de acao', 'tipo acao', 'acao'])
       const colStatus = findCol(['status', 'situacao', 'estado'])
       const colResp = findCol([
         'responsavel',
@@ -460,9 +574,31 @@ export function RNCImportDialog({
       const colInvolved = findCol(['envolvidos', 'partes envolvidas', 'equipe'])
       const colSupplier = findCol(['fornecedor', 'nome fornecedor', 'empresa fornecedora'])
       const colImmAction = findCol(['acao imediata', 'disposicao', 'contencao', 'correcao'])
-      const colImmType = findCol(['tipo correcao', 'disposicao imediata', 'tipo'])
+      const colImmType = findCol([
+        'tipo correcao',
+        'correcao imediata',
+        'disposicao imediata',
+        'tipo',
+      ])
+      const colIsReinspected = findCol(['reinspecionado', 'reinspecao', 'foi reinspecionado'])
+      const colReinspectResult = findCol(['resultado reinspecao', 'laudo reinspecao'])
+      const colRootCauseCat = findCol(['causa raiz', 'categoria causa', 'categoria causa raiz'])
+      const colRootCauseDet = findCol(['detalhes causa raiz', 'causa raiz detalhes', 'por que'])
+      const colRiskAssessment = findCol([
+        'avaliacao de risco',
+        'avaliacao de riscos',
+        'risco',
+        'oportunidades',
+      ])
       const colCorrAction = findCol(['acao corretiva', 'tratativa', 'plano de acao'])
-      const colDeadline = findCol(['prazo', 'data limite', 'vencimento'])
+      const colDeadline = findCol(['prazo', 'prazo previsto', 'data limite', 'vencimento'])
+      const colActualDeadline = findCol([
+        'prazo real',
+        'conclusao real',
+        'data conclusao',
+        'concluido em',
+      ])
+      const colDaysLeft = findCol(['dias faltantes', 'dias restantes', 'saldo dias'])
       const colCostRaw = findCol(['custo materia prima', 'custo material', 'materia prima'])
       const colCostSupplies = findCol(['custo insumos', 'insumos', 'suprimentos'])
       const colCostServices = findCol(['custo servicos', 'servicos', 'terceiros'])
@@ -479,7 +615,11 @@ export function RNCImportDialog({
         'data da eficacia',
         'data encerramento',
       ])
-      const colIsEffective = findCol(['foi eficaz', 'eficaz', 'resultado'])
+      const colIsEffective = findCol(['foi eficaz', 'eficaz', 'resultado', 'avaliacao da eficacia'])
+      const colNewRNC = findCol(['nova rnc', 'nova rnc (se ineficaz)', 'rnc gerada', 'rnc filha'])
+      const colInterferesSubsequent = findCol(['interfere no processo', 'processo subsequente'])
+      const colInterferesDeadline = findCol(['interfere no prazo', 'prazo de entrega'])
+      const colRequestedByClient = findCol(['solicitado pelo cliente', 'solicitacao cliente'])
 
       // Prepare list of PDFs to match
       const matchedPdfsSet = new Set<string>()
@@ -506,7 +646,7 @@ export function RNCImportDialog({
 
         // Process
         const rawProcess = colProcess >= 0 ? row[colProcess] : 'SGQ'
-        const process = rawProcess && rawProcess.trim() ? rawProcess.trim() : 'SGQ'
+        const process = normalizeRNCProcess(rawProcess)
 
         // Severity
         const rawSeverity = colSeverity >= 0 ? row[colSeverity] : ''
@@ -519,9 +659,46 @@ export function RNCImportDialog({
         // Summary
         const summary = colSummary >= 0 && row[colSummary] ? row[colSummary].trim() : ''
 
+        // Check merge with individual form sheet if present
+        const mergedIndividual = individualFormRncMap.get(normKey)
+
         // Origin
         const rawOrigin = colOrigin >= 0 ? row[colOrigin] : ''
         const origin = normalizeRNCOrigin(rawOrigin)
+
+        // Action Type
+        const rawActionType = colActionType >= 0 ? row[colActionType] : ''
+        const actionType =
+          mergedIndividual?.action_type ||
+          (rawActionType ? normalizeRNCActionType(rawActionType) : 'Ação Corretiva')
+
+        // 3 Header Yes/No Flags
+        const parseFlag = (val?: string): boolean => {
+          if (!val) return false
+          const v = val.toLowerCase().trim()
+          return v.includes('sim') || v === 's' || v === '1' || v === 'true' || v.includes('x')
+        }
+
+        const interferesSubsequent =
+          mergedIndividual?.interferes_subsequent_process !== undefined
+            ? mergedIndividual.interferes_subsequent_process
+            : colInterferesSubsequent >= 0
+              ? parseFlag(row[colInterferesSubsequent])
+              : false
+
+        const interferesDeadline =
+          mergedIndividual?.interferes_delivery_deadline !== undefined
+            ? mergedIndividual.interferes_delivery_deadline
+            : colInterferesDeadline >= 0
+              ? parseFlag(row[colInterferesDeadline])
+              : false
+
+        const requestedByClient =
+          mergedIndividual?.requested_by_client !== undefined
+            ? mergedIndividual.requested_by_client
+            : colRequestedByClient >= 0
+              ? parseFlag(row[colRequestedByClient])
+              : false
 
         // Status
         const rawStatus = colStatus >= 0 ? row[colStatus] : ''
@@ -537,13 +714,46 @@ export function RNCImportDialog({
           colImmAction >= 0 && row[colImmAction] ? row[colImmAction].trim() : ''
         const immediateCorrectionType =
           colImmType >= 0 && row[colImmType] ? row[colImmType].trim() : ''
+
+        // Reinspected Flag & Details
+        const rawReinspected = colIsReinspected >= 0 ? row[colIsReinspected] : ''
+        const isReinspected = parseFlag(rawReinspected)
+        const reinspectionResult =
+          colReinspectResult >= 0 && row[colReinspectResult]
+            ? row[colReinspectResult].toLowerCase().includes('aprov') &&
+              !row[colReinspectResult].toLowerCase().includes('não')
+              ? 'Aprovado'
+              : row[colReinspectResult].toLowerCase().includes('não') ||
+                  row[colReinspectResult].toLowerCase().includes('nao')
+                ? 'Não Aprovado'
+                : 'N/A'
+            : isReinspected
+              ? 'Aprovado'
+              : 'N/A'
+
+        // Root cause category & details
+        const rootCauseCategory =
+          colRootCauseCat >= 0 && row[colRootCauseCat]
+            ? row[colRootCauseCat].trim()
+            : 'Processo e Programa'
+        const rootCauseDetails =
+          colRootCauseDet >= 0 && row[colRootCauseDet] ? row[colRootCauseDet].trim() : ''
+
+        // Risk Assessment
+        const riskAssessment =
+          mergedIndividual?.risk_assessment ||
+          (colRiskAssessment >= 0 && row[colRiskAssessment] ? row[colRiskAssessment].trim() : '')
+
         const correctiveAction =
           colCorrAction >= 0 && row[colCorrAction] ? row[colCorrAction].trim() : ''
         const actionPlan = correctiveAction
 
-        // Deadline
+        // Deadlines: Previsto & Real
         const rawDeadline = colDeadline >= 0 ? row[colDeadline] : ''
         const deadline = normalizeDate(rawDeadline) || undefined
+
+        const rawActualDeadline = colActualDeadline >= 0 ? row[colActualDeadline] : ''
+        const completionActualDate = normalizeDate(rawActualDeadline) || undefined
 
         // Costs
         const parseNum = (val?: string) => {
@@ -581,6 +791,8 @@ export function RNCImportDialog({
         } else if (status === 'Fechada') {
           isEffective = 'SIM'
         }
+
+        const newRNCNumber = colNewRNC >= 0 && row[colNewRNC] ? row[colNewRNC].trim() : undefined
 
         // Link 5 Whys
         const linkedWhys = whysMap.get(normKey)
@@ -630,6 +842,10 @@ export function RNCImportDialog({
           description,
           origin,
           status,
+          action_type: actionType,
+          interferes_subsequent_process: interferesSubsequent,
+          interferes_delivery_deadline: interferesDeadline,
+          requested_by_client: requestedByClient,
           responsible,
           issuer,
           service_order_number: serviceOrderNumber,
@@ -638,9 +854,15 @@ export function RNCImportDialog({
           supplier_name: supplierName,
           immediate_correction_type: immediateCorrectionType,
           immediate_action: immediateAction,
+          is_reinspected: isReinspected,
+          reinspection_result: reinspectionResult,
+          root_cause_category: rootCauseCategory,
+          root_cause_details: rootCauseDetails,
+          risk_assessment: riskAssessment,
           corrective_action: correctiveAction,
           action_plan: actionPlan,
           deadline,
+          completion_actual_date: completionActualDate,
           cost_raw_material: costRaw,
           cost_supplies: costSup,
           cost_services: costServ,
@@ -649,6 +871,7 @@ export function RNCImportDialog({
           effectiveness_verification: effectivenessVerification,
           verification_date: verificationDate,
           is_effective: isEffective,
+          parent_rnc_number: newRNCNumber,
           five_whys: linkedWhys,
           ishikawa_data: linkedIshikawa,
           matched_evidence_files: matchedFiles,
@@ -663,9 +886,12 @@ export function RNCImportDialog({
       setParsedRows(parsed)
       setSheetStats({
         rncSheetName: rncSheet.name,
-        whysSheetName: whysSheet?.name,
-        ishikawaSheetName: ishikawaSheet?.name,
-        evidenceSheetName: evidenceSheet?.name,
+        whysSheetName: whysMap.size > 0 ? `${whysMap.size} RNCs vinculadas` : undefined,
+        ishikawaSheetName: ishikawaMap.size > 0 ? `${ishikawaMap.size} RNCs vinculadas` : undefined,
+        evidenceSheetName:
+          evidenceSheetNotesMap.size > 0
+            ? `${evidenceSheetNotesMap.size} notas de evidência`
+            : undefined,
         totalRows: parsed.length,
         linkedWhys: countWithWhys,
         linkedIshikawas: countWithIshikawa,
@@ -932,26 +1158,31 @@ export function RNCImportDialog({
                   <input
                     ref={excelInputRef}
                     type="file"
+                    multiple
                     accept=".xlsx,.xls"
                     className="hidden"
                     onChange={handleExcelSelection}
                   />
-                  {excelFile ? (
+                  {selectedExcelFiles.length > 0 ? (
                     <div className="space-y-1">
                       <FileCheck className="w-8 h-8 text-emerald-400 mx-auto" />
-                      <p className="text-xs font-semibold text-white break-all">{excelFile.name}</p>
+                      <p className="text-xs font-semibold text-white break-all">
+                        {selectedExcelFiles.length === 1
+                          ? selectedExcelFiles[0].name
+                          : `${selectedExcelFiles.length} arquivos Excel selecionados`}
+                      </p>
                       <p className="text-[10px] text-muted-foreground">
-                        {(excelFile.size / 1024).toFixed(1)} KB — clique para trocar
+                        Planilha de Controle e/ou Formulários Individuais FSGQ — clique para trocar
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-1.5">
                       <Upload className="w-7 h-7 text-white/40 mx-auto" />
                       <p className="text-xs text-white/80 font-medium">
-                        Clique ou arraste o arquivo .xlsx
+                        Clique ou arraste o(s) arquivo(s) .xlsx
                       </p>
                       <p className="text-[10px] text-muted-foreground">
-                        Suporta pastas com múltiplas abas
+                        Suporta CONTROLE_RNC e formulários individuais FSGQ (merge por número)
                       </p>
                     </div>
                   )}

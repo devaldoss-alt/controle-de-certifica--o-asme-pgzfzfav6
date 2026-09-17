@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-17T17:49:47.437Z",
+  "generatedAt": "2026-09-17T18:26:47.308Z",
   "collections": [
     {
       "name": "users",
@@ -1693,7 +1693,7 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["Leve", "Médio", "Grave", "Crítico"]
+          "selectValues": ["Leve", "Médio", "Grave", "Gravíssimo"]
         },
         {
           "name": "description",
@@ -1874,23 +1874,14 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "R.O.",
-            "Reclamação de Cliente",
-            "Auditoria Interna",
-            "Auditoria Externa",
-            "Fornecedor",
-            "SMS",
-            "Análise Crítica",
-            "Outro"
-          ]
+          "selectValues": ["R.O.", "R.C.", "Auditorias", "Fornecedor", "SMS", "Análise Crítica"]
         },
         {
           "name": "action_type",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["Corretiva", "Preventiva", "N/A"]
+          "selectValues": ["Ação Corretiva", "Ação Preventiva", "N/A"]
         },
         {
           "name": "cost_raw_material",
@@ -1956,6 +1947,36 @@
         {
           "name": "evidences",
           "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "interferes_subsequent_process",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "interferes_delivery_deadline",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "requested_by_client",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_reinspected",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "completion_actual_date",
+          "type": "date",
           "required": false,
           "system": false
         }

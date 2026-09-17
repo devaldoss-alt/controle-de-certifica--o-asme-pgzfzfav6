@@ -13,6 +13,8 @@ import {
   createChildRNC,
   RNC_PROCESS_LIST,
   RNC_ORIGINS,
+  RNC_ACTION_TYPES,
+  RNC_CORRECTION_TYPES,
   ROOT_CAUSE_CATEGORIES,
   type NonConformity,
   type RNCOrigin,
@@ -109,7 +111,6 @@ const SEVERITY_COLORS: Record<string, string> = {
   Leve: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   Médio: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
   Grave: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-  Crítico: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
   Gravíssimo: 'bg-rose-600/20 text-rose-300 border-rose-500/40 font-bold',
 }
 
@@ -175,14 +176,20 @@ export default function RNCPage() {
     company_id: '',
     service_order_id: '',
     issuer: '',
-    origin: 'Auditoria Interna' as RNCOrigin,
-    action_type: 'Corretiva' as RNCActionType,
+    origin: 'Auditorias' as RNCOrigin,
+    action_type: 'Ação Corretiva' as RNCActionType,
     process: 'CQ',
     severity: 'Médio' as RNCSeverity,
     status: 'Aberta' as RNCStatus,
     summary: '',
     deadline: '',
+    completion_actual_date: '',
     parent_rnc_id: '',
+
+    // 3 Header Yes/No Flags (FSGQ 8.7-2 Rev.04)
+    interferes_subsequent_process: false,
+    interferes_delivery_deadline: false,
+    requested_by_client: false,
 
     // Section 1
     description: '',
@@ -200,13 +207,14 @@ export default function RNCPage() {
     cost_total: 0,
 
     // Section 3
+    is_reinspected: false,
     reinspection_result: 'N/A' as 'Aprovado' | 'Não Aprovado' | 'N/A',
     reinspection_inspector: '',
     reinspection_date: '',
     reinspection_notes: '',
 
     // Section 4
-    root_cause_category: 'Método / Procedimento',
+    root_cause_category: 'Processo e Programa',
     root_cause_details: '',
     root_cause_analysis: '',
     five_whys: INITIAL_FIVE_WHYS,
@@ -288,14 +296,19 @@ export default function RNCPage() {
       company_id: effectiveCompany,
       service_order_id: '',
       issuer: user?.name || '',
-      origin: 'Auditoria Interna',
-      action_type: 'Corretiva',
+      origin: 'Auditorias',
+      action_type: 'Ação Corretiva',
       process: 'CQ',
       severity: 'Médio',
       status: 'Aberta',
       summary: '',
       deadline: '',
+      completion_actual_date: '',
       parent_rnc_id: '',
+
+      interferes_subsequent_process: false,
+      interferes_delivery_deadline: false,
+      requested_by_client: false,
 
       description: '',
       involved_parties: '',
@@ -310,12 +323,13 @@ export default function RNCPage() {
       cost_services: 0,
       cost_total: 0,
 
+      is_reinspected: false,
       reinspection_result: 'N/A',
       reinspection_inspector: '',
       reinspection_date: '',
       reinspection_notes: '',
 
-      root_cause_category: 'Método / Procedimento',
+      root_cause_category: 'Processo e Programa',
       root_cause_details: '',
       root_cause_analysis: '',
       five_whys: INITIAL_FIVE_WHYS,
@@ -367,14 +381,21 @@ export default function RNCPage() {
       company_id: nc.company_id || '',
       service_order_id: nc.service_order_id || '',
       issuer: nc.issuer || '',
-      origin: (nc.origin as RNCOrigin) || 'Auditoria Interna',
-      action_type: (nc.action_type as RNCActionType) || 'Corretiva',
+      origin: (nc.origin as RNCOrigin) || 'Auditorias',
+      action_type: (nc.action_type as RNCActionType) || 'Ação Corretiva',
       process: nc.process || 'CQ',
       severity: nc.severity || 'Médio',
       status: nc.status || 'Aberta',
       summary: nc.summary || '',
       deadline: nc.deadline ? nc.deadline.split('T')[0] : '',
+      completion_actual_date: nc.completion_actual_date
+        ? nc.completion_actual_date.split('T')[0]
+        : '',
       parent_rnc_id: nc.parent_rnc_id || '',
+
+      interferes_subsequent_process: !!nc.interferes_subsequent_process,
+      interferes_delivery_deadline: !!nc.interferes_delivery_deadline,
+      requested_by_client: !!nc.requested_by_client,
 
       description: nc.description || '',
       involved_parties: nc.involved_parties || '',
@@ -390,12 +411,13 @@ export default function RNCPage() {
       cost_services: nc.cost_services || 0,
       cost_total: nc.cost_total || 0,
 
+      is_reinspected: !!nc.is_reinspected,
       reinspection_result: nc.reinspection_result || 'N/A',
       reinspection_inspector: nc.reinspection_inspector || '',
       reinspection_date: nc.reinspection_date ? nc.reinspection_date.split('T')[0] : '',
       reinspection_notes: nc.reinspection_notes || '',
 
-      root_cause_category: nc.root_cause_category || 'Método / Procedimento',
+      root_cause_category: nc.root_cause_category || 'Processo e Programa',
       root_cause_details: nc.root_cause_details || '',
       root_cause_analysis: nc.root_cause_analysis || '',
       five_whys: parsedWhys,
@@ -541,12 +563,11 @@ export default function RNCPage() {
     const totalCostOfNonQuality = ncs.reduce((acc, n) => acc + (Number(n.cost_total) || 0), 0)
     const totalActionCost = ncs.reduce((acc, n) => acc + (Number(n.action_cost) || 0), 0)
 
-    // Severities
+    // Severities (Leve | Médio | Grave | Gravíssimo)
     const bySeverity: Record<string, number> = {
       Leve: 0,
       Médio: 0,
       Grave: 0,
-      Crítico: 0,
       Gravíssimo: 0,
     }
     // Processes
@@ -554,19 +575,23 @@ export default function RNCPage() {
     // Origins
     const byOrigin: Record<string, number> = {}
     // Action Type
-    const byActionType: Record<string, number> = { Corretiva: 0, Preventiva: 0, 'N/A': 0 }
+    const byActionType: Record<string, number> = {
+      'Ação Corretiva': 0,
+      'Ação Preventiva': 0,
+      'N/A': 0,
+    }
 
     ncs.forEach((n) => {
-      const sev = n.severity || 'Médio'
+      const sev = n.severity === ('Crítico' as any) ? 'Gravíssimo' : n.severity || 'Médio'
       bySeverity[sev] = (bySeverity[sev] || 0) + 1
 
-      const proc = n.process || 'Outros'
+      const proc = n.process || 'SGQ'
       byProcess[proc] = (byProcess[proc] || 0) + 1
 
-      const orig = n.origin || 'Outro'
+      const orig = n.origin || 'Auditorias'
       byOrigin[orig] = (byOrigin[orig] || 0) + 1
 
-      const act = n.action_type || 'Corretiva'
+      const act = n.action_type || 'Ação Corretiva'
       byActionType[act] = (byActionType[act] || 0) + 1
     })
 
@@ -759,7 +784,6 @@ export default function RNCPage() {
                     <SelectItem value="Leve">Leve</SelectItem>
                     <SelectItem value="Médio">Médio</SelectItem>
                     <SelectItem value="Grave">Grave</SelectItem>
-                    <SelectItem value="Crítico">Crítico</SelectItem>
                     <SelectItem value="Gravíssimo">Gravíssimo</SelectItem>
                   </SelectContent>
                 </Select>
@@ -785,8 +809,22 @@ export default function RNCPage() {
                       <TableHead className="text-xs text-white/70 font-semibold">
                         Responsável
                       </TableHead>
-                      <TableHead className="text-xs text-white/70 font-semibold">Prazo</TableHead>
+                      <TableHead className="text-xs text-white/70 font-semibold">
+                        Prazo Previsto
+                      </TableHead>
+                      <TableHead className="text-xs text-white/70 font-semibold">
+                        Dias Faltantes
+                      </TableHead>
+                      <TableHead className="text-xs text-white/70 font-semibold">
+                        Prazo Real
+                      </TableHead>
+                      <TableHead className="text-xs text-white/70 font-semibold text-center">
+                        Reinspecionado
+                      </TableHead>
                       <TableHead className="text-xs text-white/70 font-semibold">Status</TableHead>
+                      <TableHead className="text-xs text-white/70 font-semibold">
+                        Nova RNC
+                      </TableHead>
                       <TableHead className="text-xs text-white/70 font-semibold text-right">
                         Ações
                       </TableHead>
@@ -842,31 +880,58 @@ export default function RNCPage() {
                           <TableCell className="text-xs text-white/80 whitespace-nowrap">
                             {nc.responsible || nc.issuer || '—'}
                           </TableCell>
+                          <TableCell className="text-xs text-white/80 whitespace-nowrap font-mono">
+                            {nc.deadline ? safeFormatDate(nc.deadline, 'dd/MM/yyyy') : '—'}
+                          </TableCell>
                           <TableCell className="text-xs whitespace-nowrap">
                             {nc.deadline ? (
-                              <div className="flex items-center gap-1">
+                              nc.status === 'Fechada' ? (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+                                >
+                                  Concluída
+                                </Badge>
+                              ) : (
                                 <span
                                   className={cn(
-                                    isOverdue ? 'text-rose-400 font-bold' : 'text-white/80',
+                                    'text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded',
+                                    isOverdue
+                                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                      : daysLeft !== null && daysLeft <= 3
+                                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                        : 'bg-white/10 text-white/80',
                                   )}
                                 >
-                                  {safeFormatDate(nc.deadline, 'dd/MM/yyyy')}
+                                  {daysLeft !== null
+                                    ? daysLeft < 0
+                                      ? `${Math.abs(daysLeft)}d atrasado`
+                                      : `${daysLeft}d restantes`
+                                    : '—'}
                                 </span>
-                                {daysLeft !== null && nc.status !== 'Fechada' && (
-                                  <span
-                                    className={cn(
-                                      'text-[10px] px-1 py-0.5 rounded',
-                                      isOverdue
-                                        ? 'bg-rose-500/20 text-rose-300'
-                                        : 'bg-white/10 text-white/60',
-                                    )}
-                                  >
-                                    {isOverdue ? `${Math.abs(daysLeft)}d atraso` : `${daysLeft}d`}
-                                  </span>
-                                )}
-                              </div>
+                              )
                             ) : (
                               '—'
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs text-white/80 whitespace-nowrap font-mono">
+                            {nc.completion_actual_date
+                              ? safeFormatDate(nc.completion_actual_date, 'dd/MM/yyyy')
+                              : nc.status === 'Fechada' && nc.verification_date
+                                ? safeFormatDate(nc.verification_date, 'dd/MM/yyyy')
+                                : '—'}
+                          </TableCell>
+                          <TableCell className="text-xs whitespace-nowrap text-center">
+                            {nc.is_reinspected ||
+                            (nc.reinspection_result && nc.reinspection_result !== 'N/A') ? (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] border-emerald-500/40 text-emerald-400 bg-emerald-500/10"
+                              >
+                                Sim
+                              </Badge>
+                            ) : (
+                              <span className="text-white/40 text-[11px]">Não</span>
                             )}
                           </TableCell>
                           <TableCell className="whitespace-nowrap">
@@ -876,6 +941,43 @@ export default function RNCPage() {
                             >
                               {nc.status}
                             </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs whitespace-nowrap">
+                            {nc.is_effective === 'NÃO' ? (
+                              <div className="flex items-center gap-1">
+                                <Badge
+                                  variant="outline"
+                                  className="border-rose-500/40 text-rose-400 bg-rose-500/10 text-[10px]"
+                                >
+                                  Ineficaz
+                                </Badge>
+                                {ncs.find((child) => child.parent_rnc_id === nc.id) ? (
+                                  <span className="text-[10px] text-amber-400 font-mono">
+                                    → {ncs.find((child) => child.parent_rnc_id === nc.id)?.number}
+                                  </span>
+                                ) : (
+                                  canManage && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-1.5 text-[10px] text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleManualCreateChild(nc)
+                                      }}
+                                    >
+                                      + Abrir Nova RNC
+                                    </Button>
+                                  )
+                                )}
+                              </div>
+                            ) : nc.parent_rnc_id ? (
+                              <span className="text-[11px] text-muted-foreground font-mono flex items-center gap-1">
+                                <GitBranch className="w-3 h-3 text-amber-400" /> Filha
+                              </span>
+                            ) : (
+                              <span className="text-white/40 text-[11px]">—</span>
+                            )}
                           </TableCell>
                           <TableCell
                             className="text-right whitespace-nowrap"
@@ -954,7 +1056,9 @@ export default function RNCPage() {
                     Indicador IRPI (Reclamações)
                   </p>
                   <h3 className="text-2xl font-bold text-amber-400 mt-1">
-                    {stats.byOrigin['Reclamação de Cliente'] || 0} pts
+                    {(stats.byOrigin['R.C.'] || 0) +
+                      (stats.byOrigin['Reclamação de Cliente' as any] || 0)}{' '}
+                    pts
                   </h3>
                   <p className="text-[11px] text-amber-400/80 mt-0.5">Meta: &lt; 10 pts anuais</p>
                 </div>
@@ -1001,15 +1105,54 @@ export default function RNCPage() {
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* By Severity */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* By Action Type (Quebra por Tipo de Ação) */}
             <Card className="glass border-white/10">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-white">
-                  RNCs por Grau de Desvio (Severidade)
+                  Quebra por Tipo de Ação
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground">
-                  Proporção de riscos segundo o formulário FSGQ
+                  Ação Corretiva vs Preventiva vs N/A
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {RNC_ACTION_TYPES.map((act) => {
+                  const count = stats.byActionType[act] || 0
+                  const pct = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0
+                  return (
+                    <div key={act} className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-white font-medium">{act}</span>
+                        <span className="text-muted-foreground">
+                          {count} ({pct}%)
+                        </span>
+                      </div>
+                      <div className="w-full bg-black/40 h-2 rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all',
+                            act === 'Ação Corretiva'
+                              ? 'bg-amber-400'
+                              : act === 'Ação Preventiva'
+                                ? 'bg-emerald-400'
+                                : 'bg-slate-400',
+                          )}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </CardContent>
+            </Card>
+
+            {/* By Severity */}
+            <Card className="glass border-white/10">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold text-white">Grau do Desvio</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Leve / Médio / Grave / Gravíssimo
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -1048,10 +1191,10 @@ export default function RNCPage() {
             <Card className="glass border-white/10">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-white">
-                  RNCs por Origem da Notificação
+                  Origem da Notificação
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground">
-                  Origens padronizadas do FSGQ 8.7-1
+                  Valores oficiais do FSGQ 8.7-1
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -1085,7 +1228,7 @@ export default function RNCPage() {
                   Top Processos Envolvidos
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground">
-                  Concentração por setor operacional
+                  Lista oficial do dashboard
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 max-h-72 overflow-y-auto pr-1">
@@ -1151,8 +1294,127 @@ export default function RNCPage() {
           {/* CABEÇALHO DO FORMULÁRIO */}
           <div className="p-4 bg-black/30 border border-white/10 rounded-lg space-y-3">
             <h4 className="text-xs font-bold text-primary uppercase tracking-wider">
-              Cabeçalho do Relatório (FSGQ 8.7-2)
+              Cabeçalho do Relatório (FSGQ 8.7-2 Rev.04)
             </h4>
+
+            {/* 3 FLAGS SIM/NÃO DO TOPO DO FORMULÁRIO FSGQ 8.7-2 */}
+            <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+              <p className="text-[11px] font-semibold text-primary uppercase tracking-wider mb-2">
+                Flags Críticos do Topo (Avaliação Inicial)
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="flex items-center justify-between p-2 rounded bg-black/30 border border-white/10">
+                  <span className="text-xs text-white/90">Interfere no processo subsequente?</span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={formData.interferes_subsequent_process ? 'default' : 'outline'}
+                      className={cn(
+                        'h-7 px-2.5 text-xs',
+                        formData.interferes_subsequent_process
+                          ? 'bg-rose-600 text-white'
+                          : 'border-white/10 text-white/70',
+                      )}
+                      onClick={() =>
+                        setFormData({ ...formData, interferes_subsequent_process: true })
+                      }
+                    >
+                      Sim
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={!formData.interferes_subsequent_process ? 'default' : 'outline'}
+                      className={cn(
+                        'h-7 px-2.5 text-xs',
+                        !formData.interferes_subsequent_process
+                          ? 'bg-white/15 text-white'
+                          : 'border-white/10 text-white/70',
+                      )}
+                      onClick={() =>
+                        setFormData({ ...formData, interferes_subsequent_process: false })
+                      }
+                    >
+                      Não
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded bg-black/30 border border-white/10">
+                  <span className="text-xs text-white/90">Interfere no prazo de entrega?</span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={formData.interferes_delivery_deadline ? 'default' : 'outline'}
+                      className={cn(
+                        'h-7 px-2.5 text-xs',
+                        formData.interferes_delivery_deadline
+                          ? 'bg-rose-600 text-white'
+                          : 'border-white/10 text-white/70',
+                      )}
+                      onClick={() =>
+                        setFormData({ ...formData, interferes_delivery_deadline: true })
+                      }
+                    >
+                      Sim
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={!formData.interferes_delivery_deadline ? 'default' : 'outline'}
+                      className={cn(
+                        'h-7 px-2.5 text-xs',
+                        !formData.interferes_delivery_deadline
+                          ? 'bg-white/15 text-white'
+                          : 'border-white/10 text-white/70',
+                      )}
+                      onClick={() =>
+                        setFormData({ ...formData, interferes_delivery_deadline: false })
+                      }
+                    >
+                      Não
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded bg-black/30 border border-white/10">
+                  <span className="text-xs text-white/90">Solicitado pelo cliente?</span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={formData.requested_by_client ? 'default' : 'outline'}
+                      className={cn(
+                        'h-7 px-2.5 text-xs',
+                        formData.requested_by_client
+                          ? 'bg-amber-600 text-white'
+                          : 'border-white/10 text-white/70',
+                      )}
+                      onClick={() => setFormData({ ...formData, requested_by_client: true })}
+                    >
+                      Sim
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={!formData.requested_by_client ? 'default' : 'outline'}
+                      className={cn(
+                        'h-7 px-2.5 text-xs',
+                        !formData.requested_by_client
+                          ? 'bg-white/15 text-white'
+                          : 'border-white/10 text-white/70',
+                      )}
+                      onClick={() => setFormData({ ...formData, requested_by_client: false })}
+                    >
+                      Não
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               <div>
                 <Label className="text-[11px] text-white/70 block mb-1">Nº RNC Automático *</Label>
@@ -1238,7 +1500,7 @@ export default function RNCPage() {
               </div>
 
               <div>
-                <Label className="text-[11px] text-white/70 block mb-1">Tipo de Ação</Label>
+                <Label className="text-[11px] text-white/70 block mb-1">Tipo de Ação *</Label>
                 <Select
                   value={formData.action_type}
                   onValueChange={(v: RNCActionType) => setFormData({ ...formData, action_type: v })}
@@ -1247,9 +1509,11 @@ export default function RNCPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Corretiva">Corretiva</SelectItem>
-                    <SelectItem value="Preventiva">Preventiva</SelectItem>
-                    <SelectItem value="N/A">N/A</SelectItem>
+                    {RNC_ACTION_TYPES.map((act) => (
+                      <SelectItem key={act} value={act}>
+                        {act}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1286,7 +1550,6 @@ export default function RNCPage() {
                     <SelectItem value="Leve">Leve</SelectItem>
                     <SelectItem value="Médio">Médio</SelectItem>
                     <SelectItem value="Grave">Grave</SelectItem>
-                    <SelectItem value="Crítico">Crítico</SelectItem>
                     <SelectItem value="Gravíssimo">Gravíssimo</SelectItem>
                   </SelectContent>
                 </Select>
@@ -1305,11 +1568,27 @@ export default function RNCPage() {
               </div>
 
               <div>
-                <Label className="text-[11px] text-white/70 block mb-1">Prazo de Conclusão</Label>
+                <Label className="text-[11px] text-white/70 block mb-1">
+                  Prazo Previsto de Conclusão
+                </Label>
                 <Input
                   type="date"
                   value={formData.deadline}
                   onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                  className="bg-black/40 border-white/10 text-white text-xs h-8"
+                />
+              </div>
+
+              <div>
+                <Label className="text-[11px] text-white/70 block mb-1">
+                  Prazo Real da Conclusão
+                </Label>
+                <Input
+                  type="date"
+                  value={formData.completion_actual_date}
+                  onChange={(e) =>
+                    setFormData({ ...formData, completion_actual_date: e.target.value })
+                  }
                   className="bg-black/40 border-white/10 text-white text-xs h-8"
                 />
               </div>
@@ -1457,11 +1736,11 @@ export default function RNCPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Retrabalhar">Retrabalhar</SelectItem>
-                        <SelectItem value="Reparar">Reparar</SelectItem>
-                        <SelectItem value="Rejeitar-Sucatar">Rejeitar-Sucatar</SelectItem>
-                        <SelectItem value="Concessão">Concessão</SelectItem>
-                        <SelectItem value="Outra">Outra</SelectItem>
+                        {RNC_CORRECTION_TYPES.map((ct) => (
+                          <SelectItem key={ct} value={ct}>
+                            {ct}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1517,6 +1796,56 @@ export default function RNCPage() {
             {/* SEÇÃO 3: REINSPEÇÃO */}
             <TabsContent value="sec3" className="space-y-4">
               <div className="space-y-3 p-4 bg-black/20 border border-white/10 rounded-lg">
+                <div className="flex items-center justify-between p-3 rounded bg-black/30 border border-white/10 mb-2">
+                  <div>
+                    <Label className="text-xs font-semibold text-white">
+                      Item foi Reinspecionado?
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Indica se a peça/serviço passou por reinspeção técnica após a correção
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={formData.is_reinspected ? 'default' : 'outline'}
+                      className={cn(
+                        'h-7 px-3 text-xs',
+                        formData.is_reinspected
+                          ? 'bg-emerald-600 text-white'
+                          : 'border-white/10 text-white/70',
+                      )}
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          is_reinspected: true,
+                          reinspection_result:
+                            formData.reinspection_result === 'N/A'
+                              ? 'Aprovado'
+                              : formData.reinspection_result,
+                        })
+                      }
+                    >
+                      Sim
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={!formData.is_reinspected ? 'default' : 'outline'}
+                      className={cn(
+                        'h-7 px-3 text-xs',
+                        !formData.is_reinspected
+                          ? 'bg-white/15 text-white'
+                          : 'border-white/10 text-white/70',
+                      )}
+                      onClick={() => setFormData({ ...formData, is_reinspected: false })}
+                    >
+                      Não
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <Label className="text-xs font-semibold text-white block mb-1">
@@ -1525,7 +1854,11 @@ export default function RNCPage() {
                     <Select
                       value={formData.reinspection_result}
                       onValueChange={(v: 'Aprovado' | 'Não Aprovado' | 'N/A') =>
-                        setFormData({ ...formData, reinspection_result: v })
+                        setFormData({
+                          ...formData,
+                          reinspection_result: v,
+                          is_reinspected: v !== 'N/A',
+                        })
                       }
                     >
                       <SelectTrigger className="bg-black/40 border-white/10 text-white text-xs h-8">
@@ -1696,18 +2029,19 @@ export default function RNCPage() {
                   <div className="flex items-center gap-2 mb-1">
                     <ShieldAlert className="h-4 w-4 text-amber-400" />
                     <Label className="text-xs font-semibold text-amber-200 uppercase">
-                      Avaliação de Riscos e Oportunidades (Item 6 do FSGQ 8.7-2)
+                      Avaliação de Risco (novos riscos e/ou oportunidades identificadas)
                     </Label>
                   </div>
                   <p className="text-[11px] text-amber-300/80 mb-2">
-                    Avalie se esta não conformidade gera novos riscos aos projetos, à segurança ou
-                    se aponta oportunidades de melhoria contínua para o SGQ.
+                    Campo oficial do formulário FSGQ 8.7-2 Rev.04: Avalie detalhadamente novos
+                    riscos e/ou oportunidades identificadas decorrentes deste desvio ou de sua
+                    tratativa.
                   </p>
                   <Textarea
-                    rows={3}
+                    rows={4}
                     value={formData.risk_assessment}
                     onChange={(e) => setFormData({ ...formData, risk_assessment: e.target.value })}
-                    placeholder="Identifique se há impacto para os clientes, conformidade ASME/ISO ou processos correlatos..."
+                    placeholder="Descreva os novos riscos aos projetos/processos e/ou oportunidades identificadas..."
                     className="bg-black/30 border-white/10 text-white text-xs"
                   />
                 </div>
@@ -1929,6 +2263,58 @@ export default function RNCPage() {
 
           {detailDoc && (
             <div className="space-y-5 text-sm text-white/90 py-2">
+              {/* 3 Flags do Topo */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs bg-primary/5 p-3 rounded-lg border border-primary/20">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-[11px]">
+                    Interfere no processo subsequente:
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'text-[10px]',
+                      detailDoc.interferes_subsequent_process
+                        ? 'border-rose-500/40 text-rose-400 bg-rose-500/10'
+                        : 'border-white/10 text-white/70',
+                    )}
+                  >
+                    {detailDoc.interferes_subsequent_process ? 'SIM' : 'NÃO'}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-[11px]">
+                    Interfere no prazo de entrega:
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'text-[10px]',
+                      detailDoc.interferes_delivery_deadline
+                        ? 'border-rose-500/40 text-rose-400 bg-rose-500/10'
+                        : 'border-white/10 text-white/70',
+                    )}
+                  >
+                    {detailDoc.interferes_delivery_deadline ? 'SIM' : 'NÃO'}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-[11px]">
+                    Solicitado pelo cliente:
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'text-[10px]',
+                      detailDoc.requested_by_client
+                        ? 'border-amber-500/40 text-amber-400 bg-amber-500/10'
+                        : 'border-white/10 text-white/70',
+                    )}
+                  >
+                    {detailDoc.requested_by_client ? 'SIM' : 'NÃO'}
+                  </Badge>
+                </div>
+              </div>
+
               {/* Context Summary Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs bg-black/25 p-3.5 rounded-lg border border-white/5">
                 <div>
@@ -1937,7 +2323,13 @@ export default function RNCPage() {
                 </div>
                 <div>
                   <span className="text-muted-foreground block text-[11px]">Origem:</span>
-                  <span className="text-white font-medium">{detailDoc.origin || 'Auditoria'}</span>
+                  <span className="text-white font-medium">{detailDoc.origin || 'Auditorias'}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[11px]">Tipo de Ação:</span>
+                  <span className="text-white font-medium">
+                    {detailDoc.action_type || 'Ação Corretiva'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground block text-[11px]">Grau:</span>
@@ -1947,12 +2339,6 @@ export default function RNCPage() {
                   >
                     {detailDoc.severity}
                   </Badge>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-[11px]">OS Vinculada:</span>
-                  <span className="text-white font-mono">
-                    {detailDoc.expand?.service_order_id?.number || '—'}
-                  </span>
                 </div>
               </div>
 
@@ -2020,18 +2406,35 @@ export default function RNCPage() {
               )}
 
               {/* 4. Causa Raiz */}
-              {(detailDoc.root_cause_analysis || detailDoc.root_cause_details) && (
+              {(detailDoc.root_cause_analysis ||
+                detailDoc.root_cause_details ||
+                detailDoc.root_cause_category) && (
                 <div>
                   <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-1 flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-primary" /> 4. Análise de Causa Raiz
                   </h4>
                   <div className="bg-black/30 p-3 rounded-md border border-white/5 text-xs space-y-1">
                     <p className="font-semibold text-amber-300">
-                      Categoria: {detailDoc.root_cause_category || 'Geral'}
+                      Categoria: {detailDoc.root_cause_category || 'Processo e Programa'}
                     </p>
-                    <p className="text-white/90">
-                      {detailDoc.root_cause_details || detailDoc.root_cause_analysis}
-                    </p>
+                    {(detailDoc.root_cause_details || detailDoc.root_cause_analysis) && (
+                      <p className="text-white/90">
+                        {detailDoc.root_cause_details || detailDoc.root_cause_analysis}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Avaliação de Risco */}
+              {detailDoc.risk_assessment && (
+                <div>
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" /> Avaliação de Risco (Novos
+                    Riscos / Oportunidades)
+                  </h4>
+                  <div className="bg-amber-500/10 p-3 rounded-md border border-amber-500/20 text-xs text-amber-200">
+                    <p>{detailDoc.risk_assessment}</p>
                   </div>
                 </div>
               )}
