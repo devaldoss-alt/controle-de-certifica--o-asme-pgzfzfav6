@@ -148,7 +148,14 @@ export default function Team() {
     setMemberSaving(true)
     try {
       if (editingMember) {
-        await updateTeamMember(editingMember.id, data)
+        await updateTeamMember(editingMember.id, {
+          name: data.name,
+          company_id: data.company_id,
+          department: data.department,
+          role: data.role,
+          is_indicator: data.is_indicator,
+          linked_operators: data.linked_operators,
+        })
         toast({ title: 'Colaborador atualizado' })
       } else {
         await createTeamMember(data)

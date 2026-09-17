@@ -60,8 +60,9 @@ import {
   Building2,
   Mail,
 } from 'lucide-react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, UserPlus } from 'lucide-react'
 import { ReplicatePermissionsDialog } from '@/components/ReplicatePermissionsDialog'
+import { UserFormDialog } from '@/components/UserFormDialog'
 import { User, getUsers } from '@/services/api'
 import { getCompanies, Company } from '@/services/companies'
 import { getAllAllocations, UserAllocation } from '@/services/allocations'
@@ -344,6 +345,7 @@ export default function AccessControl() {
   const [usersLoading, setUsersLoading] = useState(false)
   const [toggleUserTarget, setToggleUserTarget] = useState<User | null>(null)
   const [isUpdatingUser, setIsUpdatingUser] = useState(false)
+  const [userFormOpen, setUserFormOpen] = useState(false)
 
   const loadUsersData = async () => {
     try {
@@ -926,14 +928,23 @@ export default function AccessControl() {
                 </CardDescription>
               </div>
 
-              <div className="relative w-full sm:w-72">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={usersSearch}
-                  onChange={(e) => setUsersSearch(e.target.value)}
-                  placeholder={t('accessControl.users.searchPlaceholder')}
-                  className="pl-9 bg-black/40 border-white/10 text-white placeholder:text-muted-foreground text-xs h-9"
-                />
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-72">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={usersSearch}
+                    onChange={(e) => setUsersSearch(e.target.value)}
+                    placeholder={t('accessControl.users.searchPlaceholder')}
+                    className="pl-9 bg-black/40 border-white/10 text-white placeholder:text-muted-foreground text-xs h-9"
+                  />
+                </div>
+                <Button
+                  onClick={() => setUserFormOpen(true)}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs h-9 font-semibold shrink-0"
+                >
+                  <UserPlus className="w-4 h-4 mr-1.5" />
+                  {t('user.new')}
+                </Button>
               </div>
             </CardHeader>
 
@@ -1172,6 +1183,9 @@ export default function AccessControl() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog for creating a new user */}
+      <UserFormDialog open={userFormOpen} onOpenChange={setUserFormOpen} onSaved={loadUsersData} />
     </div>
   )
 }
