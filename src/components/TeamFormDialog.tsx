@@ -20,6 +20,7 @@ import {
 import { Loader2, Search, X, Check, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { getTeamMembers, type TeamMember } from '@/services/team'
+import { DISPLAY_ROLES } from '@/lib/role-data'
 
 export interface TeamMemberFormData {
   name: string
@@ -238,29 +239,10 @@ export function TeamFormDialog({
               <SelectTrigger className="bg-black/20 border-white/10 text-white">
                 <SelectValue placeholder="Selecione o cargo" />
               </SelectTrigger>
-              <SelectContent>
-                {[
-                  'Colaborador',
-                  'Engenheiro',
-                  'Engineer',
-                  'CertifyingEngineer',
-                  'NDE',
-                  'Designer',
-                  'Inspetor',
-                  'Inspector',
-                  'AI',
-                  'Supervisor',
-                  'Analista',
-                  'Técnico',
-                  'Director',
-                  'QCC',
-                  'Welder',
-                  'Apontador',
-                  'Manager',
-                  'Consultor',
-                ].map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {r}
+              <SelectContent className="max-h-72">
+                {DISPLAY_ROLES.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
                   </SelectItem>
                 ))}
               </SelectContent>

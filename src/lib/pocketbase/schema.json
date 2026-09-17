@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-17T14:08:44.400Z",
+  "generatedAt": "2026-09-17T14:18:56.968Z",
   "collections": [
     {
       "name": "users",
@@ -75,7 +75,25 @@
             "NDE",
             "Apontador",
             "Manager",
-            "Consultor"
+            "Consultor",
+            "Diretoria",
+            "Gestor da Qualidade",
+            "Gerente",
+            "Coordenador de Fábrica",
+            "Coordenador de CQ",
+            "Supervisor",
+            "Analista",
+            "Técnico",
+            "Inspetor",
+            "Engenheiro",
+            "Soldador",
+            "Caldeireiro",
+            "Torneiro/Usinador",
+            "Almoxarife",
+            "PCP",
+            "Operador",
+            "Colaborador",
+            "Auxiliar Administrativo"
           ]
         },
         {
@@ -129,7 +147,26 @@
             "Welder",
             "NDE",
             "Manager",
-            "Consultor"
+            "Consultor",
+            "Apontador",
+            "Diretoria",
+            "Gestor da Qualidade",
+            "Gerente",
+            "Coordenador de Fábrica",
+            "Coordenador de CQ",
+            "Supervisor",
+            "Analista",
+            "Técnico",
+            "Inspetor",
+            "Engenheiro",
+            "Soldador",
+            "Caldeireiro",
+            "Torneiro/Usinador",
+            "Almoxarife",
+            "PCP",
+            "Operador",
+            "Colaborador",
+            "Auxiliar Administrativo"
           ]
         },
         {
@@ -829,7 +866,25 @@
             "NDE",
             "Apontador",
             "Manager",
-            "Consultor"
+            "Consultor",
+            "Diretoria",
+            "Gestor da Qualidade",
+            "Gerente",
+            "Coordenador de Fábrica",
+            "Coordenador de CQ",
+            "Supervisor",
+            "Analista",
+            "Técnico",
+            "Inspetor",
+            "Engenheiro",
+            "Soldador",
+            "Caldeireiro",
+            "Torneiro/Usinador",
+            "Almoxarife",
+            "PCP",
+            "Operador",
+            "Colaborador",
+            "Auxiliar Administrativo"
           ]
         }
       ],

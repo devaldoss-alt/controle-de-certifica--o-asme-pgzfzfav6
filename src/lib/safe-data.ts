@@ -63,21 +63,7 @@ export function safeRole(value: unknown): string {
     return value.length > 0 ? safeRole(value[0]) : 'Unknown'
   }
   if (typeof value !== 'string') return 'Unknown'
-  const knownRoles = [
-    'Director',
-    'QCC',
-    'Inspector',
-    'AI',
-    'Designer',
-    'Engineer',
-    'CertifyingEngineer',
-    'Welder',
-    'NDE',
-    'Manager',
-    'Consultor',
-    'Apontador',
-  ]
-  return knownRoles.includes(value) ? value : value
+  return value
 }
 
 export function safeExpandOs(

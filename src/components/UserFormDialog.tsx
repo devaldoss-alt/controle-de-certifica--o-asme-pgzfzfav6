@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ROLES } from '@/lib/role-data'
+import { DISPLAY_ROLES } from '@/lib/role-data'
 import { createUser, updateUser, type User } from '@/services/api'
 import { getCompanies, type Company } from '@/services/companies'
 import { useI18n } from '@/hooks/use-i18n'
@@ -143,10 +143,10 @@ export function UserFormDialog({ open, onOpenChange, user, onSaved }: Props) {
                 <SelectTrigger className="bg-black/20 border-white/10 text-white">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-popover border-white/10">
-                  {ROLES.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {r}
+                <SelectContent className="bg-popover border-white/10 max-h-72">
+                  {DISPLAY_ROLES.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

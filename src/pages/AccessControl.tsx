@@ -78,23 +78,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-const ROLES = [
-  'Manager',
-  'Director',
-  'QCC',
-  'Inspector',
-  'AI',
-  'Designer',
-  'Engineer',
-  'CertifyingEngineer',
-  'Supervisor',
-  'Analista',
-  'Técnico',
-  'Welder',
-  'NDE',
-  'Apontador',
-  'Consultor',
-]
+import { ROLES } from '@/lib/role-data'
 const MODULES: Array<
   | 'Documentos'
   | 'Romaneios'
