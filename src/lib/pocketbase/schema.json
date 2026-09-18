@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-18T14:32:08.970Z",
+  "generatedAt": "2026-09-18T14:44:34.110Z",
   "collections": [
     {
       "name": "users",
@@ -1473,7 +1473,9 @@
             "PCP",
             "Suprimentos",
             "Auditorias",
-            "Riscos"
+            "Riscos",
+            "Revisão pela Direção",
+            "Objetivos da Qualidade"
           ]
         },
         {
@@ -4227,6 +4229,306 @@
         "CREATE INDEX idx_risk_process ON risk_register (process)",
         "CREATE INDEX idx_risk_type ON risk_register (type)",
         "CREATE INDEX idx_risk_status ON risk_register (status)"
+      ]
+    },
+    {
+      "name": "quality_objectives",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "year",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "objective",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "process",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "indicator",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "metric_type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["percentual", "número", "dias", "custo"]
+        },
+        {
+          "name": "target_value",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "baseline",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "current_value",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsible_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "deadline",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Planejado", "Em andamento", "Atingido", "Não atingido", "Cancelado"]
+        },
+        {
+          "name": "action_plan",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_qobj_company ON quality_objectives (company_id)",
+        "CREATE INDEX idx_qobj_year ON quality_objectives (year)",
+        "CREATE INDEX idx_qobj_process ON quality_objectives (process)",
+        "CREATE INDEX idx_qobj_status ON quality_objectives (status)"
+      ]
+    },
+    {
+      "name": "management_review",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "year",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "meeting_date",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Em preparação", "Realizada", "Cancelada"]
+        },
+        {
+          "name": "participants",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "input_previous_actions",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "input_context_changes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "input_customer_satisfaction",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "input_quality_objectives",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "input_process_performance",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "input_nonconformities_corrective",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "input_monitoring_measurement",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "input_audit_results",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "input_supplier_performance",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "input_resources_adequacy",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "input_risks_opportunities",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "input_improvement_opportunities",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "consolidated_data_snapshot",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "output_improvement_decisions",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "output_qms_changes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "output_resource_needs",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "minutes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "attachment",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "actions",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_mgt_review_year ON management_review (year)",
+        "CREATE INDEX idx_mgt_review_company ON management_review (company_id)",
+        "CREATE INDEX idx_mgt_review_status ON management_review (status)",
+        "CREATE INDEX idx_mgt_review_date ON management_review (meeting_date)"
       ]
     }
   ]

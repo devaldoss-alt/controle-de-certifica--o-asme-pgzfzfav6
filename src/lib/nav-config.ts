@@ -20,6 +20,8 @@ import {
   HelpCircle,
   FileSearch,
   ShieldAlert,
+  Target,
+  Presentation,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ModuleName } from '@/services/module-permissions'
@@ -57,6 +59,8 @@ const MODULE_PATHS: Record<ModuleName, string[]> = {
   Suprimentos: ['/suppliers'],
   Auditorias: ['/auditorias'],
   Riscos: ['/riscos'],
+  'Revisão pela Direção': ['/revisao-direcao'],
+  'Objetivos da Qualidade': ['/objetivos'],
 }
 
 /** Reverse lookup: path → module (first match wins). */
@@ -143,6 +147,18 @@ export function getNavGroups(role?: string): NavGroup[] {
       titleKey: 'nav.group.management',
       links: [
         { name: 'nav.indicators', path: '/indicators', icon: BarChart3, module: 'Indicadores' },
+        {
+          name: 'nav.qualityObjectives',
+          path: '/objetivos',
+          icon: Target,
+          module: 'Objetivos da Qualidade',
+        },
+        {
+          name: 'nav.managementReview',
+          path: '/revisao-direcao',
+          icon: Presentation,
+          module: 'Revisão pela Direção',
+        },
         { name: 'nav.rnc', path: '/rnc', icon: AlertTriangle, module: 'RNC' },
         { name: 'nav.notifications', path: '/notifications', icon: Bell },
       ],

@@ -14,6 +14,8 @@ export type ModuleName =
   | 'Suprimentos'
   | 'Auditorias'
   | 'Riscos'
+  | 'Revisão pela Direção'
+  | 'Objetivos da Qualidade'
 
 export const ALL_MODULE_NAMES: ModuleName[] = [
   'Documentos',
@@ -29,6 +31,8 @@ export const ALL_MODULE_NAMES: ModuleName[] = [
   'Suprimentos',
   'Auditorias',
   'Riscos',
+  'Revisão pela Direção',
+  'Objetivos da Qualidade',
 ]
 
 export interface ModulePermission {

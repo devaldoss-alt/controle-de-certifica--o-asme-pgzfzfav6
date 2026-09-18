@@ -27,6 +27,8 @@ import TrainingPage from '@/pages/Trainings'
 import HelpCenter from '@/pages/HelpCenter'
 import AuditsPage from '@/pages/Audits'
 import RisksPage from '@/pages/Risks'
+import ManagementReviewPage from '@/pages/ManagementReview'
+import QualityObjectivesPage from '@/pages/QualityObjectives'
 import NotFound from '@/pages/NotFound'
 
 const App = () => (
@@ -53,6 +55,9 @@ const App = () => (
               <Route path="/trainings" element={<TrainingPage />} />
               <Route path="/auditorias" element={<AuditsPage />} />
               <Route path="/riscos" element={<RisksPage />} />
+              <Route path="/revisao-direcao" element={<ManagementReviewPage />} />
+              <Route path="/direcao" element={<ManagementReviewPage />} />
+              <Route path="/objetivos" element={<QualityObjectivesPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/approvals" element={<Approvals />} />
               <Route path="/qualifications" element={<Qualifications />} />
