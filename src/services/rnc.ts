@@ -561,6 +561,708 @@ export interface RNCImportRow {
   ishikawa_data?: IshikawaData
   matched_evidence_files?: File[]
   matched_evidence_names?: string[]
+  isSuspicious?: boolean
+  suspiciousReason?: string
+}
+
+export interface ParseControlRncSheetOptions {
+  sheet: { name: string; data: string[][] }
+  individualFormRncMap?: Map<string, Partial<RNCImportRow>>
+  whysMap?: Map<string, FiveWhyItem[]>
+  ishikawaMap?: Map<string, IshikawaData>
+  pdfFiles?: File[]
+}
+
+export interface ParseControlRncSheetResult {
+  parsedRows: RNCImportRow[]
+  matchedPdfsSet: Set<string>
+  countWithWhys: number
+  countWithIshikawa: number
+  countWithPdfs: number
+  headerIdx: number
+}
+
+/**
+ * Robust parser for CONTROLE_RNC sheet (FSGQ 8.7-1 Rev.06):
+ * (a) Detects real table header row below the embedded FSGQ 8.7-2 template form
+ * (b) Maps columns by header titles rather than fixed column index
+ * (c) Interprets dates via parseExcelOrBrDate (Excel serials, dd/mm/yyyy, etc.) without fallback to today
+ * (d) Filters out template labels, financial totals, or header checkboxes
+ */
+export function parseControlRncSheet({
+  sheet,
+  individualFormRncMap = new Map(),
+  whysMap = new Map(),
+  ishikawaMap = new Map(),
+  pdfFiles = [],
+}: ParseControlRncSheetOptions): ParseControlRncSheetResult {
+  const rncRows = sheet.data
+  if (!rncRows || rncRows.length < 2) {
+    return {
+      parsedRows: [],
+      matchedPdfsSet: new Set(),
+      countWithWhys: 0,
+      countWithIshikawa: 0,
+      countWithPdfs: 0,
+      headerIdx: -1,
+    }
+  }
+
+  // Detect REAL header row index of the table
+  let headerIdx = -1
+  let bestMatchScore = 0
+
+  for (let i = 0; i < Math.min(35, rncRows.length); i++) {
+    const rowCells = rncRows[i].map((c) =>
+      (c || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim(),
+    )
+    let score = 0
+
+    const hasNum = rowCells.some(
+      (c) =>
+        c === 'numero' ||
+        c === 'num' ||
+        c === 'n rnc' ||
+        c === 'n° rnc' ||
+        c === 'no rnc' ||
+        c === 'numero rnc' ||
+        c === 'num rnc' ||
+        c === 'rnc' ||
+        c.includes('numero da rnc') ||
+        c.includes('n° da rnc'),
+    )
+    const hasDate = rowCells.some(
+      (c) =>
+        c === 'data' ||
+        c === 'data abertura' ||
+        c === 'data emissao' ||
+        c === 'emissao' ||
+        c === 'abertura' ||
+        c.includes('data de abertura'),
+    )
+    const hasProcess = rowCells.some(
+      (c) => c === 'processo' || c === 'setor' || c === 'area' || c === 'departamento',
+    )
+    const hasSeverity = rowCells.some(
+      (c) =>
+        c === 'grau' ||
+        c === 'grau do desvio' ||
+        c === 'severidade' ||
+        c === 'gravidade' ||
+        c === 'classificacao',
+    )
+    const hasDesc = rowCells.some(
+      (c) =>
+        c === 'descricao' ||
+        c === 'desvio' ||
+        c === 'descricao da rnc' ||
+        c === 'nao conformidade' ||
+        c === 'resumo',
+    )
+    const hasOrigin = rowCells.some(
+      (c) => c === 'origem' || c === 'tipo de origem' || c === 'fonte',
+    )
+    const hasResp = rowCells.some(
+      (c) =>
+        c === 'responsavel' ||
+        c === 'responsavel tratativa' ||
+        c === 'atribuido' ||
+        c === 'emitente',
+    )
+    const hasStatus = rowCells.some((c) => c === 'status' || c === 'situacao' || c === 'estado')
+
+    if (hasNum) score += 3
+    if (hasDate) score += 2
+    if (hasProcess) score += 2
+    if (hasSeverity) score += 2
+    if (hasDesc) score += 2
+    if (hasOrigin) score += 1
+    if (hasResp) score += 1
+    if (hasStatus) score += 1
+
+    if (score > bestMatchScore && score >= 4) {
+      bestMatchScore = score
+      headerIdx = i
+    }
+  }
+
+  // Fallback scan
+  if (headerIdx === -1) {
+    for (let i = 0; i < Math.min(15, rncRows.length); i++) {
+      const rowNorm = rncRows[i].map((c) =>
+        (c || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .trim(),
+      )
+      const hasNum = rowNorm.some(
+        (c) => c.includes('rnc') || c.includes('numero') || c.includes('n°') || c.includes('num'),
+      )
+      const hasDate = rowNorm.some(
+        (c) => c.includes('data') || c.includes('emissao') || c.includes('abertura'),
+      )
+      if (hasNum && hasDate) {
+        headerIdx = i
+        break
+      }
+    }
+  }
+
+  if (headerIdx === -1) headerIdx = 0
+
+  const headers = rncRows[headerIdx].map((c) =>
+    (c || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim(),
+  )
+  const dataRows = rncRows.slice(headerIdx + 1)
+
+  const findCol = (keywords: string[]): number => {
+    return headers.findIndex((h) =>
+      keywords.some((kw) => {
+        const kwNorm = kw
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .trim()
+        return h === kwNorm || (kwNorm.length >= 3 && h.includes(kwNorm))
+      }),
+    )
+  }
+
+  const colNum = findCol([
+    'numero rnc',
+    'num rnc',
+    'n rnc',
+    'no rnc',
+    'numero',
+    'rnc',
+    'codigo',
+    'n°',
+  ])
+  const colDate = findCol(['data', 'data abertura', 'data emissao', 'emissao', 'abertura'])
+  const colProcess = findCol(['processo', 'setor', 'area', 'departamento'])
+  const colSeverity = findCol([
+    'grau',
+    'grau do desvio',
+    'severidade',
+    'gravidade',
+    'classificacao',
+  ])
+  const colDesc = findCol([
+    'descricao',
+    'desvio',
+    'descricao da rnc',
+    'nao conformidade',
+    'detalhes',
+    'fato',
+  ])
+  const colSummary = findCol(['resumo', 'titulo', 'assunto', 'objeto'])
+  const colOrigin = findCol(['origem', 'tipo de origem', 'fonte'])
+  const colActionType = findCol(['tipo de acao', 'tipo acao', 'acao'])
+  const colStatus = findCol(['status', 'situacao', 'estado'])
+  const colResp = findCol([
+    'responsavel',
+    'responsavel pelo plano',
+    'responsavel tratativa',
+    'atribuido',
+  ])
+  const colIssuer = findCol(['emitente', 'emissor', 'aberto por', 'criado por', 'inspetor'])
+  const colOS = findCol(['os', 'ordem de servico', 'o.s.', 'numero os', 'pedido'])
+  const colInvolved = findCol(['envolvidos', 'partes envolvidas', 'equipe'])
+  const colSupplier = findCol(['fornecedor', 'nome fornecedor', 'empresa fornecedora'])
+  const colImmAction = findCol(['acao imediata', 'disposicao', 'contencao', 'correcao'])
+  const colImmType = findCol(['tipo correcao', 'correcao imediata', 'disposicao imediata', 'tipo'])
+  const colIsReinspected = findCol(['reinspecionado', 'reinspecao', 'foi reinspecionado'])
+  const colReinspectResult = findCol(['resultado reinspecao', 'laudo reinspecao'])
+  const colRootCauseCat = findCol(['causa raiz', 'categoria causa', 'categoria causa raiz'])
+  const colRootCauseDet = findCol(['detalhes causa raiz', 'causa raiz detalhes', 'por que'])
+  const colRiskAssessment = findCol([
+    'avaliacao de risco',
+    'avaliacao de riscos',
+    'risco',
+    'oportunidades',
+  ])
+  const colCorrAction = findCol(['acao corretiva', 'tratativa', 'plano de acao'])
+  const colDeadline = findCol(['prazo', 'prazo previsto', 'data limite', 'vencimento'])
+  const colActualDeadline = findCol([
+    'prazo real',
+    'conclusao real',
+    'data conclusao',
+    'concluido em',
+  ])
+  const colCostRaw = findCol(['custo materia prima', 'custo material', 'materia prima'])
+  const colCostSupplies = findCol(['custo insumos', 'insumos', 'suprimentos'])
+  const colCostServices = findCol(['custo servicos', 'servicos', 'terceiros'])
+  const colCostTotal = findCol(['custo total', 'total rnc', 'custo'])
+  const colActionCost = findCol(['custo acao', 'custo da acao', 'investimento'])
+  const colEffectiveness = findCol([
+    'verificacao eficacia',
+    'eficacia',
+    'resultado eficacia',
+    'status eficacia',
+  ])
+  const colVerificationDate = findCol(['data verificacao', 'data da eficacia', 'data encerramento'])
+  const colIsEffective = findCol(['foi eficaz', 'eficaz', 'resultado', 'avaliacao da eficacia'])
+  const colNewRNC = findCol(['nova rnc', 'nova rnc (se ineficaz)', 'rnc gerada', 'rnc filha'])
+  const colInterferesSubsequent = findCol(['interfere no processo', 'processo subsequente'])
+  const colInterferesDeadline = findCol(['interfere no prazo', 'prazo de entrega'])
+  const colRequestedByClient = findCol(['solicitado pelo cliente', 'solicitacao cliente'])
+
+  const parseFlag = (val?: string): boolean => {
+    if (!val) return false
+    const v = val.toLowerCase().trim()
+    return v.includes('sim') || v === 's' || v === '1' || v === 'true' || v.includes('x')
+  }
+
+  const parseNum = (val?: string) => {
+    if (!val) return 0
+    const s = val.replace(/\./g, '').replace(',', '.')
+    const n = parseFloat(s)
+    return isNaN(n) ? 0 : n
+  }
+
+  const matchedPdfsSet = new Set<string>()
+  const parsed: RNCImportRow[] = []
+  let countWithWhys = 0
+  let countWithIshikawa = 0
+  let countWithPdfs = 0
+
+  for (let i = 0; i < dataRows.length; i++) {
+    const row = dataRows[i]
+    if (!row || !row.some((cell) => cell && String(cell).trim())) continue
+
+    const rawNumber = colNum >= 0 ? row[colNum] : row[0]
+    if (!rawNumber || !String(rawNumber).trim()) continue
+
+    const originalNumber = String(rawNumber).trim()
+
+    // Skip template labels, totals and checkboxes
+    if (isTemplateLabel(originalNumber)) {
+      continue
+    }
+
+    const suspicion = isSuspiciousRNCNumber(originalNumber)
+    const normKey = normalizeRNCNumberForMatch(originalNumber)
+
+    // Raw Date (never fallback to today)
+    const rawDate = colDate >= 0 ? row[colDate] : ''
+    const parsedDate = parseExcelOrBrDate(rawDate) || ''
+
+    // Process
+    const rawProcess = colProcess >= 0 ? row[colProcess] : 'SGQ'
+    const process = normalizeRNCProcess(rawProcess)
+
+    // Severity
+    const rawSeverity = colSeverity >= 0 ? row[colSeverity] : ''
+    const severity = normalizeRNCSeverity(rawSeverity)
+
+    // Description
+    const rawDesc = colDesc >= 0 ? row[colDesc] : ''
+    const description = rawDesc && rawDesc.trim() ? rawDesc.trim() : `RNC ${originalNumber}`
+
+    // Summary
+    const summary = colSummary >= 0 && row[colSummary] ? row[colSummary].trim() : ''
+
+    // Check merge with individual form sheet if present
+    const mergedIndividual = individualFormRncMap.get(normKey)
+
+    // Origin
+    const rawOrigin = colOrigin >= 0 ? row[colOrigin] : ''
+    const origin = normalizeRNCOrigin(rawOrigin)
+
+    // Action Type
+    const rawActionType = colActionType >= 0 ? row[colActionType] : ''
+    const actionType =
+      mergedIndividual?.action_type ||
+      (rawActionType ? normalizeRNCActionType(rawActionType) : 'Ação Corretiva')
+
+    const interferesSubsequent =
+      mergedIndividual?.interferes_subsequent_process !== undefined
+        ? mergedIndividual.interferes_subsequent_process
+        : colInterferesSubsequent >= 0
+          ? parseFlag(row[colInterferesSubsequent])
+          : false
+
+    const interferesDeadline =
+      mergedIndividual?.interferes_delivery_deadline !== undefined
+        ? mergedIndividual.interferes_delivery_deadline
+        : colInterferesDeadline >= 0
+          ? parseFlag(row[colInterferesDeadline])
+          : false
+
+    const requestedByClient =
+      mergedIndividual?.requested_by_client !== undefined
+        ? mergedIndividual.requested_by_client
+        : colRequestedByClient >= 0
+          ? parseFlag(row[colRequestedByClient])
+          : false
+
+    // Status
+    const rawStatus = colStatus >= 0 ? row[colStatus] : ''
+    const status = normalizeRNCStatus(rawStatus)
+
+    const responsible = colResp >= 0 && row[colResp] ? row[colResp].trim() : ''
+    const issuer = colIssuer >= 0 && row[colIssuer] ? row[colIssuer].trim() : ''
+    const serviceOrderNumber = colOS >= 0 && row[colOS] ? row[colOS].trim() : ''
+    const involvedParties = colInvolved >= 0 && row[colInvolved] ? row[colInvolved].trim() : ''
+    const supplierName = colSupplier >= 0 && row[colSupplier] ? row[colSupplier].trim() : ''
+    const immediateAction = colImmAction >= 0 && row[colImmAction] ? row[colImmAction].trim() : ''
+    const immediateCorrectionType = colImmType >= 0 && row[colImmType] ? row[colImmType].trim() : ''
+
+    const rawReinspected = colIsReinspected >= 0 ? row[colIsReinspected] : ''
+    const isReinspected = parseFlag(rawReinspected)
+    const reinspectionResult =
+      colReinspectResult >= 0 && row[colReinspectResult]
+        ? row[colReinspectResult].toLowerCase().includes('aprov') &&
+          !row[colReinspectResult].toLowerCase().includes('não')
+          ? 'Aprovado'
+          : row[colReinspectResult].toLowerCase().includes('não') ||
+              row[colReinspectResult].toLowerCase().includes('nao')
+            ? 'Não Aprovado'
+            : 'N/A'
+        : isReinspected
+          ? 'Aprovado'
+          : 'N/A'
+
+    const rootCauseCategory =
+      colRootCauseCat >= 0 && row[colRootCauseCat]
+        ? row[colRootCauseCat].trim()
+        : 'Processo e Programa'
+    const rootCauseDetails =
+      colRootCauseDet >= 0 && row[colRootCauseDet] ? row[colRootCauseDet].trim() : ''
+
+    const riskAssessment =
+      mergedIndividual?.risk_assessment ||
+      (colRiskAssessment >= 0 && row[colRiskAssessment] ? row[colRiskAssessment].trim() : '')
+
+    const correctiveAction =
+      colCorrAction >= 0 && row[colCorrAction] ? row[colCorrAction].trim() : ''
+    const actionPlan = correctiveAction
+
+    const rawDeadline = colDeadline >= 0 ? row[colDeadline] : ''
+    const deadline = parseExcelOrBrDate(rawDeadline) || undefined
+
+    const rawActualDeadline = colActualDeadline >= 0 ? row[colActualDeadline] : ''
+    const completionActualDate = parseExcelOrBrDate(rawActualDeadline) || undefined
+
+    const costRaw = parseNum(colCostRaw >= 0 ? row[colCostRaw] : '')
+    const costSup = parseNum(colCostSupplies >= 0 ? row[colCostSupplies] : '')
+    const costServ = parseNum(colCostServices >= 0 ? row[colCostServices] : '')
+    const costTotal =
+      parseNum(colCostTotal >= 0 ? row[colCostTotal] : '') || costRaw + costSup + costServ
+    const actionCost = parseNum(colActionCost >= 0 ? row[colActionCost] : '')
+
+    const effectivenessVerification =
+      colEffectiveness >= 0 && row[colEffectiveness] ? row[colEffectiveness].trim() : ''
+    const rawVerifDate = colVerificationDate >= 0 ? row[colVerificationDate] : ''
+    const verificationDate = parseExcelOrBrDate(rawVerifDate) || undefined
+
+    let isEffective: 'SIM' | 'NÃO' | 'Pendente' = 'Pendente'
+    if (colIsEffective >= 0 && row[colIsEffective]) {
+      const eVal = row[colIsEffective].toLowerCase().trim()
+      if (eVal.includes('sim') || eVal === 's' || eVal === 'ok' || eVal.includes('eficaz')) {
+        isEffective = 'SIM'
+      } else if (
+        eVal.includes('nao') ||
+        eVal.includes('não') ||
+        eVal === 'n' ||
+        eVal.includes('ineficaz')
+      ) {
+        isEffective = 'NÃO'
+      }
+    } else if (status === 'Fechada') {
+      isEffective = 'SIM'
+    }
+
+    const newRNCNumber = colNewRNC >= 0 && row[colNewRNC] ? row[colNewRNC].trim() : undefined
+
+    const linkedWhys = whysMap.get(normKey)
+    if (linkedWhys && linkedWhys.length > 0) countWithWhys++
+
+    const linkedIshikawa = ishikawaMap.get(normKey)
+    if (linkedIshikawa) countWithIshikawa++
+
+    const matchedFiles: File[] = []
+    const matchedNames: string[] = []
+
+    for (const pdf of pdfFiles) {
+      const pdfNorm = normalizeRNCNumberForMatch(pdf.name)
+      if (!pdfNorm) continue
+
+      const isDirectMatch =
+        pdfNorm === normKey || pdfNorm.includes(normKey) || normKey.includes(pdfNorm)
+
+      const numDigits = originalNumber.replace(/\D/g, '')
+      const pdfDigits = pdf.name.replace(/\D/g, '')
+      const isDigitMatch =
+        numDigits.length >= 2 &&
+        pdfDigits.length >= 2 &&
+        (pdfDigits === numDigits || pdfDigits.includes(numDigits))
+
+      if (isDirectMatch || isDigitMatch) {
+        matchedFiles.push(pdf)
+        matchedNames.push(pdf.name)
+        matchedPdfsSet.add(pdf.name)
+      }
+    }
+
+    if (matchedFiles.length > 0) {
+      countWithPdfs++
+    }
+
+    parsed.push({
+      number: originalNumber,
+      date: parsedDate,
+      process,
+      severity,
+      description,
+      origin,
+      status,
+      action_type: actionType,
+      interferes_subsequent_process: interferesSubsequent,
+      interferes_delivery_deadline: interferesDeadline,
+      requested_by_client: requestedByClient,
+      responsible,
+      issuer,
+      service_order_number: serviceOrderNumber,
+      summary,
+      involved_parties: involvedParties,
+      supplier_name: supplierName,
+      immediate_correction_type: immediateCorrectionType,
+      immediate_action: immediateAction,
+      is_reinspected: isReinspected,
+      reinspection_result: reinspectionResult,
+      root_cause_category: rootCauseCategory,
+      root_cause_details: rootCauseDetails,
+      risk_assessment: riskAssessment,
+      corrective_action: correctiveAction,
+      action_plan: actionPlan,
+      deadline,
+      completion_actual_date: completionActualDate,
+      cost_raw_material: costRaw,
+      cost_supplies: costSup,
+      cost_services: costServ,
+      cost_total: costTotal,
+      action_cost: actionCost,
+      effectiveness_verification: effectivenessVerification,
+      verification_date: verificationDate,
+      is_effective: isEffective,
+      parent_rnc_number: newRNCNumber,
+      five_whys: linkedWhys,
+      ishikawa_data: linkedIshikawa,
+      matched_evidence_files: matchedFiles,
+      matched_evidence_names: matchedNames,
+      isSuspicious: suspicion.suspicious,
+      suspiciousReason: suspicion.reason,
+    })
+  }
+
+  return {
+    parsedRows: parsed,
+    matchedPdfsSet,
+    countWithWhys,
+    countWithIshikawa,
+    countWithPdfs,
+    headerIdx,
+  }
+}
+
+/**
+ * Checks whether a candidate RNC number string is actually a template label,
+ * form layout field, financial total, or malformed label rather than a real RNC numbering.
+ */
+export function isTemplateLabel(raw: string): boolean {
+  if (!raw) return true
+  const trimmed = raw.trim()
+  if (!trimmed) return true
+
+  const upper = trimmed.toUpperCase()
+
+  // Contains money symbol R$, colon, or checkbox markers
+  if (
+    upper.includes('R$') ||
+    upper.includes(':') ||
+    upper.includes('( )') ||
+    upper.includes('[ ]')
+  ) {
+    return true
+  }
+
+  // Common template labels found in FSGQ 8.7-2 form blocks
+  const templateBlacklist = [
+    'TOTAL',
+    'CUSTO',
+    'CUSTO DA NAO QUALIDADE',
+    'CUSTO DA NÃO QUALIDADE',
+    'PREPARACAO DE MAQUINA',
+    'PREPARAÇÃO DE MÁQUINA',
+    'DATA DE ABERTURA',
+    'DATA DE EMISSAO',
+    'DATA DE EMISSÃO',
+    'INSUMOS',
+    'SERVICOS',
+    'SERVIÇOS',
+    'MATERIA PRIMA',
+    'MATÉRIA PRIMA',
+    'MP',
+    'RESPONSAVEL',
+    'EMITENTE',
+    'DISPOSICAO',
+    'DISPOSIÇÃO',
+    'ACAO CORRETIVA',
+    'AÇÃO CORRETIVA',
+    'ACAO IMEDIATA',
+    'AÇÃO IMEDIATA',
+    'RELATORIO',
+    'RELATÓRIO',
+    'FORMULARIO',
+    'FORMULÁRIO',
+    'FSGQ',
+    'CONTROLE DE RNC',
+    'CONTROLE DE RNCS',
+    'PLANILHA DE CONTROLE',
+  ]
+
+  const clean = upper
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+
+  for (const bl of templateBlacklist) {
+    const blClean = bl
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+    if (clean === blClean || clean.startsWith(blClean + ' ') || clean.endsWith(' ' + blClean)) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
+ * Checks whether a number is suspicious (for preview highlighting / yellow warning).
+ * Real RNCs look like: "001", "1", "RNC-007/2025", "RNC 015-26", "01/2024", "45684" (if numeric code), etc.
+ * Suspicious numbers have signs of labels, R$, colons, or lack standard RNC characteristics.
+ */
+export function isSuspiciousRNCNumber(raw: string): { suspicious: boolean; reason?: string } {
+  if (!raw || !raw.trim()) {
+    return { suspicious: true, reason: 'Número em branco' }
+  }
+
+  const trimmed = raw.trim()
+
+  if (trimmed.includes('R$')) {
+    return { suspicious: true, reason: "Contém símbolo monetário 'R$'" }
+  }
+  if (trimmed.includes(':')) {
+    return { suspicious: true, reason: "Contém caractere ':' típico de rótulo" }
+  }
+  if (trimmed.includes('( )') || trimmed.includes('[ ]')) {
+    return { suspicious: true, reason: 'Contém marcação de caixa de seleção' }
+  }
+  if (isTemplateLabel(trimmed)) {
+    return { suspicious: true, reason: 'Corresponde a texto de template de formulário' }
+  }
+
+  // If longer than 40 chars or has more than 5 words, suspicious
+  if (trimmed.length > 40 || trimmed.split(/\s+/).length > 5) {
+    return { suspicious: true, reason: 'Texto excessivamente longo para número de RNC' }
+  }
+
+  return { suspicious: false }
+}
+
+/**
+ * Robust date parser supporting:
+ * - Excel serial numbers (numeric or numeric strings, e.g. 45312)
+ * - dd/mm/yyyy or dd/mm/yy (or dd-mm-yyyy)
+ * - yyyy-mm-dd
+ * - Date objects
+ * Returns "YYYY-MM-DD" or null if invalid. NEVER returns fallback "today".
+ */
+export function parseExcelOrBrDate(value: unknown): string | null {
+  if (value === null || value === undefined) return null
+
+  // If already a Date object
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return value.toISOString().split('T')[0]
+  }
+
+  const str = String(value).trim()
+  if (!str) return null
+
+  // 1. Excel serial number: e.g. 45312 or "45312" (Excel serial dates usually range from 20000 to 70000)
+  if (/^\d{4,6}(\.\d+)?$/.test(str)) {
+    const serial = parseFloat(str)
+    if (!isNaN(serial) && serial >= 1000 && serial <= 100000) {
+      // Excel 1900 leap-year bug offset: serial 25569 = 1970-01-01
+      const utcMillis = Math.round((serial - 25569) * 86400 * 1000)
+      const d = new Date(utcMillis)
+      if (!isNaN(d.getTime())) {
+        const y = d.getUTCFullYear()
+        if (y >= 1990 && y <= 2100) {
+          const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+          const day = String(d.getUTCDate()).padStart(2, '0')
+          return `${y}-${m}-${day}`
+        }
+      }
+    }
+  }
+
+  // 2. Format DD/MM/YYYY or DD-MM-YYYY or DD/MM/YY
+  const brMatch = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/)
+  if (brMatch) {
+    const day = parseInt(brMatch[1], 10)
+    const month = parseInt(brMatch[2], 10)
+    let year = parseInt(brMatch[3], 10)
+
+    if (year < 100) {
+      year = year < 50 ? 2000 + year : 1900 + year
+    }
+
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1990 && year <= 2100) {
+      const dStr = String(day).padStart(2, '0')
+      const mStr = String(month).padStart(2, '0')
+      return `${year}-${mStr}-${dStr}`
+    }
+  }
+
+  // 3. Format YYYY-MM-DD
+  const isoMatch = str.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/)
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10)
+    const month = parseInt(isoMatch[2], 10)
+    const day = parseInt(isoMatch[3], 10)
+
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1990 && year <= 2100) {
+      const dStr = String(day).padStart(2, '0')
+      const mStr = String(month).padStart(2, '0')
+      return `${year}-${mStr}-${dStr}`
+    }
+  }
+
+  // 4. Try generic Date parse if contains date-like words
+  const parsed = new Date(str)
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear()
+    if (y >= 1990 && y <= 2100) {
+      const m = String(parsed.getMonth() + 1).padStart(2, '0')
+      const d = String(parsed.getDate()).padStart(2, '0')
+      return `${y}-${m}-${d}`
+    }
+  }
+
+  return null
 }
 
 export interface RNCImportResult {
@@ -819,13 +1521,17 @@ export async function bulkImportRNCs(
       const services = Number(row.cost_services) || 0
       const computedTotalCost = Number(row.cost_total) || rawMaterial + supplies + services
 
+      const parsedRowDate = parseExcelOrBrDate(row.date)
+      const finalDate = parsedRowDate
+        ? `${parsedRowDate} 12:00:00.000Z`
+        : row.date && row.date.includes('T')
+          ? row.date
+          : row.date
+            ? `${row.date} 12:00:00.000Z`
+            : undefined
+
       const payload: Record<string, any> = {
         number: row.number.trim(), // EXACT original numbering preserved!
-        date: row.date
-          ? row.date.includes('T')
-            ? row.date
-            : `${row.date} 12:00:00.000Z`
-          : new Date().toISOString(),
         company_id: companyId,
         process: normalizeRNCProcess(row.process),
         severity: row.severity || 'Médio',
@@ -866,30 +1572,49 @@ export async function bulkImportRNCs(
         is_effective: row.is_effective || (row.status === 'Fechada' ? 'SIM' : 'Pendente'),
       }
 
+      if (finalDate) {
+        payload.date = finalDate
+      }
+
       if (row.deadline) {
-        payload.deadline = row.deadline.includes('T')
-          ? row.deadline
-          : `${row.deadline} 12:00:00.000Z`
+        const pDeadline = parseExcelOrBrDate(row.deadline)
+        payload.deadline = pDeadline
+          ? `${pDeadline} 12:00:00.000Z`
+          : row.deadline.includes('T')
+            ? row.deadline
+            : `${row.deadline} 12:00:00.000Z`
       }
       if (row.completion_actual_date) {
-        payload.completion_actual_date = row.completion_actual_date.includes('T')
-          ? row.completion_actual_date
-          : `${row.completion_actual_date} 12:00:00.000Z`
+        const pCompl = parseExcelOrBrDate(row.completion_actual_date)
+        payload.completion_actual_date = pCompl
+          ? `${pCompl} 12:00:00.000Z`
+          : row.completion_actual_date.includes('T')
+            ? row.completion_actual_date
+            : `${row.completion_actual_date} 12:00:00.000Z`
       }
       if (row.reinspection_date) {
-        payload.reinspection_date = row.reinspection_date.includes('T')
-          ? row.reinspection_date
-          : `${row.reinspection_date} 12:00:00.000Z`
+        const pReinsp = parseExcelOrBrDate(row.reinspection_date)
+        payload.reinspection_date = pReinsp
+          ? `${pReinsp} 12:00:00.000Z`
+          : row.reinspection_date.includes('T')
+            ? row.reinspection_date
+            : `${row.reinspection_date} 12:00:00.000Z`
       }
       if (row.effectiveness_target_date) {
-        payload.effectiveness_target_date = row.effectiveness_target_date.includes('T')
-          ? row.effectiveness_target_date
-          : `${row.effectiveness_target_date} 12:00:00.000Z`
+        const pTarget = parseExcelOrBrDate(row.effectiveness_target_date)
+        payload.effectiveness_target_date = pTarget
+          ? `${pTarget} 12:00:00.000Z`
+          : row.effectiveness_target_date.includes('T')
+            ? row.effectiveness_target_date
+            : `${row.effectiveness_target_date} 12:00:00.000Z`
       }
       if (row.verification_date) {
-        payload.verification_date = row.verification_date.includes('T')
-          ? row.verification_date
-          : `${row.verification_date} 12:00:00.000Z`
+        const pVerif = parseExcelOrBrDate(row.verification_date)
+        payload.verification_date = pVerif
+          ? `${pVerif} 12:00:00.000Z`
+          : row.verification_date.includes('T')
+            ? row.verification_date
+            : `${row.verification_date} 12:00:00.000Z`
       }
       if (linkedSoId) {
         payload.service_order_id = linkedSoId

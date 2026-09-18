@@ -58,12 +58,8 @@ import {
 import {
   bulkImportRNCs,
   normalizeRNCNumberForMatch,
-  normalizeRNCStatus,
-  normalizeRNCSeverity,
-  normalizeRNCOrigin,
   normalizeRNCActionType,
-  normalizeRNCProcess,
-  normalizeRNCRootCauseCategory,
+  parseControlRncSheet,
   type RNCImportRow,
   type RNCImportResult,
   type FiveWhyItem,
@@ -500,384 +496,20 @@ export function RNCImportDialog({
         rncSheet = allParsedSheets.slice().sort((a, b) => b.data.length - a.data.length)[0]
       }
 
-      // Parse RNC Main / Control sheet
-      const rncRows = rncSheet.data
-      if (rncRows.length < 2) {
-        throw new Error(`A aba "${rncSheet.name}" não contém linhas suficientes de dados.`)
-      }
-
-      // Detect header row index (first row with keywords like numero, rnc, data, processo, etc.)
-      let headerIdx = 0
-      for (let i = 0; i < Math.min(10, rncRows.length); i++) {
-        const rowNorm = rncRows[i].map((c) => normalizeText(c))
-        const hasNum = rowNorm.some(
-          (c) => c.includes('rnc') || c.includes('numero') || c.includes('n°') || c.includes('num'),
-        )
-        const hasDate = rowNorm.some(
-          (c) => c.includes('data') || c.includes('emissao') || c.includes('abertura'),
-        )
-        if (hasNum || hasDate) {
-          headerIdx = i
-          break
-        }
-      }
-
-      const headers = rncRows[headerIdx].map((c) => normalizeText(c))
-      const dataRows = rncRows.slice(headerIdx + 1)
-
-      // Column mapping helper
-      const findCol = (keywords: string[]): number => {
-        return headers.findIndex((h) =>
-          keywords.some((kw) => h === kw || (kw.length >= 3 && h.includes(kw))),
-        )
-      }
-
-      const colNum = findCol([
-        'numero rnc',
-        'num rnc',
-        'n rnc',
-        'no rnc',
-        'numero',
-        'rnc',
-        'codigo',
-        'n°',
-      ])
-      const colDate = findCol(['data', 'data abertura', 'data emissao', 'emissao', 'abertura'])
-      const colProcess = findCol(['processo', 'setor', 'area', 'departamento'])
-      const colSeverity = findCol([
-        'grau',
-        'grau do desvio',
-        'severidade',
-        'gravidade',
-        'classificacao',
-      ])
-      const colDesc = findCol([
-        'descricao',
-        'desvio',
-        'descricao da rnc',
-        'nao conformidade',
-        'detalhes',
-        'fato',
-      ])
-      const colSummary = findCol(['resumo', 'titulo', 'assunto', 'objeto'])
-      const colOrigin = findCol(['origem', 'tipo de origem', 'fonte'])
-      const colActionType = findCol(['tipo de acao', 'tipo acao', 'acao'])
-      const colStatus = findCol(['status', 'situacao', 'estado'])
-      const colResp = findCol([
-        'responsavel',
-        'responsavel pelo plano',
-        'responsavel tratativa',
-        'atribuido',
-      ])
-      const colIssuer = findCol(['emitente', 'emissor', 'aberto por', 'criado por', 'inspetor'])
-      const colOS = findCol(['os', 'ordem de servico', 'o.s.', 'numero os', 'pedido'])
-      const colInvolved = findCol(['envolvidos', 'partes envolvidas', 'equipe'])
-      const colSupplier = findCol(['fornecedor', 'nome fornecedor', 'empresa fornecedora'])
-      const colImmAction = findCol(['acao imediata', 'disposicao', 'contencao', 'correcao'])
-      const colImmType = findCol([
-        'tipo correcao',
-        'correcao imediata',
-        'disposicao imediata',
-        'tipo',
-      ])
-      const colIsReinspected = findCol(['reinspecionado', 'reinspecao', 'foi reinspecionado'])
-      const colReinspectResult = findCol(['resultado reinspecao', 'laudo reinspecao'])
-      const colRootCauseCat = findCol(['causa raiz', 'categoria causa', 'categoria causa raiz'])
-      const colRootCauseDet = findCol(['detalhes causa raiz', 'causa raiz detalhes', 'por que'])
-      const colRiskAssessment = findCol([
-        'avaliacao de risco',
-        'avaliacao de riscos',
-        'risco',
-        'oportunidades',
-      ])
-      const colCorrAction = findCol(['acao corretiva', 'tratativa', 'plano de acao'])
-      const colDeadline = findCol(['prazo', 'prazo previsto', 'data limite', 'vencimento'])
-      const colActualDeadline = findCol([
-        'prazo real',
-        'conclusao real',
-        'data conclusao',
-        'concluido em',
-      ])
-      const colDaysLeft = findCol(['dias faltantes', 'dias restantes', 'saldo dias'])
-      const colCostRaw = findCol(['custo materia prima', 'custo material', 'materia prima'])
-      const colCostSupplies = findCol(['custo insumos', 'insumos', 'suprimentos'])
-      const colCostServices = findCol(['custo servicos', 'servicos', 'terceiros'])
-      const colCostTotal = findCol(['custo total', 'total rnc', 'custo'])
-      const colActionCost = findCol(['custo acao', 'custo da acao', 'investimento'])
-      const colEffectiveness = findCol([
-        'verificacao eficacia',
-        'eficacia',
-        'resultado eficacia',
-        'status eficacia',
-      ])
-      const colVerificationDate = findCol([
-        'data verificacao',
-        'data da eficacia',
-        'data encerramento',
-      ])
-      const colIsEffective = findCol(['foi eficaz', 'eficaz', 'resultado', 'avaliacao da eficacia'])
-      const colNewRNC = findCol(['nova rnc', 'nova rnc (se ineficaz)', 'rnc gerada', 'rnc filha'])
-      const colInterferesSubsequent = findCol(['interfere no processo', 'processo subsequente'])
-      const colInterferesDeadline = findCol(['interfere no prazo', 'prazo de entrega'])
-      const colRequestedByClient = findCol(['solicitado pelo cliente', 'solicitacao cliente'])
-
-      // Prepare list of PDFs to match
-      const matchedPdfsSet = new Set<string>()
-
-      const parsed: RNCImportRow[] = []
-      let countWithWhys = 0
-      let countWithIshikawa = 0
-      let countWithPdfs = 0
-
-      for (let i = 0; i < dataRows.length; i++) {
-        const row = dataRows[i]
-        // If entire row is blank, skip
-        if (!row.some((cell) => cell && cell.trim())) continue
-
-        const rawNumber = colNum >= 0 ? row[colNum] : row[0]
-        if (!rawNumber || !rawNumber.trim()) continue
-
-        const originalNumber = rawNumber.trim()
-        const normKey = normalizeRNCNumberForMatch(originalNumber)
-
-        // Raw Date
-        const rawDate = colDate >= 0 ? row[colDate] : ''
-        const parsedDate = normalizeDate(rawDate) || new Date().toISOString().split('T')[0]
-
-        // Process
-        const rawProcess = colProcess >= 0 ? row[colProcess] : 'SGQ'
-        const process = normalizeRNCProcess(rawProcess)
-
-        // Severity
-        const rawSeverity = colSeverity >= 0 ? row[colSeverity] : ''
-        const severity = normalizeRNCSeverity(rawSeverity)
-
-        // Description
-        const rawDesc = colDesc >= 0 ? row[colDesc] : ''
-        const description = rawDesc && rawDesc.trim() ? rawDesc.trim() : `RNC ${originalNumber}`
-
-        // Summary
-        const summary = colSummary >= 0 && row[colSummary] ? row[colSummary].trim() : ''
-
-        // Check merge with individual form sheet if present
-        const mergedIndividual = individualFormRncMap.get(normKey)
-
-        // Origin
-        const rawOrigin = colOrigin >= 0 ? row[colOrigin] : ''
-        const origin = normalizeRNCOrigin(rawOrigin)
-
-        // Action Type
-        const rawActionType = colActionType >= 0 ? row[colActionType] : ''
-        const actionType =
-          mergedIndividual?.action_type ||
-          (rawActionType ? normalizeRNCActionType(rawActionType) : 'Ação Corretiva')
-
-        // 3 Header Yes/No Flags
-        const parseFlag = (val?: string): boolean => {
-          if (!val) return false
-          const v = val.toLowerCase().trim()
-          return v.includes('sim') || v === 's' || v === '1' || v === 'true' || v.includes('x')
-        }
-
-        const interferesSubsequent =
-          mergedIndividual?.interferes_subsequent_process !== undefined
-            ? mergedIndividual.interferes_subsequent_process
-            : colInterferesSubsequent >= 0
-              ? parseFlag(row[colInterferesSubsequent])
-              : false
-
-        const interferesDeadline =
-          mergedIndividual?.interferes_delivery_deadline !== undefined
-            ? mergedIndividual.interferes_delivery_deadline
-            : colInterferesDeadline >= 0
-              ? parseFlag(row[colInterferesDeadline])
-              : false
-
-        const requestedByClient =
-          mergedIndividual?.requested_by_client !== undefined
-            ? mergedIndividual.requested_by_client
-            : colRequestedByClient >= 0
-              ? parseFlag(row[colRequestedByClient])
-              : false
-
-        // Status
-        const rawStatus = colStatus >= 0 ? row[colStatus] : ''
-        const status = normalizeRNCStatus(rawStatus)
-
-        // Responsible (Pure text, never create users)
-        const responsible = colResp >= 0 && row[colResp] ? row[colResp].trim() : ''
-        const issuer = colIssuer >= 0 && row[colIssuer] ? row[colIssuer].trim() : ''
-        const serviceOrderNumber = colOS >= 0 && row[colOS] ? row[colOS].trim() : ''
-        const involvedParties = colInvolved >= 0 && row[colInvolved] ? row[colInvolved].trim() : ''
-        const supplierName = colSupplier >= 0 && row[colSupplier] ? row[colSupplier].trim() : ''
-        const immediateAction =
-          colImmAction >= 0 && row[colImmAction] ? row[colImmAction].trim() : ''
-        const immediateCorrectionType =
-          colImmType >= 0 && row[colImmType] ? row[colImmType].trim() : ''
-
-        // Reinspected Flag & Details
-        const rawReinspected = colIsReinspected >= 0 ? row[colIsReinspected] : ''
-        const isReinspected = parseFlag(rawReinspected)
-        const reinspectionResult =
-          colReinspectResult >= 0 && row[colReinspectResult]
-            ? row[colReinspectResult].toLowerCase().includes('aprov') &&
-              !row[colReinspectResult].toLowerCase().includes('não')
-              ? 'Aprovado'
-              : row[colReinspectResult].toLowerCase().includes('não') ||
-                  row[colReinspectResult].toLowerCase().includes('nao')
-                ? 'Não Aprovado'
-                : 'N/A'
-            : isReinspected
-              ? 'Aprovado'
-              : 'N/A'
-
-        // Root cause category & details
-        const rootCauseCategory =
-          colRootCauseCat >= 0 && row[colRootCauseCat]
-            ? row[colRootCauseCat].trim()
-            : 'Processo e Programa'
-        const rootCauseDetails =
-          colRootCauseDet >= 0 && row[colRootCauseDet] ? row[colRootCauseDet].trim() : ''
-
-        // Risk Assessment
-        const riskAssessment =
-          mergedIndividual?.risk_assessment ||
-          (colRiskAssessment >= 0 && row[colRiskAssessment] ? row[colRiskAssessment].trim() : '')
-
-        const correctiveAction =
-          colCorrAction >= 0 && row[colCorrAction] ? row[colCorrAction].trim() : ''
-        const actionPlan = correctiveAction
-
-        // Deadlines: Previsto & Real
-        const rawDeadline = colDeadline >= 0 ? row[colDeadline] : ''
-        const deadline = normalizeDate(rawDeadline) || undefined
-
-        const rawActualDeadline = colActualDeadline >= 0 ? row[colActualDeadline] : ''
-        const completionActualDate = normalizeDate(rawActualDeadline) || undefined
-
-        // Costs
-        const parseNum = (val?: string) => {
-          if (!val) return 0
-          const s = val.replace(/\./g, '').replace(',', '.')
-          const n = parseFloat(s)
-          return isNaN(n) ? 0 : n
-        }
-        const costRaw = parseNum(colCostRaw >= 0 ? row[colCostRaw] : '')
-        const costSup = parseNum(colCostSupplies >= 0 ? row[colCostSupplies] : '')
-        const costServ = parseNum(colCostServices >= 0 ? row[colCostServices] : '')
-        const costTotal =
-          parseNum(colCostTotal >= 0 ? row[colCostTotal] : '') || costRaw + costSup + costServ
-        const actionCost = parseNum(colActionCost >= 0 ? row[colActionCost] : '')
-
-        // Effectiveness
-        const effectivenessVerification =
-          colEffectiveness >= 0 && row[colEffectiveness] ? row[colEffectiveness].trim() : ''
-        const rawVerifDate = colVerificationDate >= 0 ? row[colVerificationDate] : ''
-        const verificationDate = normalizeDate(rawVerifDate) || undefined
-
-        let isEffective: 'SIM' | 'NÃO' | 'Pendente' = 'Pendente'
-        if (colIsEffective >= 0 && row[colIsEffective]) {
-          const eVal = row[colIsEffective].toLowerCase().trim()
-          if (eVal.includes('sim') || eVal === 's' || eVal === 'ok' || eVal.includes('eficaz')) {
-            isEffective = 'SIM'
-          } else if (
-            eVal.includes('nao') ||
-            eVal.includes('não') ||
-            eVal === 'n' ||
-            eVal.includes('ineficaz')
-          ) {
-            isEffective = 'NÃO'
-          }
-        } else if (status === 'Fechada') {
-          isEffective = 'SIM'
-        }
-
-        const newRNCNumber = colNewRNC >= 0 && row[colNewRNC] ? row[colNewRNC].trim() : undefined
-
-        // Link 5 Whys
-        const linkedWhys = whysMap.get(normKey)
-        if (linkedWhys && linkedWhys.length > 0) countWithWhys++
-
-        // Link Ishikawa
-        const linkedIshikawa = ishikawaMap.get(normKey)
-        if (linkedIshikawa) countWithIshikawa++
-
-        // Match PDF Evidences by tolerant filename:
-        // Ex.: "RNC-007-2025.pdf" matches "RNC-007/2025", "RNC 007-25", etc.
-        const matchedFiles: File[] = []
-        const matchedNames: string[] = []
-
-        for (const pdf of pdfFiles) {
-          const pdfNorm = normalizeRNCNumberForMatch(pdf.name)
-          if (!pdfNorm) continue
-
-          // Exact match of digits or substring containment
-          const isDirectMatch =
-            pdfNorm === normKey || pdfNorm.includes(normKey) || normKey.includes(pdfNorm)
-
-          // Extra check: extract digits
-          const numDigits = originalNumber.replace(/\D/g, '')
-          const pdfDigits = pdf.name.replace(/\D/g, '')
-          const isDigitMatch =
-            numDigits.length >= 2 &&
-            pdfDigits.length >= 2 &&
-            (pdfDigits === numDigits || pdfDigits.includes(numDigits))
-
-          if (isDirectMatch || isDigitMatch) {
-            matchedFiles.push(pdf)
-            matchedNames.push(pdf.name)
-            matchedPdfsSet.add(pdf.name)
-          }
-        }
-
-        if (matchedFiles.length > 0) {
-          countWithPdfs++
-        }
-
-        parsed.push({
-          number: originalNumber,
-          date: parsedDate,
-          process,
-          severity,
-          description,
-          origin,
-          status,
-          action_type: actionType,
-          interferes_subsequent_process: interferesSubsequent,
-          interferes_delivery_deadline: interferesDeadline,
-          requested_by_client: requestedByClient,
-          responsible,
-          issuer,
-          service_order_number: serviceOrderNumber,
-          summary,
-          involved_parties: involvedParties,
-          supplier_name: supplierName,
-          immediate_correction_type: immediateCorrectionType,
-          immediate_action: immediateAction,
-          is_reinspected: isReinspected,
-          reinspection_result: reinspectionResult,
-          root_cause_category: rootCauseCategory,
-          root_cause_details: rootCauseDetails,
-          risk_assessment: riskAssessment,
-          corrective_action: correctiveAction,
-          action_plan: actionPlan,
-          deadline,
-          completion_actual_date: completionActualDate,
-          cost_raw_material: costRaw,
-          cost_supplies: costSup,
-          cost_services: costServ,
-          cost_total: costTotal,
-          action_cost: actionCost,
-          effectiveness_verification: effectivenessVerification,
-          verification_date: verificationDate,
-          is_effective: isEffective,
-          parent_rnc_number: newRNCNumber,
-          five_whys: linkedWhys,
-          ishikawa_data: linkedIshikawa,
-          matched_evidence_files: matchedFiles,
-          matched_evidence_names: matchedNames,
-        })
-      }
+      // Parse RNC Main / Control sheet using parseControlRncSheet
+      const {
+        parsedRows: parsed,
+        matchedPdfsSet,
+        countWithWhys,
+        countWithIshikawa,
+        countWithPdfs,
+      } = parseControlRncSheet({
+        sheet: rncSheet,
+        individualFormRncMap,
+        whysMap,
+        ishikawaMap,
+        pdfFiles,
+      })
 
       // Check unmatched PDFs
       const unmatched = pdfFiles.filter((p) => !matchedPdfsSet.has(p.name)).map((p) => p.name)
@@ -1368,6 +1000,22 @@ export function RNCImportDialog({
               </div>
             )}
 
+            {/* Warning if there are suspicious RNC lines detected */}
+            {parsedRows.some((r) => r.isSuspicious) && (
+              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 space-y-1">
+                <div className="flex items-center gap-1.5 font-semibold">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+                  <span>
+                    Atenção: {parsedRows.filter((r) => r.isSuspicious).length} linha(s) possuem
+                    numeração suspeita (destacadas em amarelo na tabela abaixo):
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-200/90">
+                  Verifique se essas linhas são registros reais de RNC antes de confirmar a
+                  gravação.
+                </p>
+              </div>
+            )}
             {/* Filter and Search Bar for Preview */}
             <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
               <div className="flex items-center gap-2 flex-1 max-w-sm">
@@ -1462,16 +1110,38 @@ export function RNCImportDialog({
                       row.matched_evidence_names && row.matched_evidence_names.length > 0
 
                     return (
-                      <TableRow key={idx} className="border-white/5 hover:bg-white/5 text-xs">
+                      <TableRow
+                        key={idx}
+                        className={`border-white/5 hover:bg-white/5 text-xs ${
+                          row.isSuspicious ? 'bg-amber-500/10 border-l-2 border-l-amber-400' : ''
+                        }`}
+                      >
                         <TableCell className="font-mono text-[10px] text-muted-foreground">
                           {idx + 1}
                         </TableCell>
-                        <TableCell className="font-mono font-bold text-primary whitespace-nowrap">
-                          {row.number}
+                        <TableCell className="font-mono font-bold whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={
+                                row.isSuspicious ? 'text-amber-400 font-bold' : 'text-primary'
+                              }
+                            >
+                              {row.number}
+                            </span>
+                            {row.isSuspicious && (
+                              <Badge
+                                variant="outline"
+                                className="border-amber-500/50 bg-amber-500/20 text-amber-300 text-[9px] px-1 py-0 h-4"
+                                title={row.suspiciousReason || 'Numeração suspeita'}
+                              >
+                                Suspeita
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-white/80 whitespace-nowrap">
-                          {row.date}
-                        </TableCell>
+                          {row.date || '—'}
+                        </TableCell>{' '}
                         <TableCell className="text-white/90 font-medium whitespace-nowrap">
                           {row.process}
                         </TableCell>
