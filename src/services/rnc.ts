@@ -1,5 +1,6 @@
 import pb from '@/lib/pocketbase/client'
 import { safeArray } from '@/lib/safe-data'
+import { normalizeText } from '@/lib/spreadsheet-parser'
 
 export type RNCOrigin = 'R.O.' | 'R.C.' | 'Auditorias' | 'Fornecedor' | 'SMS' | 'Análise Crítica'
 
@@ -580,6 +581,17 @@ export interface ParseControlRncSheetResult {
   countWithIshikawa: number
   countWithPdfs: number
   headerIdx: number
+  diagnostics?: {
+    isControleSheet: boolean
+    nonStandardCount: number
+    duplicateNumberCount: number
+    blankDateCount: number
+    suspiciousTotal: number
+    totalRows: number
+    allSuspicious: boolean
+    hasSafeguardWarning: boolean
+    reasons: string[]
+  }
 }
 
 /**
@@ -1065,6 +1077,71 @@ export function parseControlRncSheet({
     })
   }
 
+  // Safeguard diagnostics calculation
+  const sheetNorm = normalizeText(sheet.name || '')
+  const isControleSheet =
+    sheetNorm.includes('controle_rnc') ||
+    sheetNorm === 'controle rnc' ||
+    (sheetNorm.includes('controle') && sheetNorm.includes('rnc'))
+
+  // Standard RNC regex: contains RNC followed (possibly by spaces/hyphens/#) by digits, or digits/year format
+  const standardRncRegex = /rnc[\s\-_#:]*\d+|\b\d{1,4}[/-]\d{2,4}\b/i
+
+  let nonStandardCount = 0
+  let blankDateCount = 0
+  const numberSeen = new Map<string, number>()
+
+  for (const row of parsed) {
+    const rawNum = (row.number || '').trim()
+    if (!standardRncRegex.test(rawNum)) {
+      nonStandardCount++
+    }
+    const normKey = normalizeRNCNumberForMatch(rawNum)
+    if (normKey) {
+      numberSeen.set(normKey, (numberSeen.get(normKey) || 0) + 1)
+    }
+    if (!row.date || !row.date.trim()) {
+      blankDateCount++
+    }
+  }
+
+  let duplicateNumberCount = 0
+  for (const count of numberSeen.values()) {
+    if (count > 1) {
+      duplicateNumberCount += count
+    }
+  }
+
+  const suspiciousTotal = parsed.filter((r) => r.isSuspicious).length
+  const totalRows = parsed.length
+  const allSuspicious = totalRows > 0 && suspiciousTotal === totalRows
+
+  const reasons: string[] = []
+  if (!isControleSheet) {
+    reasons.push(`A aba lida ("${sheet.name}") não é a aba CONTROLE_RNC da planilha de controle.`)
+  }
+  if (nonStandardCount > 0) {
+    reasons.push(
+      `${nonStandardCount} de ${totalRows} linha(s) possuem numeração fora do padrão RNC (ex: RNC-007/2025).`,
+    )
+  }
+  if (duplicateNumberCount > 1) {
+    reasons.push(
+      `${duplicateNumberCount} linhas compartilham o mesmo número de RNC (duplicação detectada).`,
+    )
+  }
+  if (totalRows > 0 && blankDateCount > totalRows / 2) {
+    reasons.push(
+      `Mais da metade das linhas (${blankDateCount} de ${totalRows}) está com a data em branco.`,
+    )
+  }
+
+  const hasSafeguardWarning =
+    !isControleSheet ||
+    nonStandardCount > 0 ||
+    duplicateNumberCount > 1 ||
+    (totalRows > 0 && blankDateCount > totalRows / 2)
+
   return {
     parsedRows: parsed,
     matchedPdfsSet,
@@ -1072,6 +1149,17 @@ export function parseControlRncSheet({
     countWithIshikawa,
     countWithPdfs,
     headerIdx,
+    diagnostics: {
+      isControleSheet,
+      nonStandardCount,
+      duplicateNumberCount,
+      blankDateCount,
+      suspiciousTotal,
+      totalRows,
+      allSuspicious,
+      hasSafeguardWarning,
+      reasons,
+    },
   }
 }
 

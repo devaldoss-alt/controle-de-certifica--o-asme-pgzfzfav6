@@ -105,6 +105,7 @@ import {
   CostOfQualityCalculator,
 } from '@/components/RNCTools'
 import { RNCImportDialog } from '@/components/RNCImportDialog'
+import { CostOfQualityReport } from '@/components/CostOfQualityReport'
 import pb from '@/lib/pocketbase/client'
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -1030,6 +1031,13 @@ export default function RNCPage() {
 
         {/* TAB 2: DASHBOARD & INDICADORES (IRPI / INCF) */}
         <TabsContent value="dashboard" className="space-y-6">
+          {/* RELATÓRIO DE CUSTO DA NÃO QUALIDADE (PRIORIDADE Nº 2) */}
+          <CostOfQualityReport
+            ncs={ncs}
+            companies={companies}
+            selectedCompanyId={selectedCompanyId}
+          />
+
           {/* Top Indicator Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="glass border-white/10">

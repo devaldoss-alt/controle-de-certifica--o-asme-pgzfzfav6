@@ -48,6 +48,7 @@ import {
   ChevronRight,
   Loader2,
   ArrowRight,
+  AlertTriangle,
 } from 'lucide-react'
 import {
   parseSpreadsheetSheets,
@@ -109,12 +110,26 @@ export function RNCImportDialog({
     linkedWhys: number
     linkedIshikawas: number
     linkedPdfs: number
+    diagnostics?: {
+      isControleSheet: boolean
+      nonStandardCount: number
+      duplicateNumberCount: number
+      blankDateCount: number
+      suspiciousTotal: number
+      totalRows: number
+      allSuspicious: boolean
+      hasSafeguardWarning: boolean
+      reasons: string[]
+    }
   }>({
     totalRows: 0,
     linkedWhys: 0,
     linkedIshikawas: 0,
     linkedPdfs: 0,
   })
+
+  // User explicit override when safeguard warning is active (and not 100% blocked)
+  const [overrideSafeguard, setOverrideSafeguard] = useState(false)
 
   // Execution state
   const [isParsing, setIsParsing] = useState(false)
@@ -156,6 +171,7 @@ export function RNCImportDialog({
     setParsedRows([])
     setUnmatchedPdfs([])
     setSheetStats({ totalRows: 0, linkedWhys: 0, linkedIshikawas: 0, linkedPdfs: 0 })
+    setOverrideSafeguard(false)
     setIsParsing(false)
     setIsImporting(false)
     setProgress({ current: 0, total: 0 })
@@ -503,6 +519,7 @@ export function RNCImportDialog({
         countWithWhys,
         countWithIshikawa,
         countWithPdfs,
+        diagnostics,
       } = parseControlRncSheet({
         sheet: rncSheet,
         individualFormRncMap,
@@ -516,6 +533,7 @@ export function RNCImportDialog({
 
       setUnmatchedPdfs(unmatched)
       setParsedRows(parsed)
+      setOverrideSafeguard(false)
       setSheetStats({
         rncSheetName: rncSheet.name,
         whysSheetName: whysMap.size > 0 ? `${whysMap.size} RNCs vinculadas` : undefined,
@@ -528,6 +546,7 @@ export function RNCImportDialog({
         linkedWhys: countWithWhys,
         linkedIshikawas: countWithIshikawa,
         linkedPdfs: countWithPdfs,
+        diagnostics,
       })
 
       if (parsed.length === 0) {
@@ -931,6 +950,86 @@ export function RNCImportDialog({
         {/* STEP 2: PREVIEW TABLE & DIAGNOSTICS */}
         {step === 'preview' && (
           <div className="space-y-4 py-2">
+            {/* SAFEGUARD BANNER: Bloqueio ou Alerta claro no topo */}
+            {sheetStats.diagnostics?.hasSafeguardWarning && (
+              <div
+                className={`p-4 rounded-lg border text-xs space-y-3 ${
+                  sheetStats.diagnostics.allSuspicious
+                    ? 'bg-rose-500/15 border-rose-500/40 text-rose-200'
+                    : 'bg-amber-500/15 border-amber-500/40 text-amber-200'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`p-2 rounded-lg shrink-0 ${
+                      sheetStats.diagnostics.allSuspicious
+                        ? 'bg-rose-500/20 text-rose-400'
+                        : 'bg-amber-500/20 text-amber-400'
+                    }`}
+                  >
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div className="space-y-1.5 flex-1">
+                    <h4
+                      className={`font-bold text-sm ${
+                        sheetStats.diagnostics.allSuspicious ? 'text-rose-300' : 'text-amber-300'
+                      }`}
+                    >
+                      {sheetStats.diagnostics.allSuspicious
+                        ? 'Importação Bloqueada: Arquivo Não Corresponde à Planilha de Controle'
+                        : 'Atenção na Carga Inicial de RNCs'}
+                    </h4>
+                    <p className="leading-relaxed">
+                      Este arquivo parece ser um <strong>FORMULÁRIO INDIVIDUAL (FSGQ 8.7-2)</strong>
+                      , não a planilha de <strong>CONTROLE (FSGQ 8.7-1)</strong>. Para a carga
+                      inicial das RNCs, suba a planilha de CONTROLE. Formulários individuais devem
+                      ser usados depois, para enriquecer RNCs já criadas.
+                    </p>
+
+                    {sheetStats.diagnostics.reasons.length > 0 && (
+                      <div className="pt-1">
+                        <p className="font-semibold text-[11px] opacity-90 mb-1">
+                          Diagnósticos identificados:
+                        </p>
+                        <ul className="list-disc list-inside space-y-0.5 text-[11px] opacity-90 font-mono">
+                          {sheetStats.diagnostics.reasons.map((r, i) => (
+                            <li key={i}>{r}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="pt-2 flex items-center justify-between flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="default"
+                        onClick={() => setStep('upload')}
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-xs h-8 shadow-sm"
+                      >
+                        ← Voltar e Trocar Arquivos
+                      </Button>
+
+                      {!sheetStats.diagnostics.allSuspicious && (
+                        <label className="flex items-center gap-2 cursor-pointer select-none text-[11px] text-white/90 bg-black/40 px-3 py-1.5 rounded border border-white/10">
+                          <input
+                            type="checkbox"
+                            checked={overrideSafeguard}
+                            onChange={(e) => setOverrideSafeguard(e.target.checked)}
+                            className="rounded border-white/20 text-primary focus:ring-0 w-3.5 h-3.5"
+                          />
+                          <span className="font-medium text-amber-300">
+                            Gravar mesmo assim (compreendo os riscos de duplicar ou importar campos
+                            avulsos)
+                          </span>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Top Summary Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3 rounded-lg bg-black/30 border border-white/10">
@@ -1386,8 +1485,25 @@ export function RNCImportDialog({
                 </Button>
                 <Button
                   onClick={handleConfirmImport}
-                  disabled={isImporting || parsedRows.length === 0}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold gap-1.5 shadow-lg shadow-emerald-900/20"
+                  disabled={
+                    isImporting ||
+                    parsedRows.length === 0 ||
+                    (sheetStats.diagnostics?.hasSafeguardWarning &&
+                      (sheetStats.diagnostics.allSuspicious || !overrideSafeguard))
+                  }
+                  className={`text-white text-xs font-semibold gap-1.5 shadow-lg ${
+                    sheetStats.diagnostics?.hasSafeguardWarning &&
+                    (sheetStats.diagnostics.allSuspicious || !overrideSafeguard)
+                      ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
+                      : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-900/20'
+                  }`}
+                  title={
+                    sheetStats.diagnostics?.allSuspicious
+                      ? 'Gravação bloqueada: todas as linhas são suspeitas ou arquivo individual detectado'
+                      : sheetStats.diagnostics?.hasSafeguardWarning && !overrideSafeguard
+                        ? 'Marque a confirmação "Gravar mesmo assim" para prosseguir'
+                        : undefined
+                  }
                 >
                   {isImporting ? (
                     <>
