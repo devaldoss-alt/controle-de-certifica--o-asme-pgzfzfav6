@@ -18,6 +18,8 @@ import {
   Boxes,
   GraduationCap,
   HelpCircle,
+  FileSearch,
+  ShieldAlert,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ModuleName } from '@/services/module-permissions'
@@ -53,6 +55,8 @@ const MODULE_PATHS: Record<ModuleName, string[]> = {
   Almoxarifado: ['/inventory'],
   Treinamentos: ['/trainings'],
   Suprimentos: ['/suppliers'],
+  Auditorias: ['/auditorias'],
+  Riscos: ['/riscos'],
 }
 
 /** Reverse lookup: path → module (first match wins). */
@@ -95,6 +99,8 @@ export function getNavGroups(role?: string): NavGroup[] {
         { name: 'nav.documents', path: '/documents', icon: FileText, module: 'Documentos' },
         { name: 'nav.masterList', path: '/master-list', icon: ListChecks, module: 'Documentos' },
         { name: 'nav.checklists', path: '/checklists', icon: CheckSquare, module: 'Checklists' },
+        { name: 'nav.auditorias', path: '/auditorias', icon: FileSearch, module: 'Auditorias' },
+        { name: 'nav.riscos', path: '/riscos', icon: ShieldAlert, module: 'Riscos' },
         { name: 'nav.qualifications', path: '/qualifications', icon: Award },
         ...(isManagerOrQccOrConsultor
           ? [{ name: 'nav.approvals', path: '/approvals', icon: ClipboardCheck }]

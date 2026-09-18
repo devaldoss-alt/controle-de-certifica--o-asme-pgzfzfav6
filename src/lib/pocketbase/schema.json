@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-18T14:11:54.610Z",
+  "generatedAt": "2026-09-18T14:32:08.970Z",
   "collections": [
     {
       "name": "users",
@@ -1471,7 +1471,9 @@
             "Treinamentos",
             "RNC",
             "PCP",
-            "Suprimentos"
+            "Suprimentos",
+            "Auditorias",
+            "Riscos"
           ]
         },
         {
@@ -3838,6 +3840,393 @@
         "CREATE INDEX idx_feedback_screen ON user_feedback (screen_path)",
         "CREATE INDEX idx_feedback_status ON user_feedback (status)",
         "CREATE INDEX idx_feedback_created ON user_feedback (created)"
+      ]
+    },
+    {
+      "name": "audit_program",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "year",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "audit_scope",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "audit_type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Interna", "Fornecedor", "Preparatória de certificação"]
+        },
+        {
+          "name": "standard_ref",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "ISO 9001 §4 Contexto da Organização",
+            "ISO 9001 §5 Liderança",
+            "ISO 9001 §6 Planejamento",
+            "ISO 9001 §7 Apoio e Recursos",
+            "ISO 9001 §8 Operação",
+            "ISO 9001 §9 Avaliação de Desempenho",
+            "ISO 9001 §10 Melhoria",
+            "ASME Sec. I",
+            "ASME Sec. VIII Div 1",
+            "ASME Sec. IX Soldagem",
+            "ASME B31.3 Tubulações",
+            "NBIC Part 1 / Part 2 / Part 3",
+            "ISO 14001",
+            "ISO 45001"
+          ]
+        },
+        {
+          "name": "planned_date",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "realized_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "auditor_ids",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Planejada", "Em andamento", "Realizada", "Cancelada"]
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_audit_program_year ON audit_program (year)",
+        "CREATE INDEX idx_audit_program_company ON audit_program (company_id)",
+        "CREATE INDEX idx_audit_program_status ON audit_program (status)",
+        "CREATE INDEX idx_audit_program_planned ON audit_program (planned_date)"
+      ]
+    },
+    {
+      "name": "audit_checklists",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "audit_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "audit_program"
+        },
+        {
+          "name": "section",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "items",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "evidence_file",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cross_doc_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "documents"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_audit_chk_audit ON audit_checklists (audit_id)",
+        "CREATE INDEX idx_audit_chk_section ON audit_checklists (section)"
+      ]
+    },
+    {
+      "name": "audit_findings",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "audit_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "audit_program"
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "Não Conformidade",
+            "Observação",
+            "Oportunidade de Melhoria",
+            "Ponto Forte"
+          ]
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "evidence_file",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsible",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "deadline",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Aberto", "Em tratamento", "Fechado"]
+        },
+        {
+          "name": "linked_rnc_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "non_conformities"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_findings_audit ON audit_findings (audit_id)",
+        "CREATE INDEX idx_findings_type ON audit_findings (type)",
+        "CREATE INDEX idx_findings_status ON audit_findings (status)",
+        "CREATE INDEX idx_findings_rnc ON audit_findings (linked_rnc_id)"
+      ]
+    },
+    {
+      "name": "risk_register",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "company_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "companies"
+        },
+        {
+          "name": "process",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Risco", "Oportunidade"]
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "cause_category",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "probability",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "impact",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "risk_level",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "risk_grade",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "treatment_plan",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "treatment_responsible",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "treatment_deadline",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "treatment_status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Planejado", "Em andamento", "Implementado"]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Ativo", "Encerrado"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_risk_company ON risk_register (company_id)",
+        "CREATE INDEX idx_risk_process ON risk_register (process)",
+        "CREATE INDEX idx_risk_type ON risk_register (type)",
+        "CREATE INDEX idx_risk_status ON risk_register (status)"
       ]
     }
   ]

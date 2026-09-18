@@ -23,6 +23,8 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'nav.help': { pt: 'Ajuda', en: 'Help' },
   'nav.logout': { pt: 'Sair', en: 'Logout' },
   'nav.mainMenu': { pt: 'Menu Principal', en: 'Main Menu' },
+  'nav.auditorias': { pt: 'Auditorias Internas', en: 'Internal Audits' },
+  'nav.riscos': { pt: 'Riscos e Oportunidades', en: 'Risks & Opportunities' },
   'nav.group.home': { pt: 'Início', en: 'Home' },
   'nav.group.quality': { pt: 'Qualidade', en: 'Quality' },
   'nav.group.operation': { pt: 'Operação', en: 'Operation' },

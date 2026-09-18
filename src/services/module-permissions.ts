@@ -12,6 +12,8 @@ export type ModuleName =
   | 'Almoxarifado'
   | 'Treinamentos'
   | 'Suprimentos'
+  | 'Auditorias'
+  | 'Riscos'
 
 export const ALL_MODULE_NAMES: ModuleName[] = [
   'Documentos',
@@ -25,6 +27,8 @@ export const ALL_MODULE_NAMES: ModuleName[] = [
   'Almoxarifado',
   'Treinamentos',
   'Suprimentos',
+  'Auditorias',
+  'Riscos',
 ]
 
 export interface ModulePermission {

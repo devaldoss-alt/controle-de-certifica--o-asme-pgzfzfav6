@@ -25,6 +25,8 @@ import InventoryPage from '@/pages/Inventory'
 import SuppliersPage from '@/pages/Suppliers'
 import TrainingPage from '@/pages/Trainings'
 import HelpCenter from '@/pages/HelpCenter'
+import AuditsPage from '@/pages/Audits'
+import RisksPage from '@/pages/Risks'
 import NotFound from '@/pages/NotFound'
 
 const App = () => (
@@ -49,6 +51,8 @@ const App = () => (
               <Route path="/inventory" element={<InventoryPage />} />
               <Route path="/suppliers" element={<SuppliersPage />} />
               <Route path="/trainings" element={<TrainingPage />} />
+              <Route path="/auditorias" element={<AuditsPage />} />
+              <Route path="/riscos" element={<RisksPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/approvals" element={<Approvals />} />
               <Route path="/qualifications" element={<Qualifications />} />
