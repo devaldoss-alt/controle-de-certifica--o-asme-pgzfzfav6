@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { BilingualText, LanguageToggle, useI18n } from '@/hooks/use-i18n'
 import { useNavGroups } from '@/hooks/use-nav-links'
-import { LogOut, PanelLeftClose, PanelLeft } from 'lucide-react'
+import { LogOut, PanelLeftClose, PanelLeft, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
@@ -66,6 +66,46 @@ export default function Sidebar() {
     return translated !== key ? translated : key
   }
 
+  // Identifica o grupo que contém a rota atual
+  const activeGroupId = groups.find((g) =>
+    g.links.some((l) => {
+      if (l.path === '/') return location.pathname === '/'
+      return location.pathname === l.path || location.pathname.startsWith(l.path + '/')
+    }),
+  )?.id
+
+  // Estado de grupos expandidos (objeto com id: boolean)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    // Inicializa abrindo o grupo ativo (ou todos caso queira, mas a regra pede manter o ativo aberto)
+    const initial: Record<string, boolean> = {}
+    groups.forEach((g) => {
+      // Se tiver grupo ativo, ele fica aberto; por padrão, também podemos deixar os outros abertos inicialmente ou apenas o ativo
+      initial[g.id] = g.id === activeGroupId
+    })
+    // Se nenhum grupo estiver ativo, deixa o primeiro aberto como fallback
+    if (activeGroupId && initial[activeGroupId] === undefined) {
+      initial[activeGroupId] = true
+    }
+    return initial
+  })
+
+  // Garante que o grupo da página atualmente ativa fica sempre aberto ao navegar / carregar
+  useEffect(() => {
+    if (activeGroupId) {
+      setOpenGroups((prev) => {
+        if (prev[activeGroupId]) return prev
+        return { ...prev, [activeGroupId]: true }
+      })
+    }
+  }, [activeGroupId])
+
+  const toggleGroup = (groupId: string) => {
+    setOpenGroups((prev) => ({
+      ...prev,
+      [groupId]: !prev[groupId],
+    }))
+  }
+
   return (
     <TooltipProvider delayDuration={150}>
       <aside
@@ -104,71 +144,104 @@ export default function Sidebar() {
         </div>
 
         {/* Links dos 7 grupos */}
-        <div className="p-3 flex-1 space-y-4 overflow-y-auto">
+        <div className="p-3 flex-1 space-y-2 overflow-y-auto">
           {groups.map((group) => {
             const groupTitle = getGroupLabel(group.titleKey)
+            const isOpen = openGroups[group.id] ?? false
+            const isGroupActive = group.id === activeGroupId
+
             return (
               <div key={group.id} className="space-y-1">
                 {collapsed ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="w-full flex justify-center py-1">
-                        <div className="w-6 h-0.5 bg-white/20 rounded-full" />
+                      <div className="w-full flex justify-center py-1 cursor-default">
+                        <div
+                          className={cn(
+                            'w-6 h-0.5 rounded-full transition-colors',
+                            isGroupActive ? 'bg-primary' : 'bg-white/20',
+                          )}
+                        />
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">{groupTitle}</TooltipContent>
                   </Tooltip>
                 ) : (
-                  <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1 truncate">
-                    <BilingualText k={group.titleKey} />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.id)}
+                    aria-expanded={isOpen}
+                    className={cn(
+                      'w-full flex items-center justify-between px-3 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-colors select-none text-left',
+                      isGroupActive
+                        ? 'text-primary font-bold hover:bg-primary/10'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-white/5',
+                    )}
+                  >
+                    <span className="truncate">
+                      <BilingualText k={group.titleKey} />
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        'w-3.5 h-3.5 shrink-0 transition-transform duration-200',
+                        isOpen ? 'rotate-180' : 'rotate-0',
+                      )}
+                    />
+                  </button>
                 )}
 
-                <div className="space-y-1">
-                  {group.links.map((link) => {
-                    const isActive = location.pathname === link.path
-                    const labelText = getLinkLabel(link.name)
+                {/* Subitens: no modo colapsado exibe todos para acesso rápido via tooltip; no modo expandido respeita isOpen */}
+                {(collapsed || isOpen) && (
+                  <div className="space-y-1">
+                    {group.links.map((link) => {
+                      const isActive =
+                        link.path === '/'
+                          ? location.pathname === '/'
+                          : location.pathname === link.path ||
+                            location.pathname.startsWith(link.path + '/')
+                      const labelText = getLinkLabel(link.name)
 
-                    if (collapsed) {
+                      if (collapsed) {
+                        return (
+                          <Tooltip key={link.path}>
+                            <TooltipTrigger asChild>
+                              <Link
+                                to={link.path}
+                                className={cn(
+                                  'flex items-center justify-center w-full h-10 rounded-md transition-colors font-medium',
+                                  isActive
+                                    ? 'bg-primary/20 text-primary border border-primary/30'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-white/5',
+                                )}
+                              >
+                                <link.icon className="w-4 h-4 shrink-0" />
+                              </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="font-medium">
+                              {labelText}
+                            </TooltipContent>
+                          </Tooltip>
+                        )
+                      }
+
                       return (
-                        <Tooltip key={link.path}>
-                          <TooltipTrigger asChild>
-                            <Link
-                              to={link.path}
-                              className={cn(
-                                'flex items-center justify-center w-full h-10 rounded-md transition-colors font-medium',
-                                isActive
-                                  ? 'bg-primary/20 text-primary border border-primary/30'
-                                  : 'text-muted-foreground hover:text-foreground hover:bg-white/5',
-                              )}
-                            >
-                              <link.icon className="w-4 h-4 shrink-0" />
-                            </Link>
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="font-medium">
-                            {labelText}
-                          </TooltipContent>
-                        </Tooltip>
+                        <Link
+                          key={link.path}
+                          to={link.path}
+                          className={cn(
+                            'flex items-center gap-3 px-3 py-2 rounded-md transition-colors font-medium text-sm',
+                            isActive
+                              ? 'bg-primary/10 text-primary border border-primary/20'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-white/5',
+                          )}
+                        >
+                          <link.icon className="w-4 h-4 shrink-0" />
+                          <span className="truncate">{labelText}</span>
+                        </Link>
                       )
-                    }
-
-                    return (
-                      <Link
-                        key={link.path}
-                        to={link.path}
-                        className={cn(
-                          'flex items-center gap-3 px-3 py-2 rounded-md transition-colors font-medium text-sm',
-                          isActive
-                            ? 'bg-primary/10 text-primary border border-primary/20'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-white/5',
-                        )}
-                      >
-                        <link.icon className="w-4 h-4 shrink-0" />
-                        <span className="truncate">{labelText}</span>
-                      </Link>
-                    )
-                  })}
-                </div>
+                    })}
+                  </div>
+                )}
               </div>
             )
           })}
