@@ -22,6 +22,7 @@ import {
   ShieldAlert,
   Target,
   Presentation,
+  Rocket,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ModuleName } from '@/services/module-permissions'
@@ -160,6 +161,7 @@ export function getNavGroups(role?: string): NavGroup[] {
           module: 'Revisão pela Direção',
         },
         { name: 'nav.rnc', path: '/rnc', icon: AlertTriangle, module: 'RNC' },
+        { name: 'nav.implantacao', path: '/implantacao', icon: Rocket },
         { name: 'nav.notifications', path: '/notifications', icon: Bell },
       ],
     },

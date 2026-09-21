@@ -27,6 +27,7 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'nav.riscos': { pt: 'Riscos e Oportunidades', en: 'Risks & Opportunities' },
   'nav.managementReview': { pt: 'Revisão pela Direção', en: 'Management Review' },
   'nav.qualityObjectives': { pt: 'Objetivos da Qualidade', en: 'Quality Objectives' },
+  'nav.implantacao': { pt: 'Implantação', en: 'Implementation' },
   'nav.group.home': { pt: 'Início', en: 'Home' },
   'nav.group.quality': { pt: 'Qualidade', en: 'Quality' },
   'nav.group.operation': { pt: 'Operação', en: 'Operation' },

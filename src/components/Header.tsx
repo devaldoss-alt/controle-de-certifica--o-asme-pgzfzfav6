@@ -40,6 +40,7 @@ export function Header() {
     if (path.startsWith('/companies')) return 'Empresas do Grupo'
     if (path.startsWith('/pcp')) return 'PCP / Capacidade'
     if (path.startsWith('/calendar')) return 'Calendário'
+    if (path.startsWith('/implantacao')) return 'Roteiro de Implantação'
     if (path.startsWith('/help')) return 'Central de Ajuda'
     return 'UQualiHub'
   }

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-18T14:44:34.110Z",
+  "generatedAt": "2026-09-21T22:30:01.198Z",
   "collections": [
     {
       "name": "users",
@@ -4529,6 +4529,134 @@
         "CREATE INDEX idx_mgt_review_company ON management_review (company_id)",
         "CREATE INDEX idx_mgt_review_status ON management_review (status)",
         "CREATE INDEX idx_mgt_review_date ON management_review (meeting_date)"
+      ]
+    },
+    {
+      "name": "implementation_checklist",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "item_key",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "phase_id",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "phase_title",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "how_to",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "expected_result",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "attention_alert",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_highlight",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "order_index",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "done",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "done_by",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "done_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "failure_registered",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "failure_description",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "failure_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_impl_chk_item_key ON implementation_checklist (item_key)",
+        "CREATE INDEX idx_impl_chk_phase ON implementation_checklist (phase_id)",
+        "CREATE INDEX idx_impl_chk_done ON implementation_checklist (done)"
       ]
     }
   ]
