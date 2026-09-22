@@ -59,25 +59,59 @@ export default function NotificationsPage() {
       markAsRead(n.id)
       setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))
     }
-    if (n.type === 'deadline_alert') {
-      if (n.checklist_id) {
-        navigate(
-          user?.role === 'Manager' || user?.role === 'QCC'
-            ? `/approvals?checklistId=${n.checklist_id}`
-            : `/checklists?checklistId=${n.checklist_id}`,
-        )
-      } else if (n.service_order_id) {
-        navigate('/service-orders')
-      } else {
-        navigate('/trainings')
-      }
-    } else if (n.checklist_id) {
-      if (user?.role === 'Manager' || user?.role === 'QCC')
-        navigate(`/approvals?checklistId=${n.checklist_id}`)
-      else navigate(`/checklists?checklistId=${n.checklist_id}`)
-    } else {
+
+    const msgLower = (n.message || '').toLowerCase()
+
+    // 1. Notificações de treinamento / eficácia devem abrir o módulo Treinamentos
+    if (
+      msgLower.includes('treinamento') ||
+      msgLower.includes('avaliação de eficácia') ||
+      msgLower.includes('capacitação') ||
+      msgLower.includes('lista de presença')
+    ) {
       navigate('/trainings')
+      return
     }
+
+    // 2. Notificações de Não Conformidade (RNC)
+    if (
+      msgLower.includes('rnc') ||
+      msgLower.includes('não conformidade') ||
+      msgLower.includes('nao conformidade')
+    ) {
+      navigate('/rnc')
+      return
+    }
+
+    // 3. Notificações de Almoxarifado / Estoque / Compras
+    if (
+      msgLower.includes('almoxarifado') ||
+      msgLower.includes('retirada') ||
+      msgLower.includes('estoque') ||
+      msgLower.includes('compra') ||
+      msgLower.includes('requisição de material')
+    ) {
+      navigate('/inventory')
+      return
+    }
+
+    // 4. Alert de prazo com OS
+    if (n.service_order_id && !n.checklist_id) {
+      navigate('/service-orders')
+      return
+    }
+
+    // 5. Notificações vinculadas a checklists
+    if (n.checklist_id) {
+      if (user?.role === 'Manager' || user?.role === 'QCC') {
+        navigate(`/approvals?checklistId=${n.checklist_id}`)
+      } else {
+        navigate(`/checklists?checklistId=${n.checklist_id}`)
+      }
+      return
+    }
+
+    navigate('/trainings')
   }
 
   const markAllRead = () => {

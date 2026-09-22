@@ -137,7 +137,21 @@ export default function Team() {
   }
 
   const roleStats = (role: string) => {
-    const items = checklists.filter((c) => c.role_assigned === role)
+    const roleLower = (role || '').toLowerCase().trim()
+    const items = checklists.filter((c) => {
+      const assigned = Array.isArray(c.role_assigned) ? c.role_assigned : [c.role_assigned]
+      return assigned.some((r) => {
+        if (!r) return false
+        const rLower = r.toLowerCase().trim()
+        if (rLower === roleLower) return true
+        if (
+          (roleLower === 'welder' && rLower === 'soldador') ||
+          (roleLower === 'soldador' && rLower === 'welder')
+        )
+          return true
+        return false
+      })
+    })
     const done = items.filter(
       (c) => c.status === 'completed' || c.approval_status === 'approved',
     ).length

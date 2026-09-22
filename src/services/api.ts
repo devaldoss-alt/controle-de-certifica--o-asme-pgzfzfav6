@@ -24,7 +24,7 @@ export interface Checklist {
   title_en?: string
   description?: string
   description_en?: string
-  role_assigned: string
+  role_assigned: string | string[]
   mcq_ref?: string
   status: 'pending' | 'completed'
   due_date?: string
@@ -65,7 +65,27 @@ export const getChecklists = async (
   companyId?: string,
 ): Promise<Checklist[]> => {
   const filters: string[] = []
-  if (role) filters.push(`role_assigned = "${role}"`)
+  if (role) {
+    // role_assigned no PocketBase é select multi ou single.
+    // Usamos operador ~ (contains) ou = para cobrir array e string.
+    // Além disso, mapeamos papéis sinônimos conhecidos (ex: Welder <-> Soldador).
+    const roleAliases: Record<string, string[]> = {
+      welder: ['Welder', 'Soldador'],
+      soldador: ['Welder', 'Soldador'],
+      diretoria: ['Diretoria', 'Director'],
+      director: ['Diretoria', 'Director'],
+      inspetor: ['Inspetor', 'Inspector'],
+      inspector: ['Inspetor', 'Inspector'],
+      engenheiro: ['Engenheiro', 'Engineer'],
+      engineer: ['Engenheiro', 'Engineer'],
+    }
+    const normalizedRole = role.toLowerCase().trim()
+    const candidates = roleAliases[normalizedRole] || [role]
+    const roleSubFilters = candidates.map(
+      (c) => `(role_assigned ~ "${c}" || role_assigned = "${c}")`,
+    )
+    filters.push(`(${roleSubFilters.join(' || ')})`)
+  }
   if (category && category !== 'all') filters.push(`category = "${category}"`)
   if (osId) filters.push(`os_id = "${osId}"`)
   if (companyId && companyId !== 'all') {

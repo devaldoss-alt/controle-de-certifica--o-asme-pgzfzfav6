@@ -29,7 +29,12 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { AlertCircle, FileText, CheckCircle2, Lock, Paperclip, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { safeDifferenceInHours, safeFormatDate, safeParseEvidenceFiles } from '@/lib/safe-data'
+import {
+  safeDifferenceInHours,
+  safeFormatDate,
+  safeParseEvidenceFiles,
+  safeRole,
+} from '@/lib/safe-data'
 import { localizedField } from '@/lib/i18n-content'
 
 export default function Checklists() {
@@ -300,9 +305,9 @@ export default function Checklists() {
 
   const grouped = checklists.reduce(
     (acc, item) => {
-      const role = item.role_assigned
-      if (!acc[role]) acc[role] = []
-      acc[role].push(item)
+      const roleKey = safeRole(item.role_assigned)
+      if (!acc[roleKey]) acc[roleKey] = []
+      acc[roleKey].push(item)
       return acc
     },
     {} as Record<string, Checklist[]>,

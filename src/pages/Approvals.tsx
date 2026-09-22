@@ -11,6 +11,7 @@ import {
   safeFormatDate,
   safeParseEvidenceFiles,
   safeHasEvidence,
+  safeRole,
 } from '@/lib/safe-data'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -89,7 +90,12 @@ export default function Approvals() {
       if (!title.includes(search) && !titleEn.includes(search) && !mcqRef.includes(search))
         return false
     }
-    if (roleFilter !== 'all' && item.role_assigned !== roleFilter) return false
+    if (roleFilter !== 'all') {
+      const assigned = Array.isArray(item.role_assigned) ? item.role_assigned : [item.role_assigned]
+      if (!assigned.some((r) => r && r.toLowerCase() === roleFilter.toLowerCase())) {
+        return false
+      }
+    }
     if (statusFilter !== 'all') {
       if (statusFilter === 'approved' || statusFilter === 'rejected') {
         if (item.approval_status !== statusFilter) return false
@@ -225,7 +231,7 @@ export default function Approvals() {
                   </div>
                   <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mb-2">
                     <Badge variant="outline" className="border-white/10">
-                      {item.role_assigned}
+                      {safeRole(item.role_assigned)}
                     </Badge>
                     <span className="flex items-center gap-1 bg-black/20 px-2 py-1 rounded border border-white/5 font-mono">
                       <FileText className="w-3 h-3" />

@@ -4,6 +4,7 @@ import { getDocuments, type DocumentRecord } from '@/services/documents'
 import { getServiceOrders, type ServiceOrder } from '@/services/service-orders'
 
 import { getPackingSlips, type PackingSlip } from '@/services/packing-slips'
+import { safeRole } from '@/lib/safe-data'
 
 // Normalize any PocketBase date value (e.g. "2026-08-19 17:15:22.264Z" or
 // "2026-08-19T17:15:22.264Z" or "2026-08-19") to a stable YYYY-MM-DD key so
@@ -77,7 +78,7 @@ export const getCalendarEvents = async (
         type: 'checklist',
         date: dateKey,
         status,
-        role: chk.role_assigned,
+        role: safeRole(chk.role_assigned),
         assignedUser: (chk as any).apontador_id || chk.last_action_by,
         originalItem: chk,
       })
