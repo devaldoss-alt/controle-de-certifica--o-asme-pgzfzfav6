@@ -6,6 +6,7 @@ import {
   getChecklists,
   updateChecklistStatus,
   parseEvidenceFiles,
+  resetDemoChecklists,
   type Checklist,
 } from '@/services/api'
 import { getServiceOrders, type ServiceOrder } from '@/services/service-orders'
@@ -27,7 +28,27 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, FileText, CheckCircle2, Lock, Paperclip, BookOpen } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useToast } from '@/components/ui/use-toast'
+import {
+  AlertCircle,
+  FileText,
+  CheckCircle2,
+  Lock,
+  Paperclip,
+  BookOpen,
+  RotateCcw,
+  Loader2,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   safeDifferenceInHours,
@@ -51,6 +72,42 @@ export default function Checklists() {
   const { selectedCompanyId } = useCompany()
   const [searchParams] = useSearchParams()
   const highlightId = searchParams.get('checklistId')
+  const { toast } = useToast()
+  const [resetDialogOpen, setResetDialogOpen] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
+
+  const handleConfirmResetDemos = async () => {
+    setIsResetting(true)
+    try {
+      const result = await resetDemoChecklists(selectedCompanyId)
+      await loadData()
+      toast({
+        title:
+          lang === 'pt'
+            ? 'Demonstrações reiniciadas com sucesso!'
+            : 'Demo checklists successfully reset!',
+        description:
+          lang === 'pt'
+            ? `${result.resetCount} checklist(s) DEMO voltaram ao estado inicial de treinamento.`
+            : `${result.resetCount} DEMO checklist(s) restored to initial training state.`,
+      })
+      setResetDialogOpen(false)
+    } catch (err: any) {
+      console.error('Erro ao reiniciar demonstrações:', err)
+      toast({
+        variant: 'destructive',
+        title:
+          lang === 'pt' ? 'Falha ao reiniciar demonstrações' : 'Failed to reset demo checklists',
+        description:
+          err?.message ||
+          (lang === 'pt'
+            ? 'Ocorreu um erro ao atualizar os registros. Tente novamente.'
+            : 'An error occurred while resetting records. Please try again.'),
+      })
+    } finally {
+      setIsResetting(false)
+    }
+  }
 
   const loadData = async () => {
     try {
@@ -330,7 +387,25 @@ export default function Checklists() {
             <BilingualText k="page.checklists.desc" />
           </p>
         </div>
-        <ContextualHelpButton variant="button" />
+        <div className="flex items-center gap-2">
+          {isManager && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setResetDialogOpen(true)}
+              disabled={isResetting}
+              className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 gap-1.5 transition-colors"
+            >
+              {isResetting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RotateCcw className="w-4 h-4" />
+              )}
+              <span>{lang === 'pt' ? 'Reiniciar Demonstrações' : 'Reset Demos'}</span>
+            </Button>
+          )}
+          <ContextualHelpButton variant="button" />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-4 items-center">
@@ -518,6 +593,69 @@ export default function Checklists() {
         checklist={evidenceItem}
         onSubmitted={loadData}
       />
+
+      {isManager && (
+        <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+          <AlertDialogContent className="glass border-white/20">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-white flex items-center gap-2">
+                <RotateCcw className="w-5 h-5 text-amber-400" />
+                {lang === 'pt' ? 'Reiniciar Checklists de Demonstração?' : 'Reset Demo Checklists?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-muted-foreground text-xs leading-relaxed space-y-2">
+                <p>
+                  {lang === 'pt'
+                    ? 'Esta ação redefinirá apenas os checklists de treinamento cujos títulos começam por "DEMO" para o estado inicial:'
+                    : 'This action will only reset training checklists titled with "DEMO" to their initial state:'}
+                </p>
+                <ul className="list-disc pl-4 space-y-1 text-white/80">
+                  <li>{lang === 'pt' ? 'Status: Pendente' : 'Status: Pending'}</li>
+                  <li>{lang === 'pt' ? 'Aprovação: Pendente' : 'Approval: Pending'}</li>
+                  <li>
+                    {lang === 'pt'
+                      ? 'Remoção de evidências anexas, notas e comentários'
+                      : 'Removal of attached evidence, notes and comments'}
+                  </li>
+                  <li>
+                    {lang === 'pt'
+                      ? 'Redefinição dos prazos (+30 dias e -15 dias para o expirado)'
+                      : 'Reset deadlines (+30 days and -15 days for expired)'}
+                  </li>
+                </ul>
+                <p className="font-semibold text-emerald-400 pt-1">
+                  {lang === 'pt'
+                    ? 'Nenhum checklist real ou histórico de produção será alterado.'
+                    : 'No real checklists or production history will be modified.'}
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isResetting}>
+                {lang === 'pt' ? 'Cancelar' : 'Cancel'}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleConfirmResetDemos()
+                }}
+                disabled={isResetting}
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                {isResetting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                    {lang === 'pt' ? 'Reiniciando...' : 'Resetting...'}
+                  </>
+                ) : lang === 'pt' ? (
+                  'Sim, Reiniciar'
+                ) : (
+                  'Yes, Reset'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 }

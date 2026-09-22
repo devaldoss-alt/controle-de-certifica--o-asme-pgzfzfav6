@@ -186,6 +186,69 @@ export const rejectChecklist = async (id: string, comment: string) => {
   })
 }
 
+/**
+ * Zera apenas os checklists cujo título se inicia com "DEMO" para o kit de demonstrações.
+ * Mantém intactos todos os checklists reais.
+ * Restaura status='pending', approval_status='pending', locked=false, limpa evidências,
+ * notas, comentários de aprovação/rejeição, approved_by, approved_at, last_action_by
+ * e redefine os prazos (+30 dias padrão; DEMO — Checklist Expirado recebe -15 dias).
+ */
+export const resetDemoChecklists = async (
+  companyId?: string,
+): Promise<{ total: number; resetCount: number }> => {
+  const filters: string[] = ['title ~ "DEMO"']
+  if (companyId && companyId !== 'all') {
+    filters.push(`company_id = "${companyId}"`)
+  }
+
+  const list = await pb.collection('checklists').getFullList<Checklist>({
+    filter: filters.join(' && '),
+    sort: 'created',
+  })
+
+  // Filtro estrito: título DEVE iniciar com "DEMO" (case-insensitive)
+  const demoList = list.filter((item) => {
+    const trimmed = (item.title || '').trim()
+    return /^DEMO\b/i.test(trimmed)
+  })
+
+  const now = new Date()
+  const plus30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  const minus15 = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000).toISOString()
+
+  let resetCount = 0
+
+  for (const item of demoList) {
+    const isExpiredDemo = (item.title || '').toLowerCase().includes('expirado')
+    const dueDate = isExpiredDemo ? minus15 : plus30
+
+    // Para role_assigned multi-select, preserva array garantindo conformidade com o schema
+    const assignedRoles = Array.isArray(item.role_assigned)
+      ? item.role_assigned
+      : typeof item.role_assigned === 'string' && item.role_assigned.trim()
+        ? [item.role_assigned]
+        : ['Welder']
+
+    await pb.collection('checklists').update(item.id, {
+      status: 'pending',
+      approval_status: 'pending',
+      locked: false,
+      evidence_file: [],
+      evidence_notes: '',
+      rejection_comment: '',
+      approval_comment: '',
+      approved_by: null,
+      approved_at: null,
+      last_action_by: null,
+      due_date: dueDate,
+      role_assigned: assignedRoles,
+    })
+    resetCount++
+  }
+
+  return { total: demoList.length, resetCount }
+}
+
 export const getUsers = async (companyId?: string) => {
   try {
     const filter =
