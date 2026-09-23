@@ -117,6 +117,9 @@ export default function ImplementationChecklistPage() {
   // Handle toggle done
   const handleToggle = async (item: ImplementationItem) => {
     const userName = user?.name || user?.email || 'Gestor da Qualidade'
+    // Previous state snapshot for exact reversion
+    const previousItems = items
+
     try {
       // Optimistic update
       setItems((prev) =>
@@ -132,19 +135,22 @@ export default function ImplementationChecklistPage() {
         ),
       )
 
-      await toggleItemDone(item, userName)
+      const updated = await toggleItemDone(item, userName)
+      // Sync with the server return
+      setItems((prev) => prev.map((i) => (i.id === updated.id ? { ...i, ...updated } : i)))
       toast({
         title: !item.done ? 'Item concluído ✅' : 'Item desmarcado',
         description: `"${item.item_key} - ${item.title}" atualizado com sucesso.`,
       })
     } catch (err) {
       console.error('Failed to toggle item:', err)
+      // Revert accurately to previous state
+      setItems(previousItems)
       toast({
         title: 'Erro ao atualizar item',
         description: 'Não foi possível salvar o estado no banco de dados.',
         variant: 'destructive',
       })
-      loadData()
     }
   }
 

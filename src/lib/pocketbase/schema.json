@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-22T16:03:17.376Z",
+  "generatedAt": "2026-09-23T14:01:54.348Z",
   "collections": [
     {
       "name": "users",
@@ -4545,25 +4545,25 @@
         {
           "name": "item_key",
           "type": "text",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "phase_id",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "phase_title",
           "type": "text",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "title",
           "type": "text",
-          "required": true,
+          "required": false,
           "system": false
         },
         {

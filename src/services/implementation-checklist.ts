@@ -50,10 +50,10 @@ export const toggleItemDone = async (
   userName: string,
 ): Promise<ImplementationItem> => {
   const newDone = !item.done
-  const updateData: Partial<ImplementationItem> = {
+  const updateData: Record<string, any> = {
     done: newDone,
     done_by: newDone ? userName : '',
-    done_at: newDone ? new Date().toISOString() : undefined,
+    done_at: newDone ? new Date().toISOString() : null,
   }
 
   const updated = await pb
@@ -77,7 +77,7 @@ export const registerItemFailure = async (
   const updated = await pb.collection('implementation_checklist').update<ImplementationItem>(id, {
     failure_registered: failureRegistered,
     failure_description: failureRegistered ? failureDescription : '',
-    failure_date: failureRegistered ? new Date().toISOString() : undefined,
+    failure_date: failureRegistered ? new Date().toISOString() : null,
   })
   return updated
 }
