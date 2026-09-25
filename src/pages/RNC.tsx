@@ -1276,7 +1276,11 @@ export default function RNCPage() {
 
       {/* FORM DIALOG FSGQ 8.7-2: RIGOROSAMENTE FIEL AO FORMULÁRIO DA EMPRESA */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto bg-card border-white/10 p-6">
+        <DialogContent
+          className="max-w-4xl max-h-[92vh] overflow-y-auto bg-card border-white/10 p-6"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader className="border-b border-white/10 pb-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
