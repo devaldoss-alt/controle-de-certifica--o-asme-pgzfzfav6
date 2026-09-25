@@ -123,7 +123,7 @@ export function TeamFormDialog({
     let active = true
     if (open && form.company_id) {
       setLoadingMembers(true)
-      getTeamMembers({ companyId: form.company_id })
+      getTeamMembers({ companyId: form.company_id, activeOnly: true })
         .then((list) => {
           if (active) {
             setCompanyMembers(list)
@@ -234,19 +234,48 @@ export function TeamFormDialog({
           </div>
 
           <div>
-            <Label className="text-white/80 mb-1 block">Cargo</Label>
-            <Select value={form.role} onValueChange={(v) => setForm((p) => ({ ...p, role: v }))}>
-              <SelectTrigger className="bg-black/20 border-white/10 text-white">
-                <SelectValue placeholder="Selecione o cargo" />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                {DISPLAY_ROLES.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center justify-between mb-1">
+              <Label className="text-white/80 block">Cargo(s)</Label>
+              <span className="text-[11px] text-muted-foreground">
+                Múltiplos cargos separados por ';'
+              </span>
+            </div>
+            <Input
+              value={form.role}
+              onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}
+              className="bg-black/20 border-white/10 text-white"
+              placeholder="Ex.: Diretor Geral; Diretor Comercial; Vendedor"
+            />
+            {/* Sugestões rápidas de cargos pré-definidos para facilitar a seleção */}
+            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-muted-foreground">Adicionar rápido:</span>
+              <Select
+                value=""
+                onValueChange={(v) => {
+                  if (!v) return
+                  setForm((p) => {
+                    const currentParts = (p.role || '')
+                      .split(';')
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+                    if (currentParts.includes(v)) return p
+                    const updated = currentParts.length > 0 ? `${p.role.trim()}; ${v}` : v
+                    return { ...p, role: updated }
+                  })
+                }}
+              >
+                <SelectTrigger className="h-6 text-[11px] px-2 py-0 bg-white/5 border-white/10 text-white/80 w-auto min-w-[140px]">
+                  <SelectValue placeholder="+ Selecionar cargo padrão" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {DISPLAY_ROLES.map((item) => (
+                    <SelectItem key={item.value} value={item.value} className="text-xs">
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer">

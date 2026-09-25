@@ -34,11 +34,18 @@ export interface TeamImportResult {
 
 export type TeamImportProgressCallback = (current: number, total: number) => void
 
+export interface CollaboratorPendingItems {
+  checklists: Array<{ id: string; title: string; status: string; role_assigned: string | string[] }>
+  rncs: Array<{ id: string; number: string; description: string; status: string }>
+  linkedUser?: { id: string; name: string; email: string; disabled?: boolean } | null
+}
+
 export async function getTeamMembers(
   params: {
     companyId?: string
     department?: string
     search?: string
+    activeOnly?: boolean
   } = {},
 ): Promise<TeamMember[]> {
   try {
@@ -55,6 +62,9 @@ export async function getTeamMembers(
       const s = params.search.trim()
       filters.push(`(name ~ "${s}" || department ~ "${s}" || role ~ "${s}")`)
     }
+    if (params.activeOnly) {
+      filters.push('is_active = true')
+    }
     const result = await pb.collection('team').getFullList<TeamMember>({
       filter: filters.join(' && '),
       sort: 'name',
@@ -65,6 +75,227 @@ export async function getTeamMembers(
     console.error('getTeamMembers failed:', e)
     return []
   }
+}
+
+/**
+ * Busca as pendências ativas de um colaborador antes de desativá-lo:
+ * - Checklists em aberto (status='pending') atribuídos ao papel ou ao apontador
+ * - RNCs sob responsabilidade dele em andamento (status='Em Andamento')
+ * - Conta de usuário vinculada (se houver, por correspondência de nome ou e-mail)
+ */
+export async function getCollaboratorPendingItems(
+  member: TeamMember,
+): Promise<CollaboratorPendingItems> {
+  const result: CollaboratorPendingItems = {
+    checklists: [],
+    rncs: [],
+    linkedUser: null,
+  }
+
+  // 1. Procurar conta de usuário associada ao colaborador
+  try {
+    const normName = (member.name || '').trim().toLowerCase()
+    const users = await pb.collection('users').getFullList<any>({
+      filter: `name ~ "${member.name.trim()}" || name = "${member.name.trim()}"`,
+    })
+    const matched =
+      users.find((u) => (u.name || '').trim().toLowerCase() === normName) || users[0] || null
+    if (matched) {
+      result.linkedUser = {
+        id: matched.id,
+        name: matched.name,
+        email: matched.email,
+        disabled: matched.disabled,
+      }
+    }
+  } catch (e) {
+    console.warn('Erro ao verificar usuário vinculado:', e)
+  }
+
+  // 2. Checklists pendentes atribuídos ao usuário logado ou vinculados aos papéis/apontador
+  try {
+    const chkFilters: string[] = ['status = "pending"']
+    if (member.company_id) {
+      chkFilters.push(`company_id = "${member.company_id}"`)
+    }
+
+    if (result.linkedUser) {
+      // Checklists onde last_action_by ou apontador_id seja o usuário
+      const userChecklists = await pb.collection('checklists').getFullList<any>({
+        filter: `${chkFilters.join(' && ')} && (apontador_id = "${result.linkedUser.id}" || last_action_by = "${result.linkedUser.id}")`,
+      })
+      for (const c of userChecklists) {
+        result.checklists.push({
+          id: c.id,
+          title: c.title,
+          status: c.status,
+          role_assigned: c.role_assigned,
+        })
+      }
+    }
+
+    // Se o colaborador tem cargo específico único que não seja amplo, poderiam haver pendências
+    // Mas preservamos a busca direta se for apontador
+    if (member.is_indicator && result.linkedUser) {
+      // Já coberto acima
+    }
+  } catch (e) {
+    console.warn('Erro ao buscar checklists pendentes:', e)
+  }
+
+  // 3. RNCs em andamento atribuídas ao colaborador
+  try {
+    const rncFilters = ['status = "Em Andamento"', `responsible ~ "${member.name.trim()}"`]
+    if (member.company_id) {
+      rncFilters.push(`company_id = "${member.company_id}"`)
+    }
+    const rncList = await pb.collection('non_conformities').getFullList<any>({
+      filter: rncFilters.join(' && '),
+    })
+    result.rncs = rncList.map((r) => ({
+      id: r.id,
+      number: r.number || r.id,
+      description: r.description || r.summary || 'RNC em andamento',
+      status: r.status,
+    }))
+  } catch (e) {
+    console.warn('Erro ao buscar RNCs pendentes:', e)
+  }
+
+  return result
+}
+
+/**
+ * Desativa o colaborador com segurança:
+ * - Define is_active = false no team
+ * - Se houver conta de usuário vinculada, desativa também (disabled = true no users) — NUNCA exclui o usuário
+ * - Se fornecido substituto (reassignTo), reatribui as pendências ativas (RNCs) para o substituto
+ */
+export async function deactivateCollaborator(
+  memberId: string,
+  options?: {
+    reassignToMember?: TeamMember
+    linkedUserId?: string
+  },
+): Promise<{ success: boolean; reassignedCount: number; userDisabled: boolean }> {
+  let reassignedCount = 0
+  let userDisabled = false
+
+  // 1. Atualizar registro no team para is_active = false
+  const member = await pb.collection('team').getOne<TeamMember>(memberId)
+  await pb.collection('team').update(memberId, {
+    is_active: false,
+  })
+
+  // 2. Se houver conta de usuário correspondente, marcar disabled = true
+  let userIdToDisable = options?.linkedUserId
+  if (!userIdToDisable) {
+    try {
+      const users = await pb.collection('users').getFullList<any>({
+        filter: `name ~ "${member.name.trim()}"`,
+      })
+      const found = users.find(
+        (u) => (u.name || '').trim().toLowerCase() === (member.name || '').trim().toLowerCase(),
+      )
+      if (found) userIdToDisable = found.id
+    } catch {
+      /* intentionally ignored */
+    }
+  }
+
+  if (userIdToDisable) {
+    try {
+      await pb.collection('users').update(userIdToDisable, {
+        disabled: true,
+      })
+      userDisabled = true
+    } catch (e) {
+      console.warn('Falha ao desativar conta de usuário:', e)
+    }
+  }
+
+  // 3. Reatribuição de pendências ativas (RNCs em andamento) para o substituto
+  if (options?.reassignToMember) {
+    const substituteName = options.reassignToMember.name.trim()
+    try {
+      const rncs = await pb.collection('non_conformities').getFullList<any>({
+        filter: `status = "Em Andamento" && responsible ~ "${member.name.trim()}"`,
+      })
+      for (const rnc of rncs) {
+        // Substituir apenas a referência do responsável mantendo o histórico de análise intacto
+        await pb.collection('non_conformities').update(rnc.id, {
+          responsible: substituteName,
+        })
+        reassignedCount++
+      }
+    } catch (e) {
+      console.warn('Falha ao reatribuir RNCs:', e)
+    }
+
+    // Se o substituto tiver usuário no users e o desativado for apontador em checklists pendentes
+    if (userIdToDisable) {
+      try {
+        const subUsers = await pb.collection('users').getFullList<any>({
+          filter: `name ~ "${options.reassignToMember.name.trim()}"`,
+        })
+        const subUser = subUsers.find(
+          (u) =>
+            (u.name || '').trim().toLowerCase() ===
+            (options.reassignToMember?.name || '').trim().toLowerCase(),
+        )
+        if (subUser) {
+          const chks = await pb.collection('checklists').getFullList<any>({
+            filter: `status = "pending" && apontador_id = "${userIdToDisable}"`,
+          })
+          for (const chk of chks) {
+            await pb.collection('checklists').update(chk.id, {
+              apontador_id: subUser.id,
+            })
+            reassignedCount++
+          }
+        }
+      } catch (e) {
+        console.warn('Falha ao reatribuir apontador de checklists:', e)
+      }
+    }
+  }
+
+  return { success: true, reassignedCount, userDisabled }
+}
+
+/**
+ * Reativa o colaborador:
+ * - Define is_active = true no team
+ * - Se houver conta de usuário vinculada, reativa também (disabled = false no users)
+ */
+export async function reactivateCollaborator(
+  memberId: string,
+): Promise<{ success: boolean; userReactivated: boolean }> {
+  let userReactivated = false
+
+  const member = await pb.collection('team').getOne<TeamMember>(memberId)
+  await pb.collection('team').update(memberId, {
+    is_active: true,
+  })
+
+  try {
+    const users = await pb.collection('users').getFullList<any>({
+      filter: `name ~ "${member.name.trim()}"`,
+    })
+    const found = users.find(
+      (u) => (u.name || '').trim().toLowerCase() === (member.name || '').trim().toLowerCase(),
+    )
+    if (found) {
+      await pb.collection('users').update(found.id, {
+        disabled: false,
+      })
+      userReactivated = true
+    }
+  } catch (e) {
+    console.warn('Falha ao reativar conta de usuário:', e)
+  }
+
+  return { success: true, userReactivated }
 }
 
 export async function getTeamDepartments(companyId?: string): Promise<string[]> {

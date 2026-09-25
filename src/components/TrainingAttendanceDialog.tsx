@@ -136,10 +136,10 @@ export function TrainingAttendanceDialog({
   const [evaluations, setEvaluations] = useState<EvaluationRowState[]>([])
   const [evalFilterParticipant, setEvalFilterParticipant] = useState<string>('all')
 
-  // Load team members for this company
+  // Load team members for this company (somente ativos para novas listas)
   useEffect(() => {
     if (!open || !companyId) return
-    getTeamMembers({ companyId })
+    getTeamMembers({ companyId, activeOnly: true })
       .then((members) => setTeamList(members))
       .catch((e) => console.error('Failed to load team:', e))
   }, [open, companyId])
