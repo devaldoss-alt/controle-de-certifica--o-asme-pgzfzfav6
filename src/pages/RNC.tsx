@@ -667,7 +667,7 @@ export default function RNCPage() {
               className="border-white/20 bg-white/5 hover:bg-white/10 text-white font-medium text-xs sm:text-sm shadow-md gap-2"
             >
               <Upload className="w-4 h-4 text-emerald-400" />
-              Importar RNCs (Excel + PDFs)
+              Importar RNCs (FSGQ 8.7-2)
             </Button>
           )}
           {canEmit && (
@@ -1275,11 +1275,23 @@ export default function RNCPage() {
       </Tabs>
 
       {/* FORM DIALOG FSGQ 8.7-2: RIGOROSAMENTE FIEL AO FORMULÁRIO DA EMPRESA */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          // Blindagem contra fechamento involuntário por perda de foco (ex: SelectContent em portal fora do Dialog)
+          if (!open) {
+            // Fechamento permitido somente através dos botões Cancelar/Salvar ou X explícito
+            setDialogOpen(false)
+          } else {
+            setDialogOpen(true)
+          }
+        }}
+      >
         <DialogContent
           className="max-w-4xl max-h-[92vh] overflow-y-auto bg-card border-white/10 p-6"
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
+          onFocusOutside={(e) => e.preventDefault()}
         >
           <DialogHeader className="border-b border-white/10 pb-4">
             <div className="flex items-center justify-between flex-wrap gap-2">

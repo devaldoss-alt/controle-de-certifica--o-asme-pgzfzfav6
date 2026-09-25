@@ -23,6 +23,7 @@ import {
   Target,
   Presentation,
   Rocket,
+  Settings,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ModuleName } from '@/services/module-permissions'
@@ -173,6 +174,7 @@ export function getNavGroups(role?: string): NavGroup[] {
         ...(isManagerOrQccOrConsultor
           ? [{ name: 'nav.accessControl', path: '/access-control', icon: ShieldCheck }]
           : []),
+        ...(isManager ? [{ name: 'nav.settings', path: '/settings', icon: Settings }] : []),
         { name: 'nav.help', path: '/help', icon: HelpCircle },
       ],
     },

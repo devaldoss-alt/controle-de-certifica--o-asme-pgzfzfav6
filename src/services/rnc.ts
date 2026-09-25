@@ -1765,3 +1765,118 @@ export async function bulkImportRNCs(
 
   return result
 }
+
+export interface BulkImportFSGQOptions {
+  replaceExisting?: boolean
+  defaultCompanyId?: string
+}
+
+export interface BulkImportFSGQResult {
+  created: number
+  updated: number
+  deleted: number
+  errors: Array<{ row: number; error: string }>
+  summaryByCompany: Record<string, number>
+}
+
+/**
+ * Importador em lote específico para FSGQ 8.7-2 com suporte a substituição
+ * prévia de registros da mesma empresa e gravação fiel via PocketBase.
+ */
+export async function bulkImportFSGQRecords(
+  records: Array<import('../lib/fsgq-parser').FSGQParsedRecord>,
+  options?: BulkImportFSGQOptions,
+  onProgress?: (current: number, total: number, message: string) => void,
+): Promise<BulkImportFSGQResult> {
+  const result: BulkImportFSGQResult = {
+    created: 0,
+    updated: 0,
+    deleted: 0,
+    errors: [],
+    summaryByCompany: {},
+  }
+
+  // 1. Se substituição estiver ativada, deletar registros existentes das empresas envolvidas
+  if (options?.replaceExisting) {
+    const targetCompanyIds = Array.from(new Set(records.map((r) => r.company_id).filter(Boolean)))
+    for (const compId of targetCompanyIds) {
+      try {
+        onProgress?.(0, records.length, `Limpando registros antigos da empresa...`)
+        const existing = await pb.collection('non_conformities').getFullList<{ id: string }>({
+          filter: `company_id = '${compId}'`,
+          fields: 'id',
+        })
+        for (const item of existing) {
+          try {
+            await pb.collection('non_conformities').delete(item.id)
+            result.deleted++
+          } catch (delErr) {
+            console.warn(`Erro ao excluir RNC ${item.id} antes da carga:`, delErr)
+          }
+        }
+      } catch (listErr) {
+        console.warn(`Erro ao listar RNCs da empresa ${compId} para substituição:`, listErr)
+      }
+    }
+  }
+
+  // 2. Gravação dos registros na coleção 'non_conformities'
+  const total = records.length
+  for (let i = 0; i < total; i++) {
+    const rec = records[i]
+    onProgress?.(i + 1, total, `Gravando RNC ${rec.number} (${rec.company_name})...`)
+
+    const payload: Record<string, any> = {
+      company_id: rec.company_id || options?.defaultCompanyId || 'a631bv695rr4gef',
+      number: rec.number, // PRESERVADO fielmente
+      date: rec.date ? `${rec.date} 12:00:00.000Z` : new Date().toISOString(),
+      issuer: rec.issuer || '',
+      service_order_id: '',
+      description: rec.description || `RNC ${rec.number}`,
+      summary: rec.description ? rec.description.slice(0, 140) : `RNC ${rec.number}`,
+      responsible: rec.responsible || '',
+      involved_parties: rec.involved_parties || '',
+      immediate_action: rec.immediate_action || '',
+      immediate_correction_type: rec.immediate_action ? 'AÇÃO CORRETIVA' : '',
+      reinspection_notes: rec.reinspection_notes || '',
+      root_cause_details: rec.root_cause_details || '',
+      root_cause_category: rec.root_cause ? 'Processo e Programa' : '',
+      corrective_action: rec.corrective_action || '',
+      is_effective: rec.is_effective,
+      risk_assessment: rec.notes || '',
+      status: rec.status,
+      origin: 'Auditorias',
+      process: rec.involved_parties || 'Geral',
+      severity: 'Médio',
+      action_type: 'Ação Corretiva',
+      is_reinspected: Boolean(rec.reinspection_notes && rec.reinspection_notes.trim().length > 0),
+      reinspection_result: rec.reinspection_notes ? 'Aprovado' : 'N/A',
+      evidences: [],
+    }
+
+    try {
+      await pb.collection('non_conformities').create(payload)
+      result.created++
+      const cKey = rec.company_name || 'Outras'
+      result.summaryByCompany[cKey] = (result.summaryByCompany[cKey] || 0) + 1
+    } catch (err: unknown) {
+      console.error(`Erro ao criar RNC ${rec.number}:`, err)
+      result.errors.push({
+        row: i + 1,
+        error: `RNC ${rec.number}: ${err instanceof Error ? err.message : String(err)}`,
+      })
+    }
+  }
+
+  // Recalcular indicadores para as empresas afetadas
+  const targetCompanyIds = Array.from(new Set(records.map((r) => r.company_id).filter(Boolean)))
+  for (const compId of targetCompanyIds) {
+    try {
+      await recalculateRNCIndicators({ companyId: compId })
+    } catch (err) {
+      console.warn('recalculateRNCIndicators warning:', err)
+    }
+  }
+
+  return result
+}

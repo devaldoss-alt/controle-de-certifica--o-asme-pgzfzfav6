@@ -17,6 +17,7 @@ import Indicators from '@/pages/Indicators'
 import NotificationsPage from '@/pages/NotificationsPage'
 import MasterList from '@/pages/MasterList'
 import RNCPage from '@/pages/RNC'
+import SettingsPage from '@/pages/Settings'
 import PCPPage from '@/pages/PCP'
 import PackingSlips from '@/pages/PackingSlips'
 import Calendar from '@/pages/Calendar'
@@ -67,6 +68,7 @@ const App = () => (
               <Route path="/companies" element={<Companies />} />
               <Route path="/team" element={<Team />} />
               <Route path="/help" element={<HelpCenter />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>
 

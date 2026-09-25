@@ -20,6 +20,7 @@ export const translations: Record<string, { pt: string; en: string }> = {
   'nav.notifications': { pt: 'Notificações', en: 'Notifications' },
   'nav.companies': { pt: 'Empresas', en: 'Companies' },
   'nav.accessControl': { pt: 'Controle de Acesso', en: 'Access Control' },
+  'nav.settings': { pt: 'Configurações', en: 'Settings' },
   'nav.help': { pt: 'Ajuda', en: 'Help' },
   'nav.logout': { pt: 'Sair', en: 'Logout' },
   'nav.mainMenu': { pt: 'Menu Principal', en: 'Main Menu' },
