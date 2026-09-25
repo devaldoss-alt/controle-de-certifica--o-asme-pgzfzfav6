@@ -30,7 +30,7 @@ import { Checkbox } from './ui/checkbox'
 import { Progress } from './ui/progress'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table'
 import { Input } from './ui/input'
-import { useToast } from '../hooks/use-toast'
+import { useToast } from '@/components/ui/use-toast'
 import type { Company } from '../services/companies'
 import {
   parseFSGQSpreadsheet,

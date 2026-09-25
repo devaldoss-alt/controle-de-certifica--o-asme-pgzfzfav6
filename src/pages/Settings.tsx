@@ -26,7 +26,7 @@ import { Link } from 'react-router-dom'
 
 export function SettingsPage() {
   const { user } = useAuth()
-  const { currentCompany } = useCompany()
+  const { companies: contextCompanies, selectedCompanyId } = useCompany()
   const [companies, setCompanies] = useState<Company[]>([])
   const [rncImportOpen, setRncImportOpen] = useState(false)
 
@@ -224,8 +224,12 @@ export function SettingsPage() {
       <RNCImportDialog
         open={rncImportOpen}
         onOpenChange={setRncImportOpen}
-        companies={companies}
-        defaultCompanyId={currentCompany?.id || 'a631bv695rr4gef'}
+        companies={companies.length > 0 ? companies : contextCompanies}
+        defaultCompanyId={
+          selectedCompanyId !== 'all'
+            ? selectedCompanyId
+            : user?.primary_company_id || 'a631bv695rr4gef'
+        }
         onSuccess={() => {
           // Callback de sucesso
         }}
