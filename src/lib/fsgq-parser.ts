@@ -62,7 +62,8 @@ export function identifyCompanyAndYearFromSheetName(sheetName: string): SheetCom
   } else if (
     norm.includes('koala') ||
     norm.includes('koala siystem') ||
-    norm.includes('koala system')
+    norm.includes('koala system') ||
+    /(?:^|[\s\-_/])ks(?:$|[\s\-_/0-9])/.test(norm)
   ) {
     company_id = COMPANY_IDS.KOALA
     company_name = 'Koala System'
